@@ -1,0 +1,9 @@
+[build]
+target = "./atmega32u4.json"
+
+[target.atmega32u4]
+rustflags = [ "-C", "target-cpu=atmega32u4", "-Zlocation-detail=none", "-Zfmt-debug=none" ]
+
+[unstable]
+build-std = [ "core" ]
+
