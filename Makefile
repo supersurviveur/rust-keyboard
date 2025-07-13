@@ -16,7 +16,6 @@ both: left
 both: right
 
 build:
-	AVR_CPU_FREQUENCY_HZ=16000000 \
 	cargo build --release
 
 clean:
