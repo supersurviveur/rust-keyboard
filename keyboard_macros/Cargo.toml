@@ -1,0 +1,16 @@
+[package]
+name = "keyboard_macros"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+image = "0.25.5"
+regex = "1.11.1"
+quote = "1.0.40"
+syn = { version = "2.0.101", features = [ "full" ] }
+proc-macro2 = "1.0.95"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"

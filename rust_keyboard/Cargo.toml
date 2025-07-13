@@ -1,0 +1,21 @@
+[package]
+name = "rust_keyboard"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+keyboard_macros = { path = "../keyboard_macros" }
+keyboard_constants = { path = "../keyboard_constants" }
+qmk = { path = "../qmk" }
+qmk_sys = { path = "../qmk_sys" }
+avr-base = { path = "../avr-base" }
+compiler_builtins = "0.1.160"
+avr_delay = "0.3.2"
+
+[build-dependencies]
+keyboard_macros = { path = "../keyboard_macros" }
+quote = "1.0.40"
+syn = { version = "2.0.101", features = [ "full" ] }
+glob = "0.3.2"
+serde_json = "1.0.140"
+serde = { version = "1.0.219", features = [ "derive" ] }

@@ -1,0 +1,12 @@
+[package]
+name = "qmk"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+qmk_sys = { path = "../qmk_sys" }
+keyboard_macros = { path = "../keyboard_macros" }
+keyboard_constants = { path = "../keyboard_constants" }
+avr-base = { path = "../avr-base" }
+avr_delay = "0.3.2"
+

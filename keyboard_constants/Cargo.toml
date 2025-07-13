@@ -1,0 +1,8 @@
+[package]
+name = "keyboard_constants"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+keyboard_macros = { path = "../keyboard_macros" }
+avr-base = { path = "../avr-base" }
