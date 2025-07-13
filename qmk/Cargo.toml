@@ -8,5 +8,4 @@ qmk_sys = { path = "../qmk_sys" }
 keyboard_macros = { path = "../keyboard_macros" }
 keyboard_constants = { path = "../keyboard_constants" }
 avr-base = { path = "../avr-base" }
-avr_delay = "0.3.2"
-
+avr_delay = { git = "https://github.com/avr-rust/delay", branch="cycacc" }

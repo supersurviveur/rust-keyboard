@@ -10,8 +10,8 @@ qmk = { path = "../qmk" }
 qmk_sys = { path = "../qmk_sys" }
 avr-base = { path = "../avr-base" }
 compiler_builtins = "0.1.160"
-avr_delay = "0.3.2"
-
+avr_delay = { git = "https://github.com/avr-rust/delay", branch = "cycacc" }
+    
 [build-dependencies]
 keyboard_macros = { path = "../keyboard_macros" }
 quote = "1.0.40"
