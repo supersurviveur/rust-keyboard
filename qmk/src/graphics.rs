@@ -135,6 +135,7 @@ static DISPLAY_OFF_DATA: [u8; 2] = [I2C_CMD, DISPLAY_OFF];
 
 #[inline(always)]
 pub fn oled_send_array<const SIZE: usize, T: RamOrFlash<[u8; SIZE]>>(data: &T) -> Result<(), ()> {
+    unsafe { lufa_rs::USB_Init() };
     i2c::i2c_transmit(
         (OLED_DISPLAY_ADDRESS as u8) << 1,
         data.iter(),
