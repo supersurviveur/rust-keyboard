@@ -1,20 +1,23 @@
 use core::iter::Iterator;
 use core::ops::{Index, IndexMut};
+use super::integral::Integral;
 
 #[derive(Copy, Clone)]
 pub struct BinPackedArray<const N: usize> {
     pub data: [u8; N],
 }
 
-pub trait IndexByValue<Idx> {
+#[const_trait]
+pub trait IndexByValue<Idx: const Integral> {
     type Data;
     fn at(&self, index: Idx) -> Self::Data;
 }
 
 ///marker trait for what is a proper data storage, to restrict later impls
-pub(super) trait DataStorage {}
+pub(crate) trait DataStorage {}
 
-pub trait IndexByValueMut<Idx>: IndexByValue<Idx> {
+#[const_trait]
+pub trait IndexByValueMut<Idx: const Integral>: IndexByValue<Idx> {
     fn set(&mut self, index: Idx, value: <Self as IndexByValue<Idx>>::Data);
 }
 
@@ -43,19 +46,19 @@ impl<const N: usize> BinPackedArray<N> {
     }
 }
 
-impl<const N: usize> IndexByValue<u16> for BinPackedArray<N> {
+impl<const N: usize> const IndexByValue<usize> for BinPackedArray<N> {
     type Data = bool;
     #[inline(always)]
-    fn at(&self, index: u16) -> bool {
+    fn at(&self, index: usize) -> bool {
         let data_idx = index / 8;
         let char_idx = index % 8;
         let char = self.data[data_idx as usize];
         (char & (1 << char_idx)) != 0
     }
 }
-impl<const N: usize> IndexByValueMut<u16> for BinPackedArray<N> {
+impl<const N: usize> const IndexByValueMut<usize> for BinPackedArray<N> {
     #[inline(always)]
-    fn set(&mut self, index: u16, value: bool) {
+    fn set(&mut self, index: usize, value: bool) {
         let data_idx = index / 8;
         let char_idx = index % 8;
         let mut char = self.data[data_idx as usize];
@@ -64,7 +67,7 @@ impl<const N: usize> IndexByValueMut<u16> for BinPackedArray<N> {
         if value {
             char |= mask;
         } else {
-            char ^= char & mask;
+            char &= !mask;
         }
 
         self.data[data_idx as usize] = char;
