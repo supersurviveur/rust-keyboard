@@ -46,6 +46,8 @@ pub const TCCR1B: Register<0x81> = Register();
 pub const TCCR1A: Register<0x80> = Register();
 /// Timer Interrupt Mask Register
 pub const TIMSK0: Register<0x6E> = Register();
+/// SREG
+pub const SREG: Register<0x5F> = Register();
 /// Output Compare Register
 pub const OCR0A: Register<0x47> = Register();
 /// Timer 0 Counter Control Register
@@ -66,3 +68,6 @@ pub const CS00: u8 = 1 << 0;
 pub const CS01: u8 = 1 << 1;
 /// Clock Select
 pub const CS10: u8 = 1 << 0;
+
+/// SREG_I
+pub const SREG_I: u8 = 1 << 7;

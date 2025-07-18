@@ -142,7 +142,7 @@ pub fn serial_write_data(data: &[u8]) {
     for i in 0..len {
         let octet = unsafe { data.as_ptr().add(i).read_volatile() };
         let mut parity = false;
-        let mut bit = 1 << (u8::BITS -1);
+        let mut bit = 1 << (u8::BITS - 1);
 
         for _ in 0..u8::BITS {
             if octet & bit != 0 {

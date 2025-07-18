@@ -1,7 +1,7 @@
 [build]
-target = "./atmega32u4.json"
+target = "avr-none"
 
-[target.atmega32u4]
+[target.avr-none]
 rustflags = [ "-C", "target-cpu=atmega32u4", "-Zlocation-detail=none", "-Zfmt-debug=none" ]
 
 [unstable]

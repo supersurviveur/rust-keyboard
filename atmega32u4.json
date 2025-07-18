@@ -30,7 +30,7 @@
       "-Wl,--as-needed"
     ]
   },
-  "target-c-int-width": "16",
+  "target-c-int-width": 16,
   "target-endian": "little",
   "target-pointer-width": "16",
   "vendor": "unknown",
