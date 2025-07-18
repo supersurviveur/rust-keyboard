@@ -33,6 +33,8 @@ impl<const R: u8> BitAnd<u8> for Register<R> {
     }
 }
 
+/// USB Controller
+pub const USBCON: Register<0xD8> = Register();
 /// External Interupt Mask Register
 pub const EIMSK: Register<0x3D> = Register();
 /// External Interupt Control Register A
@@ -71,3 +73,6 @@ pub const CS10: u8 = 1 << 0;
 
 /// SREG_I
 pub const SREG_I: u8 = 1 << 7;
+
+/// USB Enable
+pub const USBE: u8 = 1 << 7;

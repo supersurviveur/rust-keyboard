@@ -8,6 +8,7 @@
 )]
 #![no_main]
 
+use avr_base::register::{USBCON, USBE};
 use avr_delay::delay_us;
 use keyboard_constants::{matrix::ROWS_PER_HAND, pins::RED_LED_PIN, CHAR_HEIGHT, CHAR_WIDTH};
 use keyboard_macros::{keymap, qmk_callback};
@@ -70,16 +71,13 @@ fn init() {
         soft_serial_target_init();
     }
     matrix_init();
+
+    USBCON.write(USBCON & !USBE);
+
     unsafe { asm!("sei") };
     //     debug('4');
 }
 
-// #[unsafe(no_mangle)]
-// #[unsafe(naked)]
-// unsafe extern "C" fn __vector_42() {
-//     naked_asm!("reti");
-//     // panic!()
-// }
 /* static mut KEYBOARD_REPORT: qmk_sys::report_keyboard_t = qmk_sys::report_keyboard_t {
     mods: 0,
     reserved: 0,
@@ -118,6 +116,7 @@ pub extern "C" fn main() {
         }
         //         debug('7');
         if is_master() {
+            delay_us::<1000>();
             master_exec_transaction(qmk::serial::Transaction::Test);
         } else if !unsafe { ERROR } {
             if unsafe { RES } == qmk::serial::CHAINE {
