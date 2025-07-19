@@ -1,4 +1,6 @@
-pub mod bin_packed;
+mod bin_packed;
 pub use bin_packed::*;
-pub mod flat_matrix;
+mod flat_matrix;
 pub use flat_matrix::*;
+mod integral;
+pub use integral::*;
