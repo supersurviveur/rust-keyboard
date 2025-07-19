@@ -1,0 +1,23 @@
+[general]
+port = "/dev/ttyACM0"
+[board]
+    name = "Arduino Micro"
+
+    [board.reset]
+    automatic = false
+    
+    [board.avrdude]
+    programmer = "avr109"
+    partno = "atmega32u4"
+    baudrate = 115200
+    do-chip-erase = true
+
+    [board.usb-info]
+    port-ids = [
+        { vid = 0x2341, pid = 0x0037 },
+        { vid = 0x2341, pid = 0x8037 },
+        { vid = 0x2A03, pid = 0x0037 },
+        { vid = 0x2A03, pid = 0x8037 },
+        { vid = 0x2341, pid = 0x0237 },
+        { vid = 0x2341, pid = 0x8237 },
+    ]

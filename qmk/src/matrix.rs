@@ -3,7 +3,7 @@ use crate::{
     timer::{timer_elapsed, timer_read},
 };
 use avr_base::pins::{Pin, GPIO_INPUT_PIN_DELAY, NO_PIN};
-use avr_delay::{delay_cycles, delay_us};
+use avr_delay::{delay_cycles, delay_ms, delay_sec, delay_us};
 use keyboard_constants::{
     matrix::{MatrixRowType, MATRIX_COLS, MATRIX_ROWS, MATRIX_ROW_SHIFTER, ROWS_PER_HAND},
     pins::{COL_PINS, ROW_PINS},
@@ -82,6 +82,15 @@ pub fn matrix_read_cols_on_row(current_matrix: &mut [MatrixRowType], current_row
     current_matrix[current_row as usize] = current_row_value;
 }
 
+pub fn matrix_init() {
+    for row in 0..ROWS_PER_HAND {
+        unselect_row(row);
+    }
+    for col in 0..MATRIX_COLS {
+        gpio_atomic_set_pin_input_high(COL_PINS[col as usize]);
+    }
+}
+
 pub fn matrix_scan() -> bool {
     let mut new_matrix = [0; ROWS_PER_HAND as usize];
     for row in 0..ROWS_PER_HAND {
@@ -99,7 +108,6 @@ pub fn matrix_scan() -> bool {
     })
     .unwrap();
 
-    
     debounce(unsafe { &mut RAW_MATRIX }, this_matrix, changed) | matrix_post_scan()
 }
 

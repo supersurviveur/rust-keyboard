@@ -9,7 +9,7 @@ use keyboard_constants::pins::SOFT_SERIAL_PIN;
 
 use crate::{atomic::atomic, timer::cycles_read};
 
-const SERIAL_DELAY: u64 = 3; // in microseconds
+const SERIAL_DELAY: u64 = 6; // in microseconds
 const SERIAL_DELAY_CYCLES: u64 = SERIAL_DELAY * (F_CPU / 1_000_000); // Must be less than 255 due to many cast to u8
 
 const _: () = if SERIAL_DELAY_CYCLES > 255 {
@@ -142,7 +142,7 @@ pub fn serial_write_data(data: &[u8]) {
     for i in 0..len {
         let octet = unsafe { data.as_ptr().add(i).read_volatile() };
         let mut parity = false;
-        let mut bit = 1 << (u8::BITS -1);
+        let mut bit = 1 << (u8::BITS - 1);
 
         for _ in 0..u8::BITS {
             if octet & bit != 0 {
