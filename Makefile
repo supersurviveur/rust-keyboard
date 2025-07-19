@@ -1,4 +1,4 @@
-TARGET_RS := avr-none
+TARGET_RS := atmega32u4
 
 
 left: build
@@ -9,6 +9,7 @@ right::
 right:: flash
 
 flash:
+	avr-strip ./target/$(TARGET_RS)/release/rust_keyboard.elf
 	DEVICE=$$(./autoflash.sh); \
 	avrdude -p m32u4 -c avr109 -P $$DEVICE -U flash:w:./target/$(TARGET_RS)/release/rust_keyboard.elf
 
