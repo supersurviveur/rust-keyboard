@@ -15,11 +15,11 @@ use crate::primitive::{
 };
 use crate::timer::{timer_expired, timer_read};
 
-static mut FRAMEBUF_BINARRAY: Array2D<32, 128, u16, BinPackedArray<{ OLED_MATRIX_SIZE as usize }>> =
+static mut FRAMEBUF_BINARRAY: Array2D<32, 128, usize, BinPackedArray<{ OLED_MATRIX_SIZE as usize }>> =
     Array2D::<32, 128, _, BinPackedArray<{ OLED_MATRIX_SIZE as usize }>>::new();
 
 fn as_u8_buf(
-    buffer: &mut Array2D<32, 128, u16, BinPackedArray<{ OLED_MATRIX_SIZE as usize }>>,
+    buffer: &mut Array2D<32, 128, usize, BinPackedArray<{ OLED_MATRIX_SIZE as usize }>>,
 ) -> SizedView<4, 128, usize, [u8; OLED_MATRIX_SIZE as usize], &mut [u8; OLED_MATRIX_SIZE as usize]>
 {
     SizedView::<4,128,_,[u8;OLED_MATRIX_SIZE as usize],&mut [u8;OLED_MATRIX_SIZE as usize]>::new(&mut buffer.backend_mut().data)
@@ -28,16 +28,16 @@ fn as_u8_buf(
 trait FontPlate {
     const CHAR_WIDTH:u8;
     const CHAR_HEIGHT:u8;
-    const PLATE<const COL:u8,const ROW:u8,const N:usize>:Array2D<COL,ROW,u16,BinPackedArray<N>>;
+    const PLATE<const COL:u8,const ROW:u8,const N:usize>:Array2D<COL,ROW,usize,BinPackedArray<N>>;
 }
 
 #[const_trait]
 trait Font {
-    fn get_char<Backend:Container2D<u16>>(c:char);
+    fn get_char<Backend:Container2D<usize>>(c:char);
 }
 
 impl<T:FontPlate> const Font for T {
-    fn get_char<Backend:Container2D<u16>>(c:char) {
+    fn get_char<Backend:Container2D<usize>>(c:char) {
         let char_per_row = const { &&Self::PLATE::<Backend>.col() };  
     }
 }

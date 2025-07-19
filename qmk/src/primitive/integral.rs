@@ -1,7 +1,7 @@
 use core::ops::{Mul,Add};
 
 #[const_trait]
-pub trait Integral: Sized + const Mul<Output=Self> + const Add<Output=Self> {
+pub trait Integral: Sized + const Mul<Output=Self> + const Add<Output=Self> + Copy {
     fn fromu8(v: u8) -> Self;
     fn fromu16(v: u16) -> Self;
     fn fromusize(v: usize) -> Self;

@@ -124,7 +124,7 @@ where
         return SizedView {
             backend: self.backend(),
             stride,
-            offset: (offset + startcol.into() + <u8 as Into<Idx>>::into(stride) * startrow.into()),
+            offset: (offset + Idx::fromu8(startcol) + Idx::fromu8(stride) * Idx::fromu8(startrow)),
             _phantom: PhantomData,
         };
     }
@@ -144,7 +144,7 @@ where
         UnsizedView {
             backend: self.backend(),
             stride,
-            offset: (offset + startcol.into() + <u8 as Into<Idx>>::into(stride) * startrow.into()),
+            offset: offset + Idx::fromu8(startcol) + Idx::fromu8(stride) * Idx::fromu8(startrow),
             row: numrow,
             col: numcol,
             _phantom: PhantomData,
@@ -153,7 +153,7 @@ where
 }
 
 #[const_trait]
-pub trait Container2DMut<Idx>: Container2D<Idx> where Idx: Copy + From<u8> + From<u16> + Add<Output = Idx> + Mul<Output = Idx>, <Self as Container2D<Idx>>::SliceContainer: IndexByValueMut<Idx> {
+pub trait Container2DMut<Idx>: const Container2D<Idx> where Idx: const Integral, <Self as Container2D<Idx>>::SliceContainer: const IndexByValueMut<Idx> {
     fn backend_mut(&mut self) -> &mut Self::SliceContainer;
     #[inline(always)]
     fn set(
@@ -163,7 +163,7 @@ pub trait Container2DMut<Idx>: Container2D<Idx> where Idx: Copy + From<u8> + Fro
         value: <<Self as Container2D<Idx>>::SliceContainer as IndexByValue<Idx>>::Data,
     ) {
         let index: Idx =
-            Into::<Idx>::into(self.offset()) + col + Into::<Idx>::into(self.stride()) * row;
+            self.offset() + col + Idx::fromu8(self.stride()) * row;
         self.backend_mut().set(index, value);
     }
 
@@ -180,7 +180,7 @@ pub trait Container2DMut<Idx>: Container2D<Idx> where Idx: Copy + From<u8> + Fro
         return SizedView {
             backend: self.backend_mut(),
             stride,
-            offset: (offset + startcol.into() + <u8 as Into<Idx>>::into(stride) * startrow.into()),
+            offset: (offset + Idx::fromu8(startcol) + Idx::fromu8(stride) * Idx::fromu8(startrow)),
             _phantom: PhantomData,
         };
     }
@@ -200,7 +200,7 @@ pub trait Container2DMut<Idx>: Container2D<Idx> where Idx: Copy + From<u8> + Fro
         UnsizedView {
             backend: self.backend_mut(),
             stride,
-            offset: (offset + startcol.into() + <u8 as Into<Idx>>::into(stride) * startrow.into()),
+            offset: (offset + Idx::fromu8(startcol) + Idx::fromu8(stride) * Idx::fromu8(startrow)),
             row: numrow,
             col: numcol,
             _phantom: PhantomData,
@@ -208,9 +208,9 @@ pub trait Container2DMut<Idx>: Container2D<Idx> where Idx: Copy + From<u8> + Fro
     }
     
 }
-impl<Idx, T, const COL: u8, const ROW: u8> const Container2D<Idx> for Array2D<COL, ROW, Idx, T>
+impl<Idx: const Integral, T, const COL: u8, const ROW: u8> const Container2D<Idx> for Array2D<COL, ROW, Idx, T>
 where
-    T: IndexByValue<Idx> + DataStorage,
+    T: const IndexByValue<Idx> + DataStorage,
     Idx: Copy + From<u16> + Mul<Output = Idx> + Add<Output = Idx> + From<u8>,
 {
     type SliceContainer = T;
@@ -237,13 +237,13 @@ where
 
     #[inline(always)]
     fn offset(&self) -> Idx {
-        0u8.into()
+        Idx::fromu8(0u8)
     }
 }
 
-impl<Idx, T, const COL: u8, const ROW: u8> Container2DMut<Idx> for Array2D<COL, ROW, Idx, T>
+impl<Idx: const Integral, T, const COL: u8, const ROW: u8> Container2DMut<Idx> for Array2D<COL, ROW, Idx, T>
 where
-    T: IndexByValueMut<Idx> + DataStorage,
+    T: const IndexByValueMut<Idx> + DataStorage,
     Idx: Copy + From<u16> + Mul<Output = Idx> + Add<Output = Idx> + From<u8>,
 {
     #[inline(always)]
@@ -252,10 +252,10 @@ where
     }
 }
 
-impl<Idx, T> Container2D<Idx> for Slice2D<Idx, T>
+impl<Idx, T> const Container2D<Idx> for Slice2D<Idx, T>
 where
-    T: IndexByValue<Idx> + DataStorage,
-    Idx: Copy + From<u16> + Mul<Output = Idx> + Add<Output = Idx> + From<u8>,
+    T: const IndexByValue<Idx> + DataStorage,
+    Idx: const Integral,
 {
     type SliceContainer = T;
 
@@ -281,14 +281,14 @@ where
 
     #[inline(always)]
     fn offset(&self) -> Idx {
-        0u8.into()
+        Idx::fromu8(0u8)
     }
 }
 
-impl<Idx, T> Container2DMut<Idx> for Slice2D<Idx, T>
+impl<Idx, T> const Container2DMut<Idx> for Slice2D<Idx, T>
 where
-    T: IndexByValueMut<Idx> + DataStorage,
-    Idx: Copy + From<u16> + Mul<Output = Idx> + Add<Output = Idx> + From<u8>,
+    T: const IndexByValueMut<Idx> + DataStorage,
+    Idx: const Integral
 {
     #[inline(always)]
     fn backend_mut(&mut self) -> &mut T {
@@ -296,12 +296,12 @@ where
     }
 }
 
-impl<Idx, Backend, T, const COL: u8, const ROW: u8> Container2D<Idx>
+impl<Idx, Backend, T, const COL: u8, const ROW: u8> const Container2D<Idx>
     for SizedView<COL, ROW, Idx, Backend, T>
 where
-    T: Deref<Target = Backend>,
-    Backend: IndexByValue<Idx> + DataStorage,
-    Idx: Copy + Mul<Output = Idx> + Add<Output = Idx> + From<u8> + From<u16>,
+    T: const Deref<Target = Backend>,
+    Backend: const IndexByValue<Idx> + DataStorage,
+    Idx: const Integral
 {
     type SliceContainer = Backend;
 
@@ -331,12 +331,12 @@ where
     }
 }
 
-impl<Idx, Backend, T, const COL: u8, const ROW: u8> Container2DMut<Idx>
+impl<Idx, Backend, T, const COL: u8, const ROW: u8> const Container2DMut<Idx>
     for SizedView<COL, ROW, Idx, Backend, T>
 where
-    T: DerefMut<Target = Backend>,
-    Backend: IndexByValueMut<Idx> + DataStorage,
-    Idx: Copy + Mul<Output = Idx> + Add<Output = Idx> + From<u8> + From<u16>,
+    T: const DerefMut<Target = Backend>,
+    Backend: const IndexByValueMut<Idx> + DataStorage,
+    Idx: const Integral
 {
    
     #[inline(always)]
@@ -345,11 +345,11 @@ where
     }
 }
 
-impl<Idx, Backend, T> Container2D<Idx> for UnsizedView<Idx, Backend, T>
+impl<Idx, Backend, T> const Container2D<Idx> for UnsizedView<Idx, Backend, T>
 where
-    T: Deref<Target = Backend>,
-    Backend: IndexByValue<Idx> + DataStorage,
-    Idx: Copy + Mul<Output = Idx> + Add<Output = Idx> + From<u8> + From<u16>,
+    T: const Deref<Target = Backend>,
+    Backend: const IndexByValue<Idx> + DataStorage,
+    Idx: const Integral
 {
     type SliceContainer = Backend;
 
@@ -379,11 +379,11 @@ where
     }
 }
 
-impl<Idx, Backend, T> Container2DMut<Idx> for UnsizedView<Idx, Backend, T>
+impl<Idx, Backend, T> const Container2DMut<Idx> for UnsizedView<Idx, Backend, T>
 where
-    T: DerefMut<Target = Backend>,
-    Backend: IndexByValueMut<Idx> + DataStorage,
-    Idx: Copy + Mul<Output = Idx> + Add<Output = Idx> + From<u8> + From<u16>,
+    T: const DerefMut<Target = Backend>,
+    Backend: const IndexByValueMut<Idx> + DataStorage,
+    Idx: const Integral
 {
 
     #[inline(always)]

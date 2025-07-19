@@ -1,7 +1,7 @@
 {
   "arch": "avr",
   "atomic-cas": false,
-  "crt-objects-fallback": "false",
+  "crt-objects-fallback": "true",
   "cpu": "atmega32u4",
   "data-layout": "e-P1-p:16:8-i8:8-i16:8-i32:8-i64:8-f32:8-f64:8-n8-a:8",
   "eh-frame-header": false,
@@ -10,12 +10,10 @@
   "executables": true,
   "late-link-args": {
     "gcc": [
-      "-lgcc",
-      "-lc"
+      "-lgcc"
     ],
     "gnu-lld-cc": [
-      "-lgcc",
-      "-lc"
+      "-lgcc"
     ]
   },
   "max-atomic-width": 8,
@@ -30,7 +28,7 @@
       "-Wl,--as-needed"
     ]
   },
-  "target-c-int-width": "16",
+  "target-c-int-width": 16,
   "target-endian": "little",
   "target-pointer-width": "16",
   "vendor": "unknown",

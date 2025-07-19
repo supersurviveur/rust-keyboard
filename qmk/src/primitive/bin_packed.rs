@@ -17,7 +17,7 @@ pub trait IndexByValue<Idx: const Integral> {
 pub(crate) trait DataStorage {}
 
 #[const_trait]
-pub trait IndexByValueMut<Idx: const Integral>: IndexByValue<Idx> {
+pub trait IndexByValueMut<Idx: const Integral>: const IndexByValue<Idx> {
     fn set(&mut self, index: Idx, value: <Self as IndexByValue<Idx>>::Data);
 }
 
@@ -74,9 +74,9 @@ impl<const N: usize> const IndexByValueMut<usize> for BinPackedArray<N> {
     }
 }
 
-impl<T> IndexByValue<usize> for T
+impl<T> const IndexByValue<usize> for T
 where
-    T: Index<usize> + DataStorage,
+    T: const Index<usize> + DataStorage,
     <T as Index<usize>>::Output: Copy,
 {
     type Data = <Self as Index<usize>>::Output;
@@ -85,9 +85,9 @@ where
         self[index]
     }
 }
-impl<T> IndexByValueMut<usize> for T
+impl<T> const IndexByValueMut<usize> for T
 where
-    T: IndexMut<usize> + DataStorage,
+    T: const IndexMut<usize> + DataStorage,
     <T as Index<usize>>::Output: Copy,
 {
     fn set(&mut self, index: usize, value: <Self as IndexByValue<usize>>::Data) {
