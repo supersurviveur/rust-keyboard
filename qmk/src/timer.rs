@@ -2,7 +2,9 @@ use core::cell::SyncUnsafeCell;
 
 use crate::atomic::atomic;
 use avr_base::{
-    register::{CS00, CS01, CS10, OCIE0A, OCR0A, TCCR0A, TCCR1A, TCCR0B, TCCR1B, TCNT1L, TIMSK0, WGM01},
+    register::{
+        CS00, CS01, CS10, OCIE0A, OCR0A, TCCR0A, TCCR0B, TCCR1A, TCCR1B, TCNT1L, TIMSK0, WGM01,
+    },
     F_CPU,
 };
 
@@ -12,8 +14,6 @@ pub const TIMER_RAW_TOP: u8 = (TIMER_RAW_FREQ / 1000) as u8;
 
 static TIMER: SyncUnsafeCell<u32> = SyncUnsafeCell::new(0);
 
-// Currently call the clock of QMK, we will remove that when QMK will become useless
-// extern "C" fn rust_timer() {
 #[unsafe(no_mangle)]
 extern "avr-non-blocking-interrupt" fn __vector_21() {
     unsafe {

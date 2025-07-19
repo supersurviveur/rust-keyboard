@@ -8,12 +8,13 @@
 )]
 #![no_main]
 
+use avr_base::register::{USBCON, USBE};
 use avr_delay::delay_us;
 use keyboard_constants::{matrix::ROWS_PER_HAND, pins::RED_LED_PIN, CHAR_HEIGHT, CHAR_WIDTH};
 use keyboard_macros::{keymap, qmk_callback};
 use qmk::{
     graphics,
-    matrix::{matrix_read_cols_on_row, matrix_scan, MATRIX},
+    matrix::{matrix_init, matrix_read_cols_on_row, matrix_scan, MATRIX},
     mo,
     serial::{
         master_exec_transaction, soft_serial_initiator_init, soft_serial_target_init, ERROR, RES,
@@ -27,7 +28,11 @@ unsafe extern "C" {
     fn send_char(c: u8);
 }
 
-use core::{arch::asm, intrinsics::abort, panic, panic::PanicInfo};
+use core::{
+    arch::{asm, naked_asm},
+    intrinsics::abort,
+    panic::{self, PanicInfo},
+};
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
@@ -50,7 +55,7 @@ fn panic(_info: &PanicInfo) -> ! {
 
 static mut LAST: bool = false;
 
-fn debug(c: char){
+fn debug(c: char) {
     qmk::graphics::draw_char(c, 0, 0);
     let _ = qmk::graphics::render(true);
 }
@@ -65,7 +70,12 @@ fn init() {
     } else {
         soft_serial_target_init();
     }
-    debug('4');
+    matrix_init();
+
+    USBCON.write(USBCON & !USBE);
+
+    unsafe { asm!("sei") };
+    //     debug('4');
 }
 
 /* static mut KEYBOARD_REPORT: qmk_sys::report_keyboard_t = qmk_sys::report_keyboard_t {
@@ -79,15 +89,12 @@ static mut ERROR_COUNT: u8 = 0;
 pub extern "C" fn main() {
     init();
     loop {
-        debug('1');
+        //         debug('1');
         matrix_scan();
-        debug('6');
+        //         debug('6');
         for i in 0..6 {
             if (unsafe { MATRIX[0] } & 1 << i) != 0 {
                 qmk::graphics::draw_char((b'0' + i) as char, 0, i * 13);
-                if i == 3 {
-                    panic!();
-                }
                 if i == 1 {
                     // unsafe {
                     //     qmk_sys::add_key_to_report(qmk::keys::KC_A as u8);
@@ -99,9 +106,6 @@ pub extern "C" fn main() {
         for i in 0..6 {
             if (unsafe { MATRIX[ROWS_PER_HAND as usize] } & 1 << i) != 0 {
                 qmk::graphics::draw_char((b'0' + i) as char, 20, i * 13);
-                if i == 3 {
-                    panic!();
-                }
                 if i == 1 {
                     // unsafe {
                     //     qmk_sys::add_key_to_report(qmk::keys::KC_A as u8);
@@ -110,8 +114,9 @@ pub extern "C" fn main() {
                 }
             }
         }
-        debug('7');
+        //         debug('7');
         if is_master() {
+            delay_us::<1000>();
             master_exec_transaction(qmk::serial::Transaction::Test);
         } else if !unsafe { ERROR } {
             if unsafe { RES } == qmk::serial::CHAINE {
@@ -128,7 +133,7 @@ pub extern "C" fn main() {
 
             qmk::graphics::draw_u8(unsafe { ERROR_COUNT }, 0, CHAR_HEIGHT);
         }
-        debug('8');
+        //         debug('8');
         let _ = qmk::graphics::render(true);
     }
 }
