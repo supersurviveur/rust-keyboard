@@ -11,36 +11,24 @@ const OLED_MATRIX_SIZE: usize = (OLED_DISPLAY_HEIGHT as usize) * (OLED_DISPLAY_W
 const OLED_DISPLAY_ADDRESS: u8 = 60;
 
 use crate::primitive::{
-    Array2D, BinPackedArray, Container2D, Container2DMut, DataStorage, IndexByValue, IndexByValueMut, SizedView
+    Array2D, BinPackedArray, Container2D, IndexByValue, IndexByValueMut, SizedView,
 };
 use crate::timer::{timer_expired, timer_read};
 
-static mut FRAMEBUF_BINARRAY: Array2D<32, 128, usize, BinPackedArray<{ OLED_MATRIX_SIZE as usize }>> =
+static mut FRAMEBUF_BINARRAY: Array2D<32, 128, u16, BinPackedArray<{ OLED_MATRIX_SIZE as usize }>> =
     Array2D::<32, 128, _, BinPackedArray<{ OLED_MATRIX_SIZE as usize }>>::new();
 
 fn as_u8_buf(
-    buffer: &mut Array2D<32, 128, usize, BinPackedArray<{ OLED_MATRIX_SIZE as usize }>>,
+    buffer: &mut Array2D<32, 128, u16, BinPackedArray<{ OLED_MATRIX_SIZE as usize }>>,
 ) -> SizedView<4, 128, usize, [u8; OLED_MATRIX_SIZE as usize], &mut [u8; OLED_MATRIX_SIZE as usize]>
 {
     SizedView::<4,128,_,[u8;OLED_MATRIX_SIZE as usize],&mut [u8;OLED_MATRIX_SIZE as usize]>::new(&mut buffer.backend_mut().data)
 }
 
-trait FontPlate {
-    const CHAR_WIDTH:u8;
-    const CHAR_HEIGHT:u8;
-    const PLATE<const COL:u8,const ROW:u8,const N:usize>:Array2D<COL,ROW,usize,BinPackedArray<N>>;
-}
-
-#[const_trait]
-trait Font {
-    fn get_char<Backend:Container2D<usize>>(c:char);
-}
-
-impl<T:FontPlate> const Font for T {
-    fn get_char<Backend:Container2D<usize>>(c:char) {
-        let char_per_row = const { &&Self::PLATE::<Backend>.col() };  
-    }
-}
+const FONTPLATE: Array2D<{ FONT_DIM.0 }, { FONT_DIM.1 }, u16, BinPackedArray<{ FONT_DIM.2 }>> =
+    Array2D::from_existing(BinPackedArray {
+        data: keyboard_constants::FONTPLATE,
+    });
 
 static mut INITIALIZED: bool = false;
 static mut OLED_ACTIVE: bool = false;
@@ -375,13 +363,13 @@ pub fn draw_image<const N: usize>(image: QmkImage<N>, offset_x: u8, offset_y: u8
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct Image<const N: usize, Holder: RamOrFlash<[u8;N]>> {
+pub struct QmkImage<const N: usize> {
     pub width: u8,
     pub height: u8,
-    pub bytes: Holder,
+    pub bytes: [u8; N],
 }
 
-impl<const N: usize,Holder: RamOrFlash<[u8;N]>> QmkImage<N> {
+impl<const N: usize> QmkImage<N> {
     pub fn get_pixel(&self, x: u8, y: u8) -> Option<bool> {
         if x >= self.width || y >= self.height {
             return None;

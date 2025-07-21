@@ -1,23 +1,20 @@
 use core::iter::Iterator;
 use core::ops::{Index, IndexMut};
-use super::integral::Integral;
 
 #[derive(Copy, Clone)]
 pub struct BinPackedArray<const N: usize> {
     pub data: [u8; N],
 }
 
-#[const_trait]
-pub trait IndexByValue<Idx: const Integral> {
+pub trait IndexByValue<Idx> {
     type Data;
     fn at(&self, index: Idx) -> Self::Data;
 }
 
 ///marker trait for what is a proper data storage, to restrict later impls
-pub(crate) trait DataStorage {}
+pub(super) trait DataStorage {}
 
-#[const_trait]
-pub trait IndexByValueMut<Idx: const Integral>: const IndexByValue<Idx> {
+pub trait IndexByValueMut<Idx>: IndexByValue<Idx> {
     fn set(&mut self, index: Idx, value: <Self as IndexByValue<Idx>>::Data);
 }
 
@@ -46,19 +43,19 @@ impl<const N: usize> BinPackedArray<N> {
     }
 }
 
-impl<const N: usize> const IndexByValue<usize> for BinPackedArray<N> {
+impl<const N: usize> IndexByValue<u16> for BinPackedArray<N> {
     type Data = bool;
     #[inline(always)]
-    fn at(&self, index: usize) -> bool {
+    fn at(&self, index: u16) -> bool {
         let data_idx = index / 8;
         let char_idx = index % 8;
         let char = self.data[data_idx as usize];
         (char & (1 << char_idx)) != 0
     }
 }
-impl<const N: usize> const IndexByValueMut<usize> for BinPackedArray<N> {
+impl<const N: usize> IndexByValueMut<u16> for BinPackedArray<N> {
     #[inline(always)]
-    fn set(&mut self, index: usize, value: bool) {
+    fn set(&mut self, index: u16, value: bool) {
         let data_idx = index / 8;
         let char_idx = index % 8;
         let mut char = self.data[data_idx as usize];
@@ -67,16 +64,16 @@ impl<const N: usize> const IndexByValueMut<usize> for BinPackedArray<N> {
         if value {
             char |= mask;
         } else {
-            char &= !mask;
+            char ^= char & mask;
         }
 
         self.data[data_idx as usize] = char;
     }
 }
 
-impl<T> const IndexByValue<usize> for T
+impl<T> IndexByValue<usize> for T
 where
-    T: const Index<usize> + DataStorage,
+    T: Index<usize> + DataStorage,
     <T as Index<usize>>::Output: Copy,
 {
     type Data = <Self as Index<usize>>::Output;
@@ -85,9 +82,9 @@ where
         self[index]
     }
 }
-impl<T> const IndexByValueMut<usize> for T
+impl<T> IndexByValueMut<usize> for T
 where
-    T: const IndexMut<usize> + DataStorage,
+    T: IndexMut<usize> + DataStorage,
     <T as Index<usize>>::Output: Copy,
 {
     fn set(&mut self, index: usize, value: <Self as IndexByValue<usize>>::Data) {
