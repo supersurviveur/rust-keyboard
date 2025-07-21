@@ -12,6 +12,7 @@ use avr_base::register::{USBCON, USBE};
 use avr_delay::delay_us;
 use keyboard_constants::{matrix::ROWS_PER_HAND, pins::RED_LED_PIN, CHAR_HEIGHT, CHAR_WIDTH};
 use keyboard_macros::{keymap, qmk_callback};
+use lufa_rs::{HID_Task, SetupHardware, USB_Init, USB_USBTask};
 use qmk::{
     graphics,
     matrix::{matrix_init, matrix_read_cols_on_row, matrix_scan, MATRIX},
@@ -72,7 +73,8 @@ fn init() {
     }
     matrix_init();
 
-    USBCON.write(USBCON & !USBE);
+    // Needed for the code to works directly after flash, but seems to crash LUFA, which already resolve the problem on flash
+    // USBCON.write(USBCON & !USBE);
 
     unsafe { asm!("sei") };
     //     debug('4');
@@ -87,8 +89,11 @@ static mut ERROR_COUNT: u8 = 0;
 
 #[unsafe(no_mangle)]
 pub extern "C" fn main() {
+    unsafe { SetupHardware() };
     init();
     loop {
+    unsafe{ HID_Task() };
+    unsafe{ USB_USBTask() };
         //         debug('1');
         matrix_scan();
         //         debug('6');

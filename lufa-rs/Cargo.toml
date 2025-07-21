@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+keyboard_macros = { path = "../keyboard_macros" }
+avr-progmem = "0.4.0"
 
 [build-dependencies]
 cc = "1.2.29"
+bindgen = "0.72.0"
