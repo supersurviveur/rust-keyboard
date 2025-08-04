@@ -7,15 +7,15 @@ use keymap::KeyboardDefinition;
 use keymap::Keymap;
 use proc_macro::Span;
 use proc_macro::TokenStream;
+use quote::ToTokens;
 use quote::format_ident;
 use quote::quote;
-use quote::ToTokens;
 use std::collections::HashSet;
 use std::fs;
 use syn::Expr;
 use syn::ExprLit;
 use syn::LitInt;
-use syn::{parse_macro_input, ItemFn};
+use syn::{ItemFn, parse_macro_input};
 
 #[proc_macro_attribute]
 pub fn progmem(args: TokenStream, item: TokenStream) -> TokenStream {
@@ -228,126 +228,4 @@ pub fn keymap(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     };
 
     output.into()
-}
-
-#[proc_macro]
-pub fn hid_keyboard_descriptor(input: TokenStream) -> TokenStream {
-    let max_keys = parse_macro_input!(input as LitInt);
-    let max_keys_val: u8 = max_keys.base10_parse().unwrap();
-
-    // Construire le descripteur sous forme de tableau d'octets
-    let descriptor_bytes = build_descriptor(max_keys_val);
-
-    // Générer le code Rust pour le tableau constant
-    let expanded = quote! {
-        [#(#descriptor_bytes),*]
-    };
-
-    expanded.into()
-}
-
-fn build_descriptor(max_keys: u8) -> Vec<u8> {
-    let mut bytes = Vec::new();
-
-    // Fonction utilitaire pour ajouter des items HID
-    let mut push_item = |item_type: u8, tag: u8, size: u8, value: u32| {
-        let size_flag = match size {
-            0 => 0,
-            8 => 1,
-            16 => 2,
-            32 => 3,
-            _ => panic!("Taille non supportée"),
-        };
-
-        bytes.push(item_type | tag | size_flag);
-
-        match size {
-            0 => {}
-            8 => bytes.push(value as u8),
-            16 => {
-                bytes.push(value as u8);
-                bytes.push((value >> 8) as u8);
-            }
-            32 => {
-                bytes.push(value as u8);
-                bytes.push((value >> 8) as u8);
-                bytes.push((value >> 16) as u8);
-                bytes.push((value >> 24) as u8);
-            }
-            _ => unreachable!(),
-        }
-    };
-
-    // Types et tags
-    const MAIN: u8 = 0 << 2;
-    const GLOBAL: u8 = 1 << 2;
-    const LOCAL: u8 = 2 << 2;
-
-    const USAGE_PAGE: u8 = 0x00;
-    const USAGE: u8 = 0x00;
-    const COLLECTION: u8 = 0xA0;
-    const END_COLLECTION: u8 = 0xC0;
-    const USAGE_MINIMUM: u8 = 0x10;
-    const USAGE_MAXIMUM: u8 = 0x20;
-    const LOGICAL_MINIMUM: u8 = 0x10;
-    const LOGICAL_MAXIMUM: u8 = 0x20;
-    const REPORT_SIZE: u8 = 0x70;
-    const REPORT_COUNT: u8 = 0x90;
-    const INPUT: u8 = 0x80;
-    const OUTPUT: u8 = 0x90;
-
-    // Flags
-    const DATA: u8 = 0 << 0;
-    const CONSTANT: u8 = 1 << 0;
-    const ARRAY: u8 = 0 << 1;
-    const VARIABLE: u8 = 1 << 1;
-    const ABSOLUTE: u8 = 0 << 2;
-    const NON_VOLATILE: u8 = 0 << 7;
-
-    // Construction du descripteur
-    push_item(GLOBAL, USAGE_PAGE, 8, 0x01);
-    push_item(LOCAL, USAGE, 8, 0x06);
-    push_item(MAIN, COLLECTION, 8, 0x01);
-
-    push_item(GLOBAL, USAGE_PAGE, 8, 0x07);
-    push_item(LOCAL, USAGE_MINIMUM, 8, 0xE0);
-    push_item(LOCAL, USAGE_MAXIMUM, 8, 0xE7);
-    push_item(GLOBAL, LOGICAL_MINIMUM, 8, 0x00);
-    push_item(GLOBAL, LOGICAL_MAXIMUM, 8, 0x01);
-    push_item(GLOBAL, REPORT_SIZE, 8, 0x01);
-    push_item(GLOBAL, REPORT_COUNT, 8, 0x08);
-    push_item(MAIN, INPUT, 8, (DATA | VARIABLE | ABSOLUTE) as u32);
-
-    push_item(GLOBAL, REPORT_COUNT, 8, 0x01);
-    push_item(GLOBAL, REPORT_SIZE, 8, 0x08);
-    push_item(MAIN, INPUT, 8, CONSTANT as u32);
-
-    push_item(GLOBAL, USAGE_PAGE, 8, 0x08);
-    push_item(LOCAL, USAGE_MINIMUM, 8, 0x01);
-    push_item(LOCAL, USAGE_MAXIMUM, 8, 0x05);
-    push_item(GLOBAL, REPORT_COUNT, 8, 0x05);
-    push_item(GLOBAL, REPORT_SIZE, 8, 0x01);
-    push_item(
-        MAIN,
-        OUTPUT,
-        8,
-        (DATA | VARIABLE | ABSOLUTE | NON_VOLATILE) as u32,
-    );
-
-    push_item(GLOBAL, REPORT_COUNT, 8, 0x01);
-    push_item(GLOBAL, REPORT_SIZE, 8, 0x03);
-    push_item(MAIN, OUTPUT, 8, CONSTANT as u32);
-
-    push_item(GLOBAL, LOGICAL_MINIMUM, 8, 0x00);
-    push_item(GLOBAL, LOGICAL_MAXIMUM, 8, 0x65);
-    push_item(GLOBAL, USAGE_PAGE, 8, 0x07);
-    push_item(LOCAL, USAGE_MINIMUM, 8, 0x00);
-    push_item(LOCAL, USAGE_MAXIMUM, 8, 0x65);
-    push_item(GLOBAL, REPORT_COUNT, 8, max_keys as u32);
-    push_item(GLOBAL, REPORT_SIZE, 8, 0x08);
-    push_item(MAIN, INPUT, 8, (DATA | ARRAY | ABSOLUTE) as u32);
-
-    push_item(MAIN, END_COLLECTION, 0, 0);
-
-    bytes
 }

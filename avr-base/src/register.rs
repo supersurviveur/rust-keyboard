@@ -57,6 +57,9 @@ pub const TCCR0B: Register<0x45> = Register();
 /// Timer 0 Counter Control Register
 pub const TCCR0A: Register<0x44> = Register();
 
+/// Watch Dog Timer Control Register
+pub const WDTCSR: Register<0x60> = Register();
+
 // Registers values
 
 /// Waveform Generation Mode
@@ -76,3 +79,8 @@ pub const SREG_I: u8 = 1 << 7;
 
 /// USB Enable
 pub const USBE: u8 = 1 << 7;
+
+/// Watch Dog system reset Enable
+pub const WDE: u8 = 1 << 3;
+/// Watch Dog Change Enable
+pub const WDCE: u8 = 1 << 4;
