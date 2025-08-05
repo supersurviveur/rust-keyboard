@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = [ "avr-base", "keyboard_constants", "rust_keyboard"]
+members = [ "avr-base", "keyboard_constants", "lufa-rs", "rust_keyboard"]
 
 [profile.dev]
 panic = "abort"

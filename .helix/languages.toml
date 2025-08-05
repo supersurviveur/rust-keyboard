@@ -1,0 +1,5 @@
+[language-server.rust-analyzer.config]
+check = { allTargets = false }
+
+[language-server.rust-analyzer.config.cargo.extraEnv]
+LUFA_CONFIG_PATH = "/home/julien/code/rust-keyboard/qmk"

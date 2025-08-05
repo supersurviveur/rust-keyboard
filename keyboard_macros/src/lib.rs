@@ -7,15 +7,15 @@ use keymap::KeyboardDefinition;
 use keymap::Keymap;
 use proc_macro::Span;
 use proc_macro::TokenStream;
+use quote::ToTokens;
 use quote::format_ident;
 use quote::quote;
-use quote::ToTokens;
 use std::collections::HashSet;
 use std::fs;
 use syn::Expr;
 use syn::ExprLit;
 use syn::LitInt;
-use syn::{parse_macro_input, ItemFn};
+use syn::{ItemFn, parse_macro_input};
 
 #[proc_macro_attribute]
 pub fn progmem(args: TokenStream, item: TokenStream) -> TokenStream {
@@ -27,7 +27,7 @@ pub fn pins(item: TokenStream) -> TokenStream {
 }
 #[proc_macro]
 pub fn image_dimension(input: TokenStream) -> TokenStream {
-    let (width,height,_,byte_count,_) = image::parse_image(input).unwrap();
+    let (width, height, _, byte_count, _) = image::parse_image(input).unwrap();
 
     let output = quote! {
         (#width,#height,#byte_count)
@@ -35,7 +35,6 @@ pub fn image_dimension(input: TokenStream) -> TokenStream {
 
     output.into()
 }
-
 
 #[proc_macro]
 pub fn include_font_plate(input: TokenStream) -> TokenStream {

@@ -12,9 +12,12 @@
 pub mod atomic;
 pub mod graphics;
 pub mod i2c;
+pub mod init;
 pub mod keys;
 pub mod matrix;
 pub mod pins;
 pub mod primitive;
 pub mod serial;
 pub mod timer;
+pub mod usb;
+pub mod keymap;

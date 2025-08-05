@@ -9,15 +9,18 @@
 #![no_main]
 
 use avr_base::register::{USBCON, USBE};
-use avr_delay::delay_us;
-use keyboard_constants::{matrix::ROWS_PER_HAND, pins::RED_LED_PIN, CHAR_HEIGHT, CHAR_WIDTH};
+use avr_delay::{delay_ms, delay_us};
+use keyboard_constants::{CHAR_HEIGHT, CHAR_WIDTH, matrix::ROWS_PER_HAND, pins::RED_LED_PIN};
 use keyboard_macros::{keymap, qmk_callback};
+use lufa_rs::{USB_Init, USB_USBTask};
+use qmk::usb::events::{add_code, hid_task, remove_code, toggle_code};
 use qmk::{
     graphics,
-    matrix::{matrix_init, matrix_read_cols_on_row, matrix_scan, MATRIX},
+    init::disable_watchdog,
+    matrix::{MATRIX, matrix_init, matrix_read_cols_on_row, matrix_scan},
     mo,
     serial::{
-        master_exec_transaction, soft_serial_initiator_init, soft_serial_target_init, ERROR, RES,
+        ERROR, RES, master_exec_transaction, soft_serial_initiator_init, soft_serial_target_init,
     },
     timer::{cycles_elapsed, cycles_read, timer_init, timer_read},
     to,
@@ -63,6 +66,7 @@ fn debug(c: char) {
 fn init() {
     RED_LED_PIN.gpio_set_pin_output();
     RED_LED_PIN.gpio_write_pin_low();
+    disable_watchdog();
     let _ = qmk::graphics::init_graphics();
     timer_init();
     if is_master() {
@@ -72,8 +76,13 @@ fn init() {
     }
     matrix_init();
 
-    USBCON.write(USBCON & !USBE);
+    // Needed for the code to works directly after flash, but seems to crash LUFA, which already resolve the problem on flash
+    // USBCON.write(USBCON & !USBE);
+    unsafe {
+        USB_Init();
+    }
 
+    // Enable interrupts
     unsafe { asm!("sei") };
     //     debug('4');
 }
@@ -89,6 +98,8 @@ static mut ERROR_COUNT: u8 = 0;
 pub extern "C" fn main() {
     init();
     loop {
+        hid_task();
+        unsafe { USB_USBTask() };
         //         debug('1');
         matrix_scan();
         //         debug('6');
@@ -96,10 +107,13 @@ pub extern "C" fn main() {
             if (unsafe { MATRIX[0] } & 1 << i) != 0 {
                 qmk::graphics::draw_char((b'0' + i) as char, 0, i * 13);
                 if i == 1 {
+                    toggle_code(lufa_rs::HID_KEYBOARD_SC_F as u8);
                     // unsafe {
                     //     qmk_sys::add_key_to_report(qmk::keys::KC_A as u8);
                     //     qmk_sys::lufa_driver.send_keyboard.unwrap()(&raw mut KEYBOARD_REPORT);
                     // }
+                } else if i == 2 {
+                    remove_code(lufa_rs::HID_KEYBOARD_SC_F as u8);
                 }
             }
         }
@@ -116,7 +130,7 @@ pub extern "C" fn main() {
         }
         //         debug('7');
         if is_master() {
-            delay_us::<1000>();
+            // delay_us::<1000>();
             master_exec_transaction(qmk::serial::Transaction::Test);
         } else if !unsafe { ERROR } {
             if unsafe { RES } == qmk::serial::CHAINE {
