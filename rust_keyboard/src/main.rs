@@ -13,7 +13,7 @@ use avr_delay::{delay_ms, delay_us};
 use keyboard_constants::{CHAR_HEIGHT, CHAR_WIDTH, matrix::ROWS_PER_HAND, pins::RED_LED_PIN};
 use keyboard_macros::{keymap, qmk_callback};
 use lufa_rs::{USB_Init, USB_USBTask};
-use qmk::usb::events::hid_task;
+use qmk::usb::events::{add_code, hid_task, remove_code, toggle_code};
 use qmk::{
     graphics,
     init::disable_watchdog,
@@ -107,10 +107,13 @@ pub extern "C" fn main() {
             if (unsafe { MATRIX[0] } & 1 << i) != 0 {
                 qmk::graphics::draw_char((b'0' + i) as char, 0, i * 13);
                 if i == 1 {
+                    toggle_code(lufa_rs::HID_KEYBOARD_SC_F as u8);
                     // unsafe {
                     //     qmk_sys::add_key_to_report(qmk::keys::KC_A as u8);
                     //     qmk_sys::lufa_driver.send_keyboard.unwrap()(&raw mut KEYBOARD_REPORT);
                     // }
+                } else if i == 2 {
+                    remove_code(lufa_rs::HID_KEYBOARD_SC_F as u8);
                 }
             }
         }

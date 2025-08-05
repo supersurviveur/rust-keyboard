@@ -20,3 +20,4 @@ pub mod primitive;
 pub mod serial;
 pub mod timer;
 pub mod usb;
+pub mod keymap;

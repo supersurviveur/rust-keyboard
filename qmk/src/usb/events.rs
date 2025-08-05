@@ -10,8 +10,14 @@ use lufa_rs::{
     USB_Device_EnableSOFEvents, UsbDeviceStates, UsbKeyboardReportData,
 };
 
-use crate::usb::descriptors::{
-    KEYBOARD_ENDPOINT_SIZE, KEYBOARD_IN_ENDPOINT_ADDR, KEYBOARD_OUT_ENDPOINT_ADDR,
+use crate::{
+    graphics,
+    usb::{
+        MAX_KEYS,
+        descriptors::{
+            KEYBOARD_ENDPOINT_SIZE, KEYBOARD_IN_ENDPOINT_ADDR, KEYBOARD_OUT_ENDPOINT_ADDR,
+        },
+    },
 };
 
 /// Indicates what report mode the host has requested, `true` for normal HID
@@ -158,55 +164,78 @@ pub extern "C" fn EVENT_USB_Device_ControlRequest() {
     }
 }
 
-static mut TEST: bool = false;
-static mut PREV_KEYBOARD_REPORT_DATA: UsbKeyboardReportData = UsbKeyboardReportData {
+static mut KEYBOARD_REPORT_DATA: UsbKeyboardReportData = UsbKeyboardReportData {
     modifier: 0,
     key_code: [0; 6],
     reserved: 0,
 };
 
-pub fn create_keyboard_report(report_data: &mut UsbKeyboardReportData) {
-    unsafe {
-        let mut used_key_codes = 0;
+static mut KEYBOARD_REPORT_DATA_UPDATED: bool = false;
 
-        // Définition du modificateur
-        report_data.modifier = HID_KEYBOARD_MODIFIER_LEFTSHIFT as u8;
-
-        // Logique de test (alternance)
-        if TEST {
-            report_data.key_code[used_key_codes] = HID_KEYBOARD_SC_F as u8;
-            used_key_codes += 1;
+pub fn add_code(code: u8) {
+    let mut empty = MAX_KEYS;
+    for i in 0..MAX_KEYS {
+        if unsafe { KEYBOARD_REPORT_DATA.key_code[i as usize] == code } {
+            return;
+        } else if unsafe { KEYBOARD_REPORT_DATA.key_code[i as usize] == 0 } {
+            empty = i;
         }
-        TEST = !TEST;
+    }
+    if empty != MAX_KEYS {
+        unsafe {
+            KEYBOARD_REPORT_DATA.key_code[empty as usize] = code;
+            KEYBOARD_REPORT_DATA_UPDATED = true;
+        }
+    }
+}
+
+pub fn remove_code(code: u8) {
+    for i in 0..MAX_KEYS {
+        unsafe {
+            if KEYBOARD_REPORT_DATA.key_code[i as usize] == code {
+                KEYBOARD_REPORT_DATA.key_code[i as usize] = 0;
+                KEYBOARD_REPORT_DATA_UPDATED = true;
+                break;
+            }
+        }
+    }
+}
+pub fn toggle_code(code: u8) {
+    let mut empty = MAX_KEYS;
+    for i in 0..MAX_KEYS {
+        if unsafe { KEYBOARD_REPORT_DATA.key_code[i as usize] == code } {
+            unsafe { KEYBOARD_REPORT_DATA.key_code[i as usize] = 0 };
+            unsafe { KEYBOARD_REPORT_DATA_UPDATED = true };
+            return;
+        } else if unsafe { KEYBOARD_REPORT_DATA.key_code[i as usize] == 0 } {
+            empty = i;
+        }
+    }
+    if empty != MAX_KEYS {
+        unsafe {
+            KEYBOARD_REPORT_DATA.key_code[empty as usize] = code;
+            KEYBOARD_REPORT_DATA_UPDATED = true;
+        }
     }
 }
 
 pub extern "C" fn send_next_report() {
     unsafe {
-        let mut keyboard_report_data = UsbKeyboardReportData::default();
-        let send_report;
-
-        // Création du rapport clavier
-        create_keyboard_report(&mut keyboard_report_data);
-
-        // Vérification de la période idle (version simplifiée)
-        if IDLE_COUNT != 0 && IDLE_MS_REMAINING == 0 {
+        let send_report = if IDLE_COUNT != 0 && IDLE_MS_REMAINING == 0 {
             IDLE_MS_REMAINING = IDLE_COUNT;
-            send_report = true;
+            true
         } else {
-            // Comparaison avec le rapport précédent
-            send_report = keyboard_report_data != PREV_KEYBOARD_REPORT_DATA;
-        }
+            KEYBOARD_REPORT_DATA_UPDATED
+        };
 
         // Select the keyboard endpoint
         Endpoint_SelectEndpoint(KEYBOARD_IN_ENDPOINT_ADDR);
 
-        // Envoi du rapport si nécessaire
         if Endpoint_IsReadWriteAllowed() && send_report {
-            PREV_KEYBOARD_REPORT_DATA = keyboard_report_data;
+            KEYBOARD_REPORT_DATA_UPDATED = false;
 
             Endpoint_Write_Stream_LE(
-                &keyboard_report_data as *const _ as *const c_void,
+                &KEYBOARD_REPORT_DATA as *const _ as *const c_void,
                 size_of::<UsbKeyboardReportData>() as u16,
                 null_mut(),
             );
@@ -217,11 +246,8 @@ pub extern "C" fn send_next_report() {
 }
 
 pub extern "C" fn hid_task() {
-    // Vérification de l'état du périphérique
     if unsafe { USB_DEVICE_STATE } != UsbDeviceStates::DeviceStateConfigured as u8 {
         return;
     }
-
-    // Envoi du prochain rapport
     send_next_report();
 }

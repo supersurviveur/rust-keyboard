@@ -11,6 +11,8 @@ use lufa_rs::{
 };
 use qmk_sys::progmem::{read_byte, read_value};
 
+use crate::usb::MAX_KEYS;
+
 const FIXED_CONTROL_ENDPOINT_SIZE: u8 = 8;
 const FIXED_NUM_CONFIGURATIONS: u8 = 1;
 
@@ -201,8 +203,6 @@ static MANUFACTURER_STRING: PackedConcreteType<UsbDescriptorString, i16, 26> =
 #[unsafe(link_section = ".progmem.data")]
 static PRODUCT_STRING: PackedConcreteType<UsbDescriptorString, i16, 18> =
     usb_string_descriptor!("lufa rust keyboard");
-
-const MAX_KEYS: u8 = 6;
 
 #[unsafe(link_section = ".progmem.data")]
 pub static KEYBOARD_DESCRIPTOR: [u8; 64] = hid_descriptor_keyboard!(MAX_KEYS);
