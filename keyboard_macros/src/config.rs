@@ -2,7 +2,7 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, spanned::Spanned};
 
-pub fn user_config_impl(args: TokenStream, item: TokenStream) -> TokenStream {
+pub fn user_config_impl(_args: TokenStream, item: TokenStream) -> TokenStream {
     let mut t = parse_macro_input!(item as syn::ItemImpl);
 
     // Tell to the user to remove type definition if they have one
@@ -22,7 +22,7 @@ pub fn user_config_impl(args: TokenStream, item: TokenStream) -> TokenStream {
     }
 
     let keymap = quote! {
-        type KeymapType = qmk::keymap::Keymap<{ Self::LAYER_COUNT }>;
+        type KeymapType = qmk::keymap::Keymap<Self, { Self::LAYER_COUNT }>;
     }
     .into();
     t.items.push(parse_macro_input!(keymap as syn::ImplItem));

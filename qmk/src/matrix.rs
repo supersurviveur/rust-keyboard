@@ -1,10 +1,13 @@
 use crate::{
-    atomic::atomic, is_right, timer::{timer_elapsed, timer_read}, Keyboard, Keyboard2, QmkKeyboard
+    Keyboard, KeyboardAuto, QmkKeyboard,
+    atomic::atomic,
+    is_right,
+    timer::{timer_elapsed, timer_read},
 };
 use avr_base::pins::{GPIO_INPUT_PIN_DELAY, NO_PIN, Pin};
 use avr_delay::{delay_cycles, delay_us};
 use keyboard_constants::{
-    matrix::{MATRIX_COLS, MATRIX_ROW_SHIFTER, MATRIX_ROWS, MatrixRowType, ROWS_PER_HAND},
+    matrix::{MATRIX_COLS, MATRIX_ROW_SHIFTER, MatrixRowType, ROWS_PER_HAND},
     pins::{COL_PINS, ROW_PINS},
 };
 
@@ -88,7 +91,7 @@ pub fn matrix_init() {
     }
 }
 
-impl<User: Keyboard2 + Keyboard> QmkKeyboard<User> {
+impl<User: KeyboardAuto> QmkKeyboard<User> {
     pub fn matrix_scan(&mut self) -> bool {
         let mut new_matrix = [0; ROWS_PER_HAND as usize];
         for row in 0..ROWS_PER_HAND {
@@ -107,9 +110,9 @@ impl<User: Keyboard2 + Keyboard> QmkKeyboard<User> {
     pub fn matrix_task(&mut self) -> bool {
         let changed = self.matrix_scan();
         if changed {
-            for row in 0..MATRIX_ROWS {
+            for row in 0..User::MATRIX_ROWS {
                 if self.previous_matrix[row as usize] != self.current_matrix[row as usize] {
-                    for column in 0..MATRIX_COLS {
+                    for column in 0..User::MATRIX_COLUMNS {
                         let current_press = self.current_matrix[row as usize] & (1 << column);
                         if self.previous_matrix[row as usize] & (1 << column) != current_press {
                             if current_press != 0 {
@@ -183,13 +186,9 @@ static mut DEBOUNCING_TIME: u32 = 0;
 
 pub const DEBOUNCE: u32 = 5;
 
-impl<User: Keyboard> QmkKeyboard<User> {
-    fn debounce(
-        &mut self,
-        raw: &mut [MatrixRowType; ROWS_PER_HAND as usize],
-        changed: bool,
-    ) -> bool {
-        let this_matrix = TryInto::<&mut [MatrixRowType; ROWS_PER_HAND as usize]>::try_into(
+impl<User: KeyboardAuto> QmkKeyboard<User> {
+    fn debounce(&mut self, raw: &mut User::MatrixSplitType, changed: bool) -> bool {
+        let this_matrix = TryInto::<&mut User::MatrixSplitType>::try_into(
             &mut self.current_matrix
                 [THIS_HAND_OFFSET as usize..(THIS_HAND_OFFSET + ROWS_PER_HAND) as usize],
         )

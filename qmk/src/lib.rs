@@ -11,22 +11,22 @@
 // We are on only one proc, with one thread, so there is no need to worry about static mut ref
 #![allow(static_mut_refs)]
 
-use core::arch::asm;
-
-use keyboard_constants::{
-    matrix::{MATRIX_COLS, MATRIX_ROWS, MatrixRowType, ROWS_PER_HAND},
-    pins::RED_LED_PIN,
+use core::{
+    arch::asm,
+    ops::{Index, IndexMut, Range},
 };
-use lufa_rs::{HID_KEYBOARD_SC_H, USB_Init, USB_USBTask};
+
+use keyboard_constants::{matrix::MatrixRowType, pins::RED_LED_PIN};
+use lufa_rs::{USB_Init, USB_USBTask};
 use qmk_sys::progmem;
 
 use crate::{
     init::disable_watchdog,
-    keymap::{CustomKey, Keymap, KeymapTrait},
-    matrix::{THIS_HAND_OFFSET, matrix_init},
+    keymap::{CustomKey, Keymap, Layer},
+    matrix::matrix_init,
     serial::{soft_serial_initiator_init, soft_serial_target_init},
     timer::timer_init,
-    usb::events::{add_code, hid_task, remove_code},
+    usb::events::hid_task,
 };
 
 pub mod atomic;
@@ -43,48 +43,79 @@ pub mod timer;
 pub mod usb;
 
 pub trait Keyboard: Sized + 'static {
-    // type KeymapType: KeymapTrait;
     const LAYER_COUNT: usize;
 
-    /// This **MUST** be in progmem !
-    const KEYMAP: &'static Keymap<{ Self::LAYER_COUNT }> where [(); Self::LAYER_COUNT]:;
+    const MATRIX_ROWS: u8;
+    const MATRIX_COLUMNS: u8;
+    const ROWS_PER_HAND: u8 = Self::MATRIX_ROWS / 2;
 
-    fn test(keyboard: &mut QmkKeyboard<Self>);
+    /// This **MUST** be in progmem !
+    const USER_KEYMAP: &'static Keymap<Self> where Self: KeyboardAuto;
+
+    fn test(keyboard: &mut QmkKeyboard<Self>)
+    where
+        Self: KeyboardAuto;
 }
-pub trait Keyboard2: Keyboard {
-    type KeymapType: KeymapTrait;
-    fn keymap() -> &'static Self::KeymapType;
+
+pub trait KeyboardAuto: Keyboard {
+    type KeymapType;
+    type LayersArrayType: Index<usize, Output = Layer<Self>>;
+    type KeysArrayType: Index<usize, Output = &'static dyn CustomKey<Self>>;
+    type MatrixType: IndexMut<usize, Output = MatrixRowType>
+        + IndexMut<Range<usize>, Output = [MatrixRowType]>
+        + Copy;
+    type MatrixSplitType: IndexMut<usize, Output = MatrixRowType>
+        + IndexMut<Range<usize>, Output = [MatrixRowType]>
+        + Copy
+        + Eq
+    where
+        for<'a> &'a mut <Self as KeyboardAuto>::MatrixSplitType: TryFrom<&'a mut [u8]>;
+    const KEYMAP: &'static Self::KeymapType;
+    fn get_layers() -> &'static Self::LayersArrayType;
 }
-impl<T: Keyboard> Keyboard2 for T
+
+impl<T: Keyboard> KeyboardAuto for T
 where
     [(); Self::LAYER_COUNT]:,
+    [(); Self::MATRIX_ROWS as usize * Self::MATRIX_COLUMNS as usize]:,
+    [(); Self::ROWS_PER_HAND as usize]:,
 {
-    type KeymapType = Keymap<{ Self::LAYER_COUNT }>;
-    fn keymap() -> &'static Self::KeymapType {
-        Self::KEYMAP
+    type KeymapType = Keymap<Self>;
+    type LayersArrayType = [Layer<Self>; Self::LAYER_COUNT];
+    type KeysArrayType =
+        [&'static dyn CustomKey<Self>; Self::MATRIX_ROWS as usize * Self::MATRIX_COLUMNS as usize];
+    type MatrixType = [MatrixRowType; Self::MATRIX_ROWS as usize];
+    type MatrixSplitType = [MatrixRowType; Self::ROWS_PER_HAND as usize];
+
+    const KEYMAP: &'static Keymap<Self> = Self::USER_KEYMAP;
+
+    fn get_layers() -> &'static Self::LayersArrayType {
+        &Self::KEYMAP.layers
     }
 }
 
-pub struct QmkKeyboard<User: Keyboard> {
+pub struct QmkKeyboard<User: KeyboardAuto> {
     pub user: User,
 
-    pub previous_matrix: [MatrixRowType; MATRIX_ROWS as usize],
-    pub current_matrix: [MatrixRowType; MATRIX_ROWS as usize],
+    pub previous_matrix: User::MatrixType,
+    pub current_matrix: User::MatrixType,
 
     pub layer: u8,
 }
 
-impl<User: Keyboard> QmkKeyboard<User> {
+impl<User: KeyboardAuto<MatrixType = [MatrixRowType; User::MATRIX_ROWS as usize]>>
+    QmkKeyboard<User>
+{
     pub fn new(user: User) -> Self {
         Self {
             user,
-            previous_matrix: [0; MATRIX_ROWS as usize],
-            current_matrix: [0; MATRIX_ROWS as usize],
+            previous_matrix: [0; User::MATRIX_ROWS as usize],
+            current_matrix: [0; User::MATRIX_ROWS as usize],
             layer: 0,
         }
     }
 }
-impl<User: Keyboard2> QmkKeyboard<User> {
+impl<User: KeyboardAuto> QmkKeyboard<User> {
     pub fn init(&self) {
         RED_LED_PIN.gpio_set_pin_output();
         RED_LED_PIN.gpio_write_pin_low();
@@ -117,28 +148,39 @@ impl<User: Keyboard2> QmkKeyboard<User> {
         let _ = graphics::render(true);
     }
 
-    pub fn key_pressed(&mut self, column: u8, row: u8) {
-        let key = unsafe {
+    pub fn get_layer_up(&mut self, count: u8) -> u8 {
+        self.layer - count
+    }
+    pub fn get_layer_down(&mut self, count: u8) -> u8 {
+        self.layer + count
+    }
+    pub fn layer_up(&mut self, count: u8) {
+        self.layer = self.get_layer_up(count);
+    }
+
+    pub fn layer_down(&mut self, count: u8) {
+        self.layer = self.get_layer_down(count);
+    }
+    pub fn get_key(&self, layer: u8, column: u8, row: u8) -> &'static dyn CustomKey<User> {
+        unsafe {
             progmem::read_value(
-                &User::keymap().get_layers()[self.layer as usize].keys[(column
-                    + (row % ROWS_PER_HAND) * MATRIX_COLS * 2
-                    + if row >= ROWS_PER_HAND { MATRIX_COLS } else { 0 })
-                    as usize],
+                &User::get_layers()[layer as usize].keys[(column
+                    + (row % User::ROWS_PER_HAND) * User::MATRIX_COLUMNS * 2
+                    + if row >= User::ROWS_PER_HAND {
+                        User::MATRIX_COLUMNS
+                    } else {
+                        0
+                    }) as usize],
             )
-        };
-        key.on_pressed();
+        }
+    }
+
+    pub fn key_pressed(&mut self, column: u8, row: u8) {
+        self.get_key(self.layer, column, row).on_pressed(self);
     }
 
     pub fn key_released(&mut self, column: u8, row: u8) {
-        let key = unsafe {
-            progmem::read_value(
-                &User::keymap().get_layers()[self.layer as usize].keys[(column
-                    + (row % ROWS_PER_HAND) * MATRIX_COLS * 2
-                    + if row >= ROWS_PER_HAND { MATRIX_COLS } else { 0 })
-                    as usize],
-            )
-        };
-        key.on_released();
+        self.get_key(self.layer, column, row).on_released(self);
     }
 }
 

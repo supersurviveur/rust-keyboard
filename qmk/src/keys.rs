@@ -1,4 +1,7 @@
-use crate::keymap::{CustomKey, Key};
+use crate::{
+    Keyboard, KeyboardAuto,
+    keymap::{CustomKey, Key},
+};
 
 pub const QK_LCTL: u16 = 0x0100;
 pub const QK_LSFT: u16 = 0x0200;
@@ -376,8 +379,38 @@ pub const KC_MEDIA_CALCULATOR: Key = Key(251);
 
 pub struct NoOpKey;
 
-impl CustomKey for NoOpKey {
-    fn on_pressed(&self) {}
-    fn on_released(&self) {}
+impl<User: KeyboardAuto> CustomKey<User> for NoOpKey {
+    fn on_pressed(&self, _keyboard: &mut crate::QmkKeyboard<User>) {}
+    fn on_released(&self, _keyboard: &mut crate::QmkKeyboard<User>) {}
 }
 pub const NO_OP: NoOpKey = NoOpKey;
+
+pub struct LayerUp(pub u8);
+
+impl<User: KeyboardAuto> CustomKey<User> for LayerUp {
+    fn on_pressed(&self, keyboard: &mut crate::QmkKeyboard<User>) {
+        keyboard.layer_up(self.0);
+    }
+
+    fn on_released(&self, _keyboard: &mut crate::QmkKeyboard<User>) {}
+}
+pub struct LayerDown(pub u8);
+
+impl<User: KeyboardAuto> CustomKey<User> for LayerDown {
+    fn on_pressed(&self, keyboard: &mut crate::QmkKeyboard<User>) {
+        keyboard.layer_down(self.0);
+    }
+
+    fn on_released(&self, _keyboard: &mut crate::QmkKeyboard<User>) {}
+}
+
+pub struct TransparentUp;
+impl<User: KeyboardAuto> CustomKey<User> for TransparentUp {
+    fn complete_on_pressed(&self, keyboard: &mut crate::QmkKeyboard<User>, row: u8, column: u8) {
+        let layer = keyboard.get_layer_up(1);
+        keyboard
+            .get_key(layer, row, column)
+            .complete_on_pressed(keyboard, row, column);
+    }
+    fn on_released(&self, _keyboard: &mut crate::QmkKeyboard<User>) {}
+}

@@ -4,16 +4,18 @@
     abi_avr_interrupt,
     sync_unsafe_cell,
     core_intrinsics,
-    asm_experimental_arch
+    asm_experimental_arch,
+    generic_const_exprs,
+    generic_const_items
 )]
 #![no_main]
 
 use avr_base::register::{USBCON, USBE};
 use avr_delay::{delay_ms, delay_us};
-use keyboard_constants::{CHAR_HEIGHT, CHAR_WIDTH, matrix::ROWS_PER_HAND, pins::RED_LED_PIN};
+use keyboard_constants::{CHAR_HEIGHT, CHAR_WIDTH, pins::RED_LED_PIN};
 use keyboard_macros::{keymap, qmk_callback, user_config};
 use lufa_rs::{USB_Init, USB_USBTask};
-use qmk::keymap::{Key, Keymap, Layer};
+use qmk::keymap::{CustomKey, Key, Keymap, Layer};
 use qmk::keys::{
     KC_0_AND_CLOSING_PARENTHESIS, KC_1_AND_EXCLAMATION, KC_2_AND_AT, KC_3_AND_HASHMARK,
     KC_4_AND_DOLLAR, KC_5_AND_PERCENTAGE, KC_6_AND_CARET, KC_7_AND_AMPERSAND, KC_8_AND_ASTERISK,
@@ -22,7 +24,8 @@ use qmk::keys::{
     KC_F, KC_F20, KC_F21, KC_G, KC_GRAVE_ACCENT_AND_TILDE, KC_H, KC_I, KC_J, KC_K, KC_L,
     KC_LEFT_ALT, KC_LEFT_CONTROL, KC_LEFT_GUI, KC_LEFT_SHIFT, KC_M, KC_N, KC_O, KC_P, KC_Q, KC_R,
     KC_RIGHT_ALT, KC_RIGHT_ARROW, KC_RIGHT_CONTROL, KC_RIGHT_SHIFT, KC_S, KC_SEMICOLON_AND_COLON,
-    KC_SLASH_AND_QUESTION_MARK, KC_SPACE, KC_T, KC_TAB, KC_U, KC_V, KC_W, KC_X, KC_Y, KC_Z, NO_OP,
+    KC_SLASH_AND_QUESTION_MARK, KC_SPACE, KC_T, KC_TAB, KC_U, KC_V, KC_W, KC_X, KC_Y, KC_Z,
+    LayerDown, LayerUp, NO_OP,
 };
 use qmk::usb::events::{add_code, hid_task, remove_code, toggle_code};
 use qmk::{Keyboard, QmkKeyboard, is_master};
@@ -72,29 +75,6 @@ fn debug(c: char) {
     let _ = qmk::graphics::render(true);
 }
 
-// fn init() {
-//     RED_LED_PIN.gpio_set_pin_output();
-//     RED_LED_PIN.gpio_write_pin_low();
-//     disable_watchdog();
-//     let _ = qmk::graphics::init_graphics();
-//     timer_init();
-//     if is_master() {
-//         soft_serial_initiator_init();
-//     } else {
-//         soft_serial_target_init();
-//     }
-//     matrix_init();
-
-//     // Needed for the code to works directly after flash, but seems to crash LUFA, which already resolve the problem on flash
-//     USBCON.write(USBCON & !USBE);
-//     unsafe {
-//         USB_Init();
-//     }
-
-//     // Enable interrupts
-//     unsafe { asm!("sei") };
-// }
-
 static mut ERROR_COUNT: u8 = 0;
 
 #[unsafe(no_mangle)]
@@ -103,16 +83,6 @@ pub extern "C" fn main() {
     kb.init();
     loop {
         kb.task();
-        for i in 0..6 {
-            if (kb.current_matrix[0] & 1 << i) != 0 {
-                qmk::graphics::draw_char((b'0' + i) as char, 0, i * 13);
-            }
-        }
-        for i in 0..6 {
-            if (kb.current_matrix[ROWS_PER_HAND as usize] & 1 << i) != 0 {
-                qmk::graphics::draw_char((b'0' + i) as char, 20, i * 13);
-            }
-        }
         if is_master() {
             // delay_us::<1000>();
             master_exec_transaction(qmk::serial::Transaction::Test);
@@ -168,10 +138,11 @@ struct UserKeyboard {
 
 // #[user_config]
 impl Keyboard for UserKeyboard {
-    const LAYER_COUNT: usize = 1;
+    const LAYER_COUNT: usize = 2;
+    const MATRIX_ROWS: u8 = 10;
+    const MATRIX_COLUMNS: u8 = 6;
 
-    // const KEYMAP: &Self::KeymapType = &KEYMAP;
-    const KEYMAP: &'static Keymap<{ Self::LAYER_COUNT }> = &KEYMAP;
+    const USER_KEYMAP: &'static Keymap<Self> = &KEYMAP;
 
     fn test(keyboard: &mut QmkKeyboard<Self>) {
         keyboard.user.a = 3;
@@ -179,65 +150,131 @@ impl Keyboard for UserKeyboard {
 }
 
 #[unsafe(link_section = ".progmem.data")]
-pub static KEYMAP: Keymap<1> = Keymap::new([Layer::new([
-    &KC_ESCAPE,
-    &KC_1_AND_EXCLAMATION,
-    &KC_2_AND_AT,
-    &KC_3_AND_HASHMARK,
-    &KC_4_AND_DOLLAR,
-    &KC_5_AND_PERCENTAGE,
-    &KC_6_AND_CARET,
-    &KC_7_AND_AMPERSAND,
-    &KC_8_AND_ASTERISK,
-    &KC_9_AND_OPENING_PARENTHESIS,
-    &KC_0_AND_CLOSING_PARENTHESIS,
-    &KC_GRAVE_ACCENT_AND_TILDE,
-    &KC_TAB,
-    &KC_Q,
-    &KC_W,
-    &KC_E,
-    &KC_R,
-    &KC_T,
-    &KC_Y,
-    &KC_U,
-    &KC_I,
-    &KC_O,
-    &KC_P,
-    &KC_BACKSPACE,
-    &KC_LEFT_SHIFT,
-    &KC_A,
-    &KC_S,
-    &KC_D,
-    &KC_F,
-    &KC_G,
-    &KC_H,
-    &KC_J,
-    &KC_K,
-    &KC_L,
-    &KC_SEMICOLON_AND_COLON,
-    &KC_APOSTROPHE_AND_QUOTE,
-    &KC_LEFT_CONTROL,
-    &KC_Z,
-    &KC_X,
-    &KC_C,
-    &KC_V,
-    &KC_B,
-    &KC_F20,
-    &KC_F21,
-    &KC_N,
-    &KC_M,
-    &KC_COMMA_AND_LESS_THAN_SIGN,
-    &KC_DOT_AND_GREATER_THAN_SIGN,
-    &KC_SLASH_AND_QUESTION_MARK,
-    &KC_RIGHT_SHIFT,
-    &KC_LEFT_GUI,
-    &KC_LEFT_ALT,
-    &KC_LEFT_CONTROL,
-    &NO_OP,
-    &KC_SPACE,
-    &KC_ENTER,
-    &NO_OP,
-    &KC_RIGHT_CONTROL,
-    &KC_RIGHT_ALT,
-    &KC_RIGHT_ARROW,
-])]);
+static KEYMAP: Keymap<UserKeyboard> = Keymap::new([
+    Layer::new([
+        &KC_ESCAPE,
+        &KC_1_AND_EXCLAMATION,
+        &KC_2_AND_AT,
+        &KC_3_AND_HASHMARK,
+        &KC_4_AND_DOLLAR,
+        &KC_5_AND_PERCENTAGE,
+        &KC_6_AND_CARET,
+        &KC_7_AND_AMPERSAND,
+        &KC_8_AND_ASTERISK,
+        &KC_9_AND_OPENING_PARENTHESIS,
+        &KC_0_AND_CLOSING_PARENTHESIS,
+        &KC_GRAVE_ACCENT_AND_TILDE,
+        &KC_TAB,
+        &KC_Q,
+        &KC_W,
+        &KC_E,
+        &KC_R,
+        &KC_T,
+        &KC_Y,
+        &KC_U,
+        &KC_I,
+        &KC_O,
+        &KC_P,
+        &KC_BACKSPACE,
+        &KC_LEFT_SHIFT,
+        &KC_A,
+        &KC_S,
+        &KC_D,
+        &KC_F,
+        &KC_G,
+        &KC_H,
+        &KC_J,
+        &KC_K,
+        &KC_L,
+        &KC_SEMICOLON_AND_COLON,
+        &KC_APOSTROPHE_AND_QUOTE,
+        &KC_LEFT_CONTROL,
+        &KC_Z,
+        &KC_X,
+        &KC_C,
+        &KC_V,
+        &KC_B,
+        &KC_F20,
+        &KC_F21,
+        &KC_N,
+        &KC_M,
+        &KC_COMMA_AND_LESS_THAN_SIGN,
+        &KC_DOT_AND_GREATER_THAN_SIGN,
+        // &KC_SLASH_AND_QUESTION_MARK,
+        &LayerDown(1),
+        &KC_RIGHT_SHIFT,
+        &KC_LEFT_GUI,
+        &KC_LEFT_ALT,
+        &KC_LEFT_CONTROL,
+        &KC_BACKSPACE,
+        &KC_SPACE,
+        &KC_ENTER,
+        &NO_OP,
+        &KC_RIGHT_CONTROL,
+        &KC_RIGHT_ALT,
+        &KC_RIGHT_ARROW,
+    ]),
+    Layer::new([
+        &KC_ESCAPE,
+        &KC_1_AND_EXCLAMATION,
+        &KC_2_AND_AT,
+        &KC_3_AND_HASHMARK,
+        &KC_4_AND_DOLLAR,
+        &KC_5_AND_PERCENTAGE,
+        &KC_6_AND_CARET,
+        &KC_7_AND_AMPERSAND,
+        &KC_8_AND_ASTERISK,
+        &KC_9_AND_OPENING_PARENTHESIS,
+        &KC_0_AND_CLOSING_PARENTHESIS,
+        &KC_GRAVE_ACCENT_AND_TILDE,
+        &KC_TAB,
+        &KC_W,
+        &KC_W,
+        &KC_E,
+        &KC_R,
+        &KC_T,
+        &KC_Y,
+        &KC_U,
+        &KC_I,
+        &KC_O,
+        &KC_P,
+        &KC_BACKSPACE,
+        &KC_LEFT_SHIFT,
+        &KC_A,
+        &KC_S,
+        &KC_D,
+        &KC_F,
+        &KC_G,
+        &KC_H,
+        &KC_J,
+        &KC_K,
+        &KC_L,
+        &KC_SEMICOLON_AND_COLON,
+        &KC_APOSTROPHE_AND_QUOTE,
+        &KC_LEFT_CONTROL,
+        &KC_Z,
+        &KC_X,
+        &KC_C,
+        &KC_V,
+        &KC_B,
+        &KC_F20,
+        &KC_F21,
+        &KC_N,
+        &KC_M,
+        &KC_COMMA_AND_LESS_THAN_SIGN,
+        &KC_DOT_AND_GREATER_THAN_SIGN,
+        // &KC_SLASH_AND_QUESTION_MARK,
+        &LayerUp(1),
+        &KC_RIGHT_SHIFT,
+        &KC_LEFT_GUI,
+        &KC_LEFT_ALT,
+        &KC_LEFT_CONTROL,
+        &KC_BACKSPACE,
+        &KC_SPACE,
+        &KC_ENTER,
+        &NO_OP,
+        &KC_RIGHT_CONTROL,
+        &KC_RIGHT_ALT,
+        &KC_RIGHT_ARROW,
+    ]),
+]);

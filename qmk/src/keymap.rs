@@ -1,54 +1,57 @@
-use keyboard_constants::matrix::{MATRIX_COLS, MATRIX_ROWS};
+use crate::{
+    Keyboard, KeyboardAuto, QmkKeyboard,
+    usb::events::{add_code, remove_code},
+};
 
-use crate::usb::events::{add_code, remove_code};
-
-pub trait CustomKey {
-    fn on_pressed(&self);
-    fn on_released(&self);
+pub trait CustomKey<User: KeyboardAuto> {
+    #[inline(always)]
+    fn complete_on_pressed(&self, keyboard: &mut QmkKeyboard<User>, _row: u8, _column: u8) {
+        self.on_pressed(keyboard);
+    }
+    fn on_pressed(&self, _keyboard: &mut QmkKeyboard<User>) {}
+    fn on_released(&self, _keyboard: &mut QmkKeyboard<User>) {}
 }
 
 pub struct Key(pub u8);
 
-impl CustomKey for Key {
-    fn on_pressed(&self) {
+impl<User: KeyboardAuto> CustomKey<User> for Key {
+    fn on_pressed(&self, _keyboard: &mut QmkKeyboard<User>) {
         add_code(self.0);
     }
 
-    fn on_released(&self) {
+    fn on_released(&self, _keyboard: &mut QmkKeyboard<User>) {
         remove_code(self.0);
     }
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Layer {
-    pub keys: [&'static dyn CustomKey; MATRIX_ROWS as usize * MATRIX_COLS as usize],
+pub struct Layer<User: KeyboardAuto> {
+    pub keys: User::KeysArrayType,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Keymap<const LAYER_COUNT: usize> {
-    pub layers: [Layer; LAYER_COUNT],
-}
-pub trait KeymapTrait {
-    fn get_layers(&'static self) -> &'static [Layer];
+pub struct Keymap<User: KeyboardAuto> {
+    pub layers: User::LayersArrayType,
 }
 
-impl<const LAYER_COUNT: usize> KeymapTrait for Keymap<LAYER_COUNT> {
-    fn get_layers(&'static self) -> &'static [Layer] {
-        &self.layers
-    }
-}
+unsafe impl<User: KeyboardAuto> Sync for Keymap<User> {}
 
-unsafe impl<const LAYER_COUNT: usize> Sync for Keymap<LAYER_COUNT> {}
-
-impl<const LAYER_COUNT: usize> Keymap<LAYER_COUNT> {
-    pub const fn new(layers: [Layer; LAYER_COUNT]) -> Self {
+impl<User: KeyboardAuto> Keymap<User> {
+    pub const fn new(layers: User::LayersArrayType) -> Self {
         Self { layers }
     }
 }
 
-impl Layer {
+impl<
+    User: KeyboardAuto<
+        KeysArrayType = [&'static (dyn CustomKey<User> + 'static);
+                            User::MATRIX_ROWS as usize * User::MATRIX_COLUMNS as usize],
+    >,
+> Layer<User>
+{
     pub const fn new(
-        keys: [&'static dyn CustomKey; MATRIX_ROWS as usize * MATRIX_COLS as usize],
+        keys: [&'static dyn CustomKey<User>;
+            User::MATRIX_ROWS as usize * User::MATRIX_COLUMNS as usize],
     ) -> Self {
         Self { keys }
     }
