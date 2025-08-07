@@ -16,9 +16,12 @@ flash:
 both: left
 both: right
 
-build:
+build: lufa-rs/lufa/LUFA
 	cargo build --release
 
+lufa-rs/lufa/LUFA:
+	@echo You need to init and update the lufa git submodule. Run git submodule update --init lufa-rs/lufa
+	@false
 clean:
 	cargo clean
 
