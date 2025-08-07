@@ -11,13 +11,25 @@
 use avr_base::register::{USBCON, USBE};
 use avr_delay::{delay_ms, delay_us};
 use keyboard_constants::{CHAR_HEIGHT, CHAR_WIDTH, matrix::ROWS_PER_HAND, pins::RED_LED_PIN};
-use keyboard_macros::{keymap, qmk_callback};
+use keyboard_macros::{keymap, qmk_callback, user_config};
 use lufa_rs::{USB_Init, USB_USBTask};
+use qmk::keymap::{Key, Keymap, Layer};
+use qmk::keys::{
+    KC_0_AND_CLOSING_PARENTHESIS, KC_1_AND_EXCLAMATION, KC_2_AND_AT, KC_3_AND_HASHMARK,
+    KC_4_AND_DOLLAR, KC_5_AND_PERCENTAGE, KC_6_AND_CARET, KC_7_AND_AMPERSAND, KC_8_AND_ASTERISK,
+    KC_9_AND_OPENING_PARENTHESIS, KC_A, KC_APOSTROPHE_AND_QUOTE, KC_B, KC_BACKSPACE, KC_C,
+    KC_COMMA_AND_LESS_THAN_SIGN, KC_D, KC_DOT_AND_GREATER_THAN_SIGN, KC_E, KC_ENTER, KC_ESCAPE,
+    KC_F, KC_F20, KC_F21, KC_G, KC_GRAVE_ACCENT_AND_TILDE, KC_H, KC_I, KC_J, KC_K, KC_L,
+    KC_LEFT_ALT, KC_LEFT_CONTROL, KC_LEFT_GUI, KC_LEFT_SHIFT, KC_M, KC_N, KC_O, KC_P, KC_Q, KC_R,
+    KC_RIGHT_ALT, KC_RIGHT_ARROW, KC_RIGHT_CONTROL, KC_RIGHT_SHIFT, KC_S, KC_SEMICOLON_AND_COLON,
+    KC_SLASH_AND_QUESTION_MARK, KC_SPACE, KC_T, KC_TAB, KC_U, KC_V, KC_W, KC_X, KC_Y, KC_Z, NO_OP,
+};
 use qmk::usb::events::{add_code, hid_task, remove_code, toggle_code};
+use qmk::{Keyboard, QmkKeyboard, is_master};
 use qmk::{
     graphics,
     init::disable_watchdog,
-    matrix::{MATRIX, matrix_init, matrix_read_cols_on_row, matrix_scan},
+    matrix::{matrix_init, matrix_read_cols_on_row},
     mo,
     serial::{
         ERROR, RES, master_exec_transaction, soft_serial_initiator_init, soft_serial_target_init,
@@ -25,7 +37,6 @@ use qmk::{
     timer::{cycles_elapsed, cycles_read, timer_init, timer_read},
     to,
 };
-use qmk_sys::is_master;
 
 unsafe extern "C" {
     fn send_char(c: u8);
@@ -49,86 +60,59 @@ fn panic(_info: &PanicInfo) -> ! {
     loop {
         delay_us::<1000000>();
         RED_LED_PIN.gpio_write_pin_high();
-        delay_us::<150000>();
+        delay_us::<14000>();
         RED_LED_PIN.gpio_write_pin_low();
     }
 }
 
 // include_image!("images/test.png");
 
-static mut LAST: bool = false;
-
 fn debug(c: char) {
     qmk::graphics::draw_char(c, 0, 0);
     let _ = qmk::graphics::render(true);
 }
 
-fn init() {
-    RED_LED_PIN.gpio_set_pin_output();
-    RED_LED_PIN.gpio_write_pin_low();
-    disable_watchdog();
-    let _ = qmk::graphics::init_graphics();
-    timer_init();
-    if is_master() {
-        soft_serial_initiator_init();
-    } else {
-        soft_serial_target_init();
-    }
-    matrix_init();
+// fn init() {
+//     RED_LED_PIN.gpio_set_pin_output();
+//     RED_LED_PIN.gpio_write_pin_low();
+//     disable_watchdog();
+//     let _ = qmk::graphics::init_graphics();
+//     timer_init();
+//     if is_master() {
+//         soft_serial_initiator_init();
+//     } else {
+//         soft_serial_target_init();
+//     }
+//     matrix_init();
 
-    // Needed for the code to works directly after flash, but seems to crash LUFA, which already resolve the problem on flash
-    // USBCON.write(USBCON & !USBE);
-    unsafe {
-        USB_Init();
-    }
+//     // Needed for the code to works directly after flash, but seems to crash LUFA, which already resolve the problem on flash
+//     USBCON.write(USBCON & !USBE);
+//     unsafe {
+//         USB_Init();
+//     }
 
-    // Enable interrupts
-    unsafe { asm!("sei") };
-    //     debug('4');
-}
+//     // Enable interrupts
+//     unsafe { asm!("sei") };
+// }
 
-/* static mut KEYBOARD_REPORT: qmk_sys::report_keyboard_t = qmk_sys::report_keyboard_t {
-    mods: 0,
-    reserved: 0,
-    keys: [0, qmk::keys::KC_A as u8, 0, 0, 0, 0],
-}; */
 static mut ERROR_COUNT: u8 = 0;
 
 #[unsafe(no_mangle)]
 pub extern "C" fn main() {
-    init();
+    let mut kb = QmkKeyboard::new(UserKeyboard { a: 3 });
+    kb.init();
     loop {
-        hid_task();
-        unsafe { USB_USBTask() };
-        //         debug('1');
-        matrix_scan();
-        //         debug('6');
+        kb.task();
         for i in 0..6 {
-            if (unsafe { MATRIX[0] } & 1 << i) != 0 {
+            if (kb.current_matrix[0] & 1 << i) != 0 {
                 qmk::graphics::draw_char((b'0' + i) as char, 0, i * 13);
-                if i == 1 {
-                    toggle_code(lufa_rs::HID_KEYBOARD_SC_F as u8);
-                    // unsafe {
-                    //     qmk_sys::add_key_to_report(qmk::keys::KC_A as u8);
-                    //     qmk_sys::lufa_driver.send_keyboard.unwrap()(&raw mut KEYBOARD_REPORT);
-                    // }
-                } else if i == 2 {
-                    remove_code(lufa_rs::HID_KEYBOARD_SC_F as u8);
-                }
             }
         }
         for i in 0..6 {
-            if (unsafe { MATRIX[ROWS_PER_HAND as usize] } & 1 << i) != 0 {
+            if (kb.current_matrix[ROWS_PER_HAND as usize] & 1 << i) != 0 {
                 qmk::graphics::draw_char((b'0' + i) as char, 20, i * 13);
-                if i == 1 {
-                    // unsafe {
-                    //     qmk_sys::add_key_to_report(qmk::keys::KC_A as u8);
-                    //     qmk_sys::lufa_driver.send_keyboard.unwrap()(&raw mut KEYBOARD_REPORT);
-                    // }
-                }
             }
         }
-        //         debug('7');
         if is_master() {
             // delay_us::<1000>();
             master_exec_transaction(qmk::serial::Transaction::Test);
@@ -147,8 +131,6 @@ pub extern "C" fn main() {
 
             qmk::graphics::draw_u8(unsafe { ERROR_COUNT }, 0, CHAR_HEIGHT);
         }
-        //         debug('8');
-        let _ = qmk::graphics::render(true);
     }
 }
 
@@ -179,3 +161,83 @@ const CS_GO_DEF: u16 = to!(0); */
                          XXXXXXX,XXXXXXX,XXXXXXX, XXXXXXX,  KC_SPC,    KC_ENT , CS_GO_DEF, XXXXXXX, XXXXXXX, XXXXXXX
     },
 } */
+
+struct UserKeyboard {
+    a: u8,
+}
+
+// #[user_config]
+impl Keyboard for UserKeyboard {
+    const LAYER_COUNT: usize = 1;
+
+    // const KEYMAP: &Self::KeymapType = &KEYMAP;
+    const KEYMAP: &'static Keymap<{ Self::LAYER_COUNT }> = &KEYMAP;
+
+    fn test(keyboard: &mut QmkKeyboard<Self>) {
+        keyboard.user.a = 3;
+    }
+}
+
+#[unsafe(link_section = ".progmem.data")]
+pub static KEYMAP: Keymap<1> = Keymap::new([Layer::new([
+    &KC_ESCAPE,
+    &KC_1_AND_EXCLAMATION,
+    &KC_2_AND_AT,
+    &KC_3_AND_HASHMARK,
+    &KC_4_AND_DOLLAR,
+    &KC_5_AND_PERCENTAGE,
+    &KC_6_AND_CARET,
+    &KC_7_AND_AMPERSAND,
+    &KC_8_AND_ASTERISK,
+    &KC_9_AND_OPENING_PARENTHESIS,
+    &KC_0_AND_CLOSING_PARENTHESIS,
+    &KC_GRAVE_ACCENT_AND_TILDE,
+    &KC_TAB,
+    &KC_Q,
+    &KC_W,
+    &KC_E,
+    &KC_R,
+    &KC_T,
+    &KC_Y,
+    &KC_U,
+    &KC_I,
+    &KC_O,
+    &KC_P,
+    &KC_BACKSPACE,
+    &KC_LEFT_SHIFT,
+    &KC_A,
+    &KC_S,
+    &KC_D,
+    &KC_F,
+    &KC_G,
+    &KC_H,
+    &KC_J,
+    &KC_K,
+    &KC_L,
+    &KC_SEMICOLON_AND_COLON,
+    &KC_APOSTROPHE_AND_QUOTE,
+    &KC_LEFT_CONTROL,
+    &KC_Z,
+    &KC_X,
+    &KC_C,
+    &KC_V,
+    &KC_B,
+    &KC_F20,
+    &KC_F21,
+    &KC_N,
+    &KC_M,
+    &KC_COMMA_AND_LESS_THAN_SIGN,
+    &KC_DOT_AND_GREATER_THAN_SIGN,
+    &KC_SLASH_AND_QUESTION_MARK,
+    &KC_RIGHT_SHIFT,
+    &KC_LEFT_GUI,
+    &KC_LEFT_ALT,
+    &KC_LEFT_CONTROL,
+    &NO_OP,
+    &KC_SPACE,
+    &KC_ENTER,
+    &NO_OP,
+    &KC_RIGHT_CONTROL,
+    &KC_RIGHT_ALT,
+    &KC_RIGHT_ARROW,
+])]);

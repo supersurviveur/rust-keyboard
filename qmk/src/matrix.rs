@@ -1,20 +1,17 @@
 use crate::{
-    atomic::atomic,
-    timer::{timer_elapsed, timer_read},
+    atomic::atomic, is_right, timer::{timer_elapsed, timer_read}, Keyboard, Keyboard2, QmkKeyboard
 };
-use avr_base::pins::{Pin, GPIO_INPUT_PIN_DELAY, NO_PIN};
-use avr_delay::{delay_cycles, delay_ms, delay_sec, delay_us};
+use avr_base::pins::{GPIO_INPUT_PIN_DELAY, NO_PIN, Pin};
+use avr_delay::{delay_cycles, delay_us};
 use keyboard_constants::{
-    matrix::{MatrixRowType, MATRIX_COLS, MATRIX_ROWS, MATRIX_ROW_SHIFTER, ROWS_PER_HAND},
+    matrix::{MATRIX_COLS, MATRIX_ROW_SHIFTER, MATRIX_ROWS, MatrixRowType, ROWS_PER_HAND},
     pins::{COL_PINS, ROW_PINS},
 };
-use qmk_sys::is_right;
 
 pub static mut RAW_MATRIX: [u8; ROWS_PER_HAND as usize] = [0; ROWS_PER_HAND as usize];
-pub static mut MATRIX: [u8; MATRIX_ROWS as usize] = [0; MATRIX_ROWS as usize];
 
-const THIS_HAND_OFFSET: u8 = if is_right() { ROWS_PER_HAND } else { 0 };
-const OTHER_HAND_OFFSET: u8 = ROWS_PER_HAND - THIS_HAND_OFFSET;
+pub const THIS_HAND_OFFSET: u8 = if is_right() { ROWS_PER_HAND } else { 0 };
+pub const OTHER_HAND_OFFSET: u8 = ROWS_PER_HAND - THIS_HAND_OFFSET;
 
 pub fn gpio_atomic_set_pin_output_low(pin: Pin) {
     atomic(|| {
@@ -91,24 +88,43 @@ pub fn matrix_init() {
     }
 }
 
-pub fn matrix_scan() -> bool {
-    let mut new_matrix = [0; ROWS_PER_HAND as usize];
-    for row in 0..ROWS_PER_HAND {
-        matrix_read_cols_on_row(&mut new_matrix, row);
+impl<User: Keyboard2 + Keyboard> QmkKeyboard<User> {
+    pub fn matrix_scan(&mut self) -> bool {
+        let mut new_matrix = [0; ROWS_PER_HAND as usize];
+        for row in 0..ROWS_PER_HAND {
+            matrix_read_cols_on_row(&mut new_matrix, row);
+        }
+
+        let changed = if unsafe { RAW_MATRIX } == new_matrix {
+            false
+        } else {
+            unsafe { RAW_MATRIX = new_matrix };
+            true
+        };
+
+        self.debounce(unsafe { &mut RAW_MATRIX }, changed) | matrix_post_scan()
     }
-
-    let changed = if unsafe { RAW_MATRIX } == new_matrix {
-        false
-    } else {
-        unsafe { RAW_MATRIX = new_matrix };
-        true
-    };
-    let this_matrix = TryInto::<&mut [MatrixRowType; ROWS_PER_HAND as usize]>::try_into(unsafe {
-        &mut MATRIX[THIS_HAND_OFFSET as usize..(THIS_HAND_OFFSET + ROWS_PER_HAND) as usize]
-    })
-    .unwrap();
-
-    debounce(unsafe { &mut RAW_MATRIX }, this_matrix, changed) | matrix_post_scan()
+    pub fn matrix_task(&mut self) -> bool {
+        let changed = self.matrix_scan();
+        if changed {
+            for row in 0..MATRIX_ROWS {
+                if self.previous_matrix[row as usize] != self.current_matrix[row as usize] {
+                    for column in 0..MATRIX_COLS {
+                        let current_press = self.current_matrix[row as usize] & (1 << column);
+                        if self.previous_matrix[row as usize] & (1 << column) != current_press {
+                            if current_press != 0 {
+                                self.key_pressed(column, row)
+                            } else {
+                                self.key_released(column, row)
+                            }
+                        }
+                    }
+                }
+            }
+            self.previous_matrix = self.current_matrix;
+        }
+        changed
+    }
 }
 
 static mut LAST_CONNECTED: bool = false;
@@ -167,23 +183,31 @@ static mut DEBOUNCING_TIME: u32 = 0;
 
 pub const DEBOUNCE: u32 = 5;
 
-fn debounce(
-    raw: &mut [MatrixRowType; ROWS_PER_HAND as usize],
-    cooked: &mut [MatrixRowType; ROWS_PER_HAND as usize],
-    changed: bool,
-) -> bool {
-    let mut cooked_changed = false;
+impl<User: Keyboard> QmkKeyboard<User> {
+    fn debounce(
+        &mut self,
+        raw: &mut [MatrixRowType; ROWS_PER_HAND as usize],
+        changed: bool,
+    ) -> bool {
+        let this_matrix = TryInto::<&mut [MatrixRowType; ROWS_PER_HAND as usize]>::try_into(
+            &mut self.current_matrix
+                [THIS_HAND_OFFSET as usize..(THIS_HAND_OFFSET + ROWS_PER_HAND) as usize],
+        )
+        .unwrap();
 
-    if changed {
-        unsafe { DEBOUNCING = true };
-        unsafe { DEBOUNCING_TIME = timer_read() };
-    } else if unsafe { DEBOUNCING } && unsafe { timer_elapsed(DEBOUNCING_TIME) } >= DEBOUNCE {
-        if *cooked != *raw {
-            *cooked = *raw;
-            cooked_changed = true;
+        let mut cooked_changed = false;
+
+        if changed {
+            unsafe { DEBOUNCING = true };
+            unsafe { DEBOUNCING_TIME = timer_read() };
+        } else if unsafe { DEBOUNCING } && unsafe { timer_elapsed(DEBOUNCING_TIME) } >= DEBOUNCE {
+            if *this_matrix != *raw {
+                *this_matrix = *raw;
+                cooked_changed = true;
+            }
+            unsafe { DEBOUNCING = false };
         }
-        unsafe { DEBOUNCING = false };
-    }
 
-    cooked_changed
+        cooked_changed
+    }
 }

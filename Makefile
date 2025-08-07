@@ -17,7 +17,6 @@ both: left
 both: right
 
 build:
-	LUFA_CONFIG_PATH=$$(pwd)/qmk \
 	cargo build --release
 
 clean:

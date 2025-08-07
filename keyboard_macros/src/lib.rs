@@ -1,3 +1,4 @@
+mod config;
 mod image;
 mod keymap;
 mod pins;
@@ -49,6 +50,11 @@ pub fn include_image(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn include_animation(input: TokenStream) -> TokenStream {
     image::include_animation_impl(input)
+}
+
+#[proc_macro_attribute]
+pub fn user_config(args: TokenStream, item: TokenStream) -> TokenStream {
+    config::user_config_impl(args, item)
 }
 
 #[proc_macro_attribute]

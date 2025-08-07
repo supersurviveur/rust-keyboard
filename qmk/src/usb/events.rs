@@ -4,20 +4,14 @@ use lufa_rs::{
     EP_TYPE_INTERRUPT, Endpoint_ClearIN, Endpoint_ClearOUT, Endpoint_ClearSETUP,
     Endpoint_ClearStatusStage, Endpoint_ConfigureEndpoint, Endpoint_IsOUTReceived,
     Endpoint_IsReadWriteAllowed, Endpoint_SelectEndpoint, Endpoint_Write_8,
-    Endpoint_Write_Control_Stream_LE, Endpoint_Write_Stream_LE, HID_KEYBOARD_MODIFIER_LEFTSHIFT,
-    HID_KEYBOARD_SC_F, HidClassRequests, REQDIR_DEVICETOHOST, REQDIR_HOSTTODEVICE,
-    REQREC_INTERFACE, REQTYPE_CLASS, USB_CONTROL_REQUEST, USB_DEVICE_STATE,
-    USB_Device_EnableSOFEvents, UsbDeviceStates, UsbKeyboardReportData,
+    Endpoint_Write_Control_Stream_LE, Endpoint_Write_Stream_LE, HidClassRequests,
+    REQDIR_DEVICETOHOST, REQDIR_HOSTTODEVICE, REQREC_INTERFACE, REQTYPE_CLASS, USB_CONTROL_REQUEST,
+    USB_DEVICE_STATE, USB_Device_EnableSOFEvents, UsbDeviceStates, UsbKeyboardReportData,
 };
 
-use crate::{
-    graphics,
-    usb::{
-        MAX_KEYS,
-        descriptors::{
-            KEYBOARD_ENDPOINT_SIZE, KEYBOARD_IN_ENDPOINT_ADDR, KEYBOARD_OUT_ENDPOINT_ADDR,
-        },
-    },
+use crate::usb::{
+    MAX_KEYS,
+    descriptors::{KEYBOARD_ENDPOINT_SIZE, KEYBOARD_IN_ENDPOINT_ADDR, KEYBOARD_OUT_ENDPOINT_ADDR},
 };
 
 /// Indicates what report mode the host has requested, `true` for normal HID
@@ -219,7 +213,7 @@ pub fn toggle_code(code: u8) {
     }
 }
 
-pub extern "C" fn send_next_report() {
+pub fn send_next_report() {
     unsafe {
         let send_report = if IDLE_COUNT != 0 && IDLE_MS_REMAINING == 0 {
             IDLE_MS_REMAINING = IDLE_COUNT;
@@ -245,7 +239,7 @@ pub extern "C" fn send_next_report() {
     }
 }
 
-pub extern "C" fn hid_task() {
+pub fn hid_task() {
     if unsafe { USB_DEVICE_STATE } != UsbDeviceStates::DeviceStateConfigured as u8 {
         return;
     }
