@@ -63,6 +63,10 @@ pub extern "C" fn EVENT_USB_Device_ConfigurationChanged() {
 
     // Turn on Start-of-Frame events for tracking HID report period expiry
     unsafe { USB_Device_EnableSOFEvents() };
+
+    if !config_success {
+        panic!("Failed to configure the usb devce")
+    }
 }
 
 /// Event handler for the USB device Start Of Frame event.

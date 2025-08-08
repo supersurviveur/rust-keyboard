@@ -1,4 +1,5 @@
 #![no_std]
+#![allow(incomplete_features)]
 #![feature(abi_avr_interrupt, generic_const_exprs, generic_const_items)]
 #![no_main]
 

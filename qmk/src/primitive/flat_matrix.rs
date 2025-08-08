@@ -41,6 +41,12 @@ pub struct UnsizedView<
     _phantom: PhantomData<(Idx, Backend)>,
 }
 
+impl<const COL: u8, const ROW: u8, const N: usize> Default for Array2D<COL, ROW, u16, BinPackedArray<N>> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<const COL: u8, const ROW: u8, const N: usize> Array2D<COL, ROW, u16, BinPackedArray<N>> {
     pub const fn new() -> Self {
         if N != (COL as usize * ROW as usize).div_ceil(8) {
@@ -133,12 +139,12 @@ where
     ) -> SizedView<COL, ROW, Idx, Self::SliceContainer, &mut Self::SliceContainer> {
         let stride = self.stride();
         let offset = self.offset();
-        return SizedView {
+        SizedView {
             backend: self.backend_mut(),
-            stride: stride,
+            stride,
             offset: (offset + startcol.into() + <u8 as Into<Idx>>::into(stride) * startrow.into()),
             _phantom: PhantomData,
-        };
+        }
     }
 
     ///# SAFETY
@@ -155,7 +161,7 @@ where
         let offset = self.offset();
         UnsizedView {
             backend: self.backend_mut(),
-            stride: stride,
+            stride,
             offset: (offset + startcol.into() + <u8 as Into<Idx>>::into(stride) * startrow.into()),
             row: numrow,
             col: numcol,

@@ -123,7 +123,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
     }
 }
 
-static mut LAST_CONNECTED: bool = false;
+// static mut LAST_CONNECTED: bool = false;
 
 fn matrix_post_scan() -> bool {
     false

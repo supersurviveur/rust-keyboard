@@ -9,6 +9,7 @@
     const_trait_impl,
     const_from
 )]
+#![allow(incomplete_features)]
 // We are on only one proc, with one thread, so there is no need to worry about static mut ref
 #![allow(static_mut_refs)]
 

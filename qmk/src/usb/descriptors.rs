@@ -132,6 +132,8 @@ static CONFIGURATION_DESCRIPTOR: UsbDescriptorConfiguration = UsbDescriptorConfi
 };
 
 #[unsafe(no_mangle)]
+/// # Safety
+/// `descriptor_address` parameter came from LUFA, which call this function with a pointer which can always be dereferenced
 pub unsafe extern "C" fn CALLBACK_USB_GetDescriptor(
     w_value: u16,
     _w_index: u16,

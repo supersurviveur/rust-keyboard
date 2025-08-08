@@ -256,7 +256,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
 
     #[inline(always)]
     pub fn clear() {
-        unsafe { FRAMEBUF_BINARRAY.backend_mut().data = [0; OLED_MATRIX_SIZE as usize] };
+        unsafe { FRAMEBUF_BINARRAY.backend_mut().data = [0; OLED_MATRIX_SIZE] };
         unsafe { DIRTY = ALL_DIRTY };
     }
 
@@ -264,7 +264,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
         unsafe {
             FRAMEBUF_BINARRAY.set(col as u16, row as u16, on);
         }
-        let chunk = row / OLED_BLOCK_ROWS as u8;
+        let chunk = row / OLED_BLOCK_ROWS;
         unsafe { DIRTY |= 1_u16 << chunk };
     }
 
@@ -328,7 +328,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
 
     pub fn draw_text<'a, T: RamOrFlash<&'a str>>(text: T, mut offset_x: u8, mut offset_y: u8) {
         for ascii in text.load().chars() {
-            if offset_x + User::CHAR_WIDTH >= OLED_DISPLAY_HEIGHT as u8 {
+            if offset_x + User::CHAR_WIDTH >= OLED_DISPLAY_HEIGHT {
                 offset_x = 0;
                 offset_y += User::CHAR_HEIGHT
             }
@@ -346,8 +346,8 @@ impl<User: Keyboard> QmkKeyboard<User> {
                 image.height,
             )
         };
-        let display_width = OLED_DISPLAY_HEIGHT as u8;
-        let display_height = OLED_DISPLAY_WIDTH as u8;
+        let display_width = OLED_DISPLAY_HEIGHT;
+        let display_height = OLED_DISPLAY_WIDTH;
 
         for y in 0..image.height {
             if y + offset_y >= display_height {
