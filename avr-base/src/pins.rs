@@ -23,7 +23,7 @@ pub struct Pin(pub u8);
 impl Pin {
     #[inline(always)]
     const fn pin_address(self, offset: usize) -> *mut u8 {
-        (ADDRESS_BASE as usize + (self.0 >> PORT_SHIFTER) as usize + offset) as *mut u8
+        (ADDRESS_BASE + (self.0 >> PORT_SHIFTER) as usize + offset) as *mut u8
     }
     #[inline(always)]
     const fn pinx_register(self) -> *mut u8 {

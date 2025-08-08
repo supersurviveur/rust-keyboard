@@ -1,21 +1,10 @@
 #![no_std]
-#![allow(internal_features, unused_imports, dead_code)]
-#![feature(
-    abi_avr_interrupt,
-    sync_unsafe_cell,
-    core_intrinsics,
-    asm_experimental_arch,
-    generic_const_exprs,
-    generic_const_items
-)]
+#![feature(abi_avr_interrupt, generic_const_exprs, generic_const_items)]
 #![no_main]
 
 use avr_base::pins::{B1, B2, B3, B4, B5, B6, C6, D2, D5, D7, E6, F6, F7, Pin};
-use avr_base::register::{USBCON, USBE};
-use avr_delay::{delay_ms, delay_us};
-use keyboard_macros::{image_dimension, include_font_plate, keymap, qmk_callback, user_config};
-use lufa_rs::{USB_Init, USB_USBTask};
-use qmk::keymap::{CustomKey, Key, Keymap, Layer};
+use keyboard_macros::{image_dimension, include_font_plate};
+use qmk::keymap::{Keymap, Layer};
 use qmk::keys::{
     KC_0_AND_CLOSING_PARENTHESIS, KC_1_AND_EXCLAMATION, KC_2_AND_AT, KC_3_AND_HASHMARK,
     KC_4_AND_DOLLAR, KC_5_AND_PERCENTAGE, KC_6_AND_CARET, KC_7_AND_AMPERSAND, KC_8_AND_ASTERISK,
@@ -24,29 +13,12 @@ use qmk::keys::{
     KC_F, KC_F20, KC_F21, KC_G, KC_GRAVE_ACCENT_AND_TILDE, KC_H, KC_I, KC_J, KC_K, KC_L,
     KC_LEFT_ALT, KC_LEFT_CONTROL, KC_LEFT_GUI, KC_LEFT_SHIFT, KC_M, KC_N, KC_O, KC_P, KC_Q, KC_R,
     KC_RIGHT_ALT, KC_RIGHT_ARROW, KC_RIGHT_CONTROL, KC_RIGHT_SHIFT, KC_S, KC_SEMICOLON_AND_COLON,
-    KC_SLASH_AND_QUESTION_MARK, KC_SPACE, KC_T, KC_TAB, KC_U, KC_V, KC_W, KC_X, KC_Y, KC_Z,
-    LayerDown, LayerUp, NO_OP,
+    KC_SPACE, KC_T, KC_TAB, KC_U, KC_V, KC_W, KC_X, KC_Y, KC_Z, LayerDown, LayerUp, NO_OP,
 };
-use qmk::usb::events::{add_code, hid_task, remove_code, toggle_code};
+use qmk::serial::{ERROR, RES};
 use qmk::{Keyboard, QmkKeyboard, is_master};
-use qmk::{
-    graphics,
-    init::disable_watchdog,
-    mo,
-    serial::{ERROR, RES},
-    timer::{cycles_elapsed, cycles_read, timer_init, timer_read},
-    to,
-};
 
-unsafe extern "C" {
-    fn send_char(c: u8);
-}
-
-use core::{
-    arch::{asm, naked_asm},
-    intrinsics::abort,
-    panic::{self, PanicInfo},
-};
+use core::panic::PanicInfo;
 
 // include_image!("images/test.png");
 

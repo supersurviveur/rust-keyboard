@@ -71,9 +71,7 @@ pub extern "C" fn EVENT_USB_Device_StartOfFrame() {
     unsafe {
         // One millisecond has elapsed, decrement the idle time remaining counter if
         // it has not already elapsed
-        if IDLE_MS_REMAINING != 0 {
-            IDLE_MS_REMAINING -= 1;
-        }
+        IDLE_MS_REMAINING = IDLE_MS_REMAINING.saturating_sub(1);
     }
 }
 
@@ -140,7 +138,7 @@ pub extern "C" fn EVENT_USB_Device_ControlRequest() {
                 {
                     Endpoint_ClearSETUP();
                     Endpoint_ClearStatusStage();
-                    IDLE_COUNT = ((USB_CONTROL_REQUEST.w_value & 0xFF00) >> 6) as u16;
+                    IDLE_COUNT = (USB_CONTROL_REQUEST.w_value & 0xFF00) >> 6;
                 }
             }
             code if code == HidClassRequests::HidReqGetIdle as u8 => {

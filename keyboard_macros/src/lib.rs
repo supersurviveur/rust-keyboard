@@ -10,14 +10,13 @@ use keymap::Keymap;
 use proc_macro::Span;
 use proc_macro::TokenStream;
 use quote::ToTokens;
-use quote::format_ident;
 use quote::quote;
 use std::collections::HashSet;
 use std::fs;
 use syn::Expr;
 use syn::ExprLit;
 use syn::LitInt;
-use syn::{ItemFn, parse_macro_input};
+use syn::parse_macro_input;
 
 #[proc_macro_attribute]
 pub fn progmem(args: TokenStream, item: TokenStream) -> TokenStream {
@@ -61,35 +60,6 @@ pub fn user_config(args: TokenStream, item: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn config_constraints(args: TokenStream, item: TokenStream) -> TokenStream {
     constraints::config_constraints_impl(args, item)
-}
-
-#[proc_macro_attribute]
-pub fn qmk_callback(args: TokenStream, item: TokenStream) -> TokenStream {
-    qmk_callback_impl(args, item)
-}
-
-pub(crate) fn qmk_callback_impl(_args: TokenStream, input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as ItemFn);
-
-    let ItemFn {
-        mut sig,
-        block,
-        attrs,
-        ..
-    } = input;
-
-    sig.ident = format_ident!("{}_rs", sig.ident);
-
-    let statements = block.stmts;
-
-    quote!(
-        #(#attrs)*
-        #[unsafe(no_mangle)]
-        pub extern "C" #sig {
-            #(#statements)*
-        }
-    )
-    .into()
 }
 
 /// # Keymap

@@ -1,5 +1,6 @@
 use core::{cmp::min, iter::Iterator};
 
+use crate::i2c::I2CError;
 use crate::{Keyboard, QmkKeyboard, i2c};
 
 use keyboard_macros::{config_constraints, progmem};
@@ -14,14 +15,15 @@ use crate::primitive::{
 };
 use crate::timer::{timer_expired, timer_read};
 
-static mut FRAMEBUF_BINARRAY: Array2D<32, 128, u16, BinPackedArray<{ OLED_MATRIX_SIZE as usize }>> =
-    Array2D::<32, 128, _, BinPackedArray<{ OLED_MATRIX_SIZE as usize }>>::new();
+static mut FRAMEBUF_BINARRAY: Array2D<32, 128, u16, BinPackedArray<{ OLED_MATRIX_SIZE }>> =
+    Array2D::<32, 128, _, BinPackedArray<{ OLED_MATRIX_SIZE }>>::new();
 
 fn as_u8_buf(
-    buffer: &mut Array2D<32, 128, u16, BinPackedArray<{ OLED_MATRIX_SIZE as usize }>>,
-) -> SizedView<4, 128, usize, [u8; OLED_MATRIX_SIZE as usize], &mut [u8; OLED_MATRIX_SIZE as usize]>
-{
-    SizedView::<4,128,_,[u8;OLED_MATRIX_SIZE as usize],&mut [u8;OLED_MATRIX_SIZE as usize]>::new(&mut buffer.backend_mut().data)
+    buffer: &mut Array2D<32, 128, u16, BinPackedArray<{ OLED_MATRIX_SIZE }>>,
+) -> SizedView<4, 128, usize, [u8; OLED_MATRIX_SIZE], &mut [u8; OLED_MATRIX_SIZE]> {
+    SizedView::<4, 128, _, [u8; OLED_MATRIX_SIZE], &mut [u8; OLED_MATRIX_SIZE]>::new(
+        &mut buffer.backend_mut().data,
+    )
 }
 
 static mut INITIALIZED: bool = false;
@@ -84,8 +86,8 @@ static DISPLAY_SETUP1: [u8; 9] = [
     DISPLAY_CLOCK,
     OLED_DISPLAY_CLOCK,
     MULTIPLEX_RATIO,
-    OLED_DISPLAY_HEIGHT as u8 - 1,
-    DISPLAY_START_LINE | 0x00,
+    OLED_DISPLAY_HEIGHT - 1,
+    DISPLAY_START_LINE,
     CHARGE_PUMP,
     0x14,
 ];
@@ -132,19 +134,19 @@ impl<User: Keyboard> QmkKeyboard<User> {
     #[inline(always)]
     pub fn oled_send_array<const SIZE: usize, T: RamOrFlash<[u8; SIZE]>>(
         data: &T,
-    ) -> Result<(), ()> {
+    ) -> Result<(), I2CError> {
         i2c::i2c_transmit(
-            (OLED_DISPLAY_ADDRESS as u8) << 1,
+            OLED_DISPLAY_ADDRESS << 1,
             data.iter(),
             OLED_I2C_TIMEOUT,
         )
     }
     #[inline(always)]
-    pub fn oled_send_iter<T: Iterator<Item = u8>>(data: T) -> Result<(), ()> {
-        i2c::i2c_transmit((OLED_DISPLAY_ADDRESS as u8) << 1, data, OLED_I2C_TIMEOUT)
+    pub fn oled_send_iter<T: Iterator<Item = u8>>(data: T) -> Result<(), I2CError> {
+        i2c::i2c_transmit(OLED_DISPLAY_ADDRESS << 1, data, OLED_I2C_TIMEOUT)
     }
 
-    pub fn init_graphics() -> Result<(), ()> {
+    pub fn init_graphics() -> Result<(), I2CError> {
         i2c::i2c_init();
         Self::oled_send_array(&DISPLAY_SETUP1)?;
         Self::oled_send_array(&DISPLAY_NORMAL)?;
@@ -156,7 +158,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
         Ok(())
     }
 
-    pub fn oled_on() -> Result<(), ()> {
+    pub fn oled_on() -> Result<(), I2CError> {
         if !unsafe { INITIALIZED } {
             Self::init_graphics()?;
             unsafe { OLED_ACTIVE = false };
@@ -168,7 +170,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
         }
         Ok(())
     }
-    pub fn oled_off() -> Result<(), ()> {
+    pub fn oled_off() -> Result<(), I2CError> {
         if !unsafe { INITIALIZED } {
             return Ok(());
         }
@@ -181,7 +183,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
 
     //row: 1 to 128
     //col: 1 to 4
-    fn oled_goto(row: u8, col_x8: u8) -> Result<(), ()> {
+    fn oled_goto(row: u8, col_x8: u8) -> Result<(), I2CError> {
         let commands = [
             I2C_CMD,
             PAGE_SELECT | col_x8,
@@ -198,7 +200,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
     >(
         starting_row: u8,
         data: T,
-    ) -> Result<(), ()> {
+    ) -> Result<(), I2CError> {
         Self::oled_goto(starting_row, 0)?;
 
         Self::oled_send_iter(
@@ -211,7 +213,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
     }
 
     #[inline(always)]
-    pub fn render(activity_has_occured: bool) -> Result<(), ()> {
+    pub fn render(activity_has_occured: bool) -> Result<(), I2CError> {
         if !unsafe { INITIALIZED } {
             //nothing to do as screen is not started
             return Ok(());
@@ -238,7 +240,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
         let mut framebuffer_as_u8 = as_u8_buf(unsafe { &mut FRAMEBUF_BINARRAY });
 
         for chunk in 0..OLED_BLOCK_COUNT {
-            if (unsafe { DIRTY } & ((1 as u16) << chunk)) != 0 {
+            if (unsafe { DIRTY } & (1_u16 << chunk)) != 0 {
                 Self::oled_draw_lines(chunk * OLED_BLOCK_ROWS, unsafe {
                     framebuffer_as_u8.extract_sized_view_unchecked::<4, OLED_BLOCK_ROWS>(
                         0,

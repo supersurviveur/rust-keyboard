@@ -1,4 +1,4 @@
-const I2C_TIMEOUT_INFINITE:u32 = u16::MAX as u32;
+const I2C_TIMEOUT_INFINITE: u32 = u16::MAX as u32;
 
 use crate::timer::timer_elapsed16;
 use crate::timer::timer_read;
@@ -40,6 +40,9 @@ const F_SCL: u64 = 400000;
 const F_CPU: u64 = 16000000;
 const TWBR_VAL: u8 = (((F_CPU / F_SCL) as usize - 16) / 2) as u8;
 
+#[derive(Debug)]
+pub struct I2CError();
+
 pub fn i2c_init() {
     unsafe {
         write_volatile(TWSR, 0);
@@ -47,7 +50,7 @@ pub fn i2c_init() {
     }
 }
 
-pub fn i2c_start(timeout: u16) -> Result<(), ()> {
+pub fn i2c_start(timeout: u16) -> Result<(), I2CError> {
     unsafe {
         // Envoyer condition START
         write_volatile(TWCR, TWINT | TWSTA | TWEN);
@@ -58,19 +61,19 @@ pub fn i2c_start(timeout: u16) -> Result<(), ()> {
         // Vérifier le code d'état
         match read_volatile(TWSR) & 0xF8 {
             START | REP_START => Ok(()),
-            _ => Err(()),
+            _ => Err(I2CError()),
         }
     }
 }
 
-pub fn i2c_wait(timeout: u16) -> Result<(), ()> {
+pub fn i2c_wait(timeout: u16) -> Result<(), I2CError> {
     unsafe {
         let timeout_timer: u32 = timer_read();
         while read_volatile(TWCR) & TWINT == 0 {
             if (timeout != I2C_TIMEOUT_INFINITE as u16)
                 && (timer_elapsed16(timeout_timer) > timeout)
             {
-                return Err(());
+                return Err(I2CError());
             }
         }
     }
@@ -84,7 +87,7 @@ pub fn i2c_stop() {
     }
 }
 
-pub fn i2c_write(data: u8, timeout: u16) -> Result<(), ()> {
+pub fn i2c_write(data: u8, timeout: u16) -> Result<(), I2CError> {
     unsafe {
         // load data into data register
         write_volatile(TWDR, data);
@@ -95,12 +98,16 @@ pub fn i2c_write(data: u8, timeout: u16) -> Result<(), ()> {
 
         match read_volatile(TWSR) & 0xF8 {
             MT_SLA_ACK | MT_DATA_ACK => Result::Ok(()),
-            _ => Err(()),
+            _ => Err(I2CError()),
         }
     }
 }
 
-pub fn i2c_transmit<T: Iterator<Item = u8>>(address: u8, data: T, timeout: u16) -> Result<(), ()> {
+pub fn i2c_transmit<T: Iterator<Item = u8>>(
+    address: u8,
+    data: T,
+    timeout: u16,
+) -> Result<(), I2CError> {
     i2c_start(timeout)?;
 
     // Set address

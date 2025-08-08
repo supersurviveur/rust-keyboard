@@ -1,10 +1,8 @@
 #![no_std]
 #![feature(
-    slice_as_array,
     asm_experimental_arch,
     sync_unsafe_cell,
     abi_avr_interrupt,
-    optimize_attribute,
     generic_const_exprs,
     generic_const_items,
     associated_type_defaults,
