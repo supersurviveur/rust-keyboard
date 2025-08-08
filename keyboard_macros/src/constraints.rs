@@ -49,7 +49,22 @@ pub fn config_constraints_impl(args: TokenStream, item: TokenStream) -> TokenStr
             #prefix::ROWS_PER_HAND as usize
         },
         quote! {
-           #prefix::MATRIX_ROWS as usize * #prefix::MATRIX_COLUMNS as usize
+            #prefix::MATRIX_ROWS as usize * #prefix::MATRIX_COLUMNS as usize
+        },
+        quote! {
+            #prefix::FONT_SIZE
+        },
+        quote! {
+            #prefix::CHAR_HEIGHT as usize
+        },
+        quote! {
+            #prefix::CHAR_WIDTH as usize
+        },
+        quote! {
+            #prefix::FONT_HEIGHT as usize
+        },
+        quote! {
+            #prefix::FONT_WIDTH as usize
         },
     ];
 

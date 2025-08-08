@@ -15,23 +15,22 @@
 #![allow(static_mut_refs)]
 
 use avr_base::pins::Pin;
+use avr_delay::delay_us;
 use core::{
     arch::asm,
     ops::{BitOrAssign, ShlAssign},
 };
 use num_traits::PrimInt;
 
-use keyboard_constants::pins::RED_LED_PIN;
 use keyboard_macros::config_constraints;
 use lufa_rs::{USB_Init, USB_USBTask};
 use num_traits::Unsigned;
-// use num::Unsigned;
 use qmk_sys::progmem;
 
 use crate::{
     init::disable_watchdog,
     keymap::{CustomKey, Keymap},
-    serial::{soft_serial_initiator_init, soft_serial_target_init},
+    primitive::{Array2D, BinPackedArray},
     timer::timer_init,
     usb::events::hid_task,
 };
@@ -55,6 +54,7 @@ pub trait Keyboard: Sized + 'static {
 
     const MATRIX_ROWS: u8;
     const MATRIX_COLUMNS: u8;
+    /// Smallest type containing at least MATRIX_ROWS bits
     type MatrixRowType: Unsigned + PrimInt + BitOrAssign + ShlAssign<u8> + const From<u8> = u8;
 
     #[config_constraints(Self)]
@@ -64,9 +64,19 @@ pub trait Keyboard: Sized + 'static {
     const RED_LED_PIN: Pin;
     const SOFT_SERIAL_PIN: Pin;
 
+    const FONT_DIM: (u8, u8, usize);
+    const FONT_SIZE: usize = Self::FONT_DIM.2;
+    const CHAR_WIDTH: u8;
+    const CHAR_HEIGHT: u8;
+    #[config_constraints(Self)]
+    const USER_FONTPLATE: [u8; Self::FONT_SIZE];
+    const FONT_WIDTH: u8 = Self::FONT_DIM.0;
+    const FONT_HEIGHT: u8 = Self::FONT_DIM.1;
+    const CHAR_PER_ROWS: u8 = Self::FONT_WIDTH / Self::CHAR_WIDTH;
+
     /// This **MUST** be in progmem !
     #[config_constraints(Self)]
-    const USER_KEYMAP: &'static Keymap<Self>;
+    const KEYMAP: &'static Keymap<Self>;
 
     #[config_constraints(Self)]
     fn test(keyboard: &mut QmkKeyboard<Self>);
@@ -75,6 +85,16 @@ pub trait Keyboard: Sized + 'static {
     const THIS_HAND_OFFSET: u8 = if is_right() { Self::ROWS_PER_HAND } else { 0 };
     const OTHER_HAND_OFFSET: u8 = Self::ROWS_PER_HAND - Self::THIS_HAND_OFFSET;
     const MATRIX_ROW_SHIFTER: Self::MatrixRowType = 1.into();
+
+    #[config_constraints(Self)]
+    const FONTPLATE: Array2D<
+        { Self::FONT_WIDTH },
+        { Self::FONT_HEIGHT },
+        u16,
+        BinPackedArray<{ Self::FONT_SIZE }>,
+    > = Array2D::from_existing(BinPackedArray {
+        data: Self::USER_FONTPLATE,
+    });
 }
 
 #[config_constraints]
@@ -103,16 +123,32 @@ impl<User: Keyboard> QmkKeyboard<User> {
 
 #[config_constraints]
 impl<User: Keyboard> QmkKeyboard<User> {
+    #[inline(always)]
+    pub fn panic_handler() -> ! {
+        User::RED_LED_PIN.gpio_set_pin_output();
+        User::RED_LED_PIN.gpio_write_pin_low();
+        let _ = Self::oled_on();
+        // Self::clear();
+        Self::draw_text("PANICKED /!\\", 0, 0);
+        let _ = Self::render(true);
+        loop {
+            delay_us::<1000000>();
+            User::RED_LED_PIN.gpio_write_pin_high();
+            delay_us::<14000>();
+            User::RED_LED_PIN.gpio_write_pin_low();
+        }
+    }
+
     pub fn init(&self) {
-        RED_LED_PIN.gpio_set_pin_output();
-        RED_LED_PIN.gpio_write_pin_low();
+        User::RED_LED_PIN.gpio_set_pin_output();
+        User::RED_LED_PIN.gpio_write_pin_low();
         disable_watchdog();
-        let _ = graphics::init_graphics();
+        Self::init_graphics().unwrap();
         timer_init();
         if is_master() {
-            soft_serial_initiator_init();
+            Self::soft_serial_initiator_init();
         } else {
-            soft_serial_target_init();
+            Self::soft_serial_target_init();
         }
         self.matrix_init();
 
@@ -132,7 +168,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
             USB_USBTask();
         }
         self.matrix_task();
-        let _ = graphics::render(true);
+        Self::render(true).unwrap();
     }
 
     pub fn get_layer_up(&mut self, count: u8) -> u8 {
@@ -151,7 +187,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
     pub fn get_key(&self, layer: u8, column: u8, row: u8) -> &'static dyn CustomKey<User> {
         unsafe {
             progmem::read_value(
-                &User::USER_KEYMAP.layers[layer as usize].keys[(column
+                &User::KEYMAP.layers[layer as usize].keys[(column
                     + (row % User::ROWS_PER_HAND) * User::MATRIX_COLUMNS * 2
                     + if row >= User::ROWS_PER_HAND {
                         User::MATRIX_COLUMNS

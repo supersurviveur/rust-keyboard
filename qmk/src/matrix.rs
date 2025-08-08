@@ -5,56 +5,53 @@ use crate::{
 };
 use avr_base::pins::{GPIO_INPUT_PIN_DELAY, NO_PIN, Pin};
 use avr_delay::{delay_cycles, delay_us};
-use keyboard_constants::
-    pins::{COL_PINS, ROW_PINS}
-;
 use keyboard_macros::config_constraints;
-
-pub fn gpio_atomic_set_pin_output_low(pin: Pin) {
-    atomic(|| {
-        pin.gpio_set_pin_output();
-        pin.gpio_write_pin_low();
-    })
-}
-pub fn gpio_atomic_set_pin_input_high(pin: Pin) {
-    atomic(|| {
-        pin.gpio_set_pin_input_high();
-    })
-}
-pub fn select_row(row: u8) -> bool {
-    let pin = ROW_PINS[row as usize];
-    if pin != NO_PIN {
-        gpio_atomic_set_pin_output_low(pin);
-        return true;
-    }
-    false
-}
-pub fn unselect_row(row: u8) -> bool {
-    let pin = ROW_PINS[row as usize];
-    if pin != NO_PIN {
-        gpio_atomic_set_pin_input_high(pin);
-        return true;
-    }
-    false
-}
-
-pub fn read_matrix_pin(pin: Pin) -> bool {
-    if pin != NO_PIN {
-        pin.gpio_read_pin()
-    } else {
-        true
-    }
-}
 
 pub const MATRIX_IO_DELAY: u64 = 30;
 
 #[config_constraints]
 impl<User: Keyboard> QmkKeyboard<User> {
+    pub fn gpio_atomic_set_pin_output_low(pin: Pin) {
+        atomic(|| {
+            pin.gpio_set_pin_output();
+            pin.gpio_write_pin_low();
+        })
+    }
+    pub fn gpio_atomic_set_pin_input_high(pin: Pin) {
+        atomic(|| {
+            pin.gpio_set_pin_input_high();
+        })
+    }
+    pub fn select_row(row: u8) -> bool {
+        let pin = User::ROW_PINS[row as usize];
+        if pin != NO_PIN {
+            Self::gpio_atomic_set_pin_output_low(pin);
+            return true;
+        }
+        false
+    }
+    pub fn unselect_row(row: u8) -> bool {
+        let pin = User::ROW_PINS[row as usize];
+        if pin != NO_PIN {
+            Self::gpio_atomic_set_pin_input_high(pin);
+            return true;
+        }
+        false
+    }
+
+    pub fn read_matrix_pin(pin: Pin) -> bool {
+        if pin != NO_PIN {
+            pin.gpio_read_pin()
+        } else {
+            true
+        }
+    }
+
     fn matrix_read_cols_on_row(&self, current_matrix: &mut [User::MatrixRowType], current_row: u8) {
         // Start with a clear matrix row
         let mut current_row_value = 0.into();
 
-        if !select_row(current_row) {
+        if !Self::select_row(current_row) {
             // Select row
             return; // skip NO_PIN row
         }
@@ -63,7 +60,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
         // For each col...
         let mut row_shifter = User::MATRIX_ROW_SHIFTER;
         for col_index in 0..User::MATRIX_COLUMNS {
-            let pin_state = read_matrix_pin(COL_PINS[col_index as usize]);
+            let pin_state = Self::read_matrix_pin(User::COL_PINS[col_index as usize]);
 
             // Populate the matrix row with the state of the col pin
             current_row_value |= if pin_state { 0.into() } else { row_shifter };
@@ -71,7 +68,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
         }
 
         // Unselect row
-        unselect_row(current_row);
+        Self::unselect_row(current_row);
         delay_us::<{ MATRIX_IO_DELAY }>();
 
         // Update the matrix
@@ -79,10 +76,10 @@ impl<User: Keyboard> QmkKeyboard<User> {
     }
     pub fn matrix_init(&self) {
         for row in 0..User::ROWS_PER_HAND {
-            unselect_row(row);
+            Self::unselect_row(row);
         }
         for col in 0..User::MATRIX_COLUMNS {
-            gpio_atomic_set_pin_input_high(COL_PINS[col as usize]);
+            Self::gpio_atomic_set_pin_input_high(User::COL_PINS[col as usize]);
         }
     }
     pub fn matrix_scan(&mut self) -> bool {

@@ -13,8 +13,7 @@
 use avr_base::pins::{B1, B2, B3, B4, B5, B6, C6, D2, D5, D7, E6, F6, F7, Pin};
 use avr_base::register::{USBCON, USBE};
 use avr_delay::{delay_ms, delay_us};
-use keyboard_constants::{CHAR_HEIGHT, CHAR_WIDTH, pins::RED_LED_PIN};
-use keyboard_macros::{keymap, qmk_callback, user_config};
+use keyboard_macros::{image_dimension, include_font_plate, keymap, qmk_callback, user_config};
 use lufa_rs::{USB_Init, USB_USBTask};
 use qmk::keymap::{CustomKey, Key, Keymap, Layer};
 use qmk::keys::{
@@ -34,9 +33,7 @@ use qmk::{
     graphics,
     init::disable_watchdog,
     mo,
-    serial::{
-        ERROR, RES, master_exec_transaction, soft_serial_initiator_init, soft_serial_target_init,
-    },
+    serial::{ERROR, RES},
     timer::{cycles_elapsed, cycles_read, timer_init, timer_read},
     to,
 };
@@ -51,29 +48,7 @@ use core::{
     panic::{self, PanicInfo},
 };
 
-#[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    RED_LED_PIN.gpio_set_pin_output();
-    RED_LED_PIN.gpio_write_pin_low();
-    let _ = qmk::graphics::oled_on();
-    // qmk::graphics::clear();
-    qmk::graphics::draw_text("PANICKED /!\\", 0, 0);
-    let _ = qmk::graphics::render(true);
-    // abort();
-    loop {
-        delay_us::<1000000>();
-        RED_LED_PIN.gpio_write_pin_high();
-        delay_us::<14000>();
-        RED_LED_PIN.gpio_write_pin_low();
-    }
-}
-
 // include_image!("images/test.png");
-
-fn debug(c: char) {
-    qmk::graphics::draw_char(c, 0, 0);
-    let _ = qmk::graphics::render(true);
-}
 
 static mut ERROR_COUNT: u8 = 0;
 
@@ -85,21 +60,29 @@ pub extern "C" fn main() {
         kb.task();
         if is_master() {
             // delay_us::<1000>();
-            master_exec_transaction(qmk::serial::Transaction::Test);
+            QmkKeyboard::<UserKeyboard>::master_exec_transaction(qmk::serial::Transaction::Test);
         } else if !unsafe { ERROR } {
             if unsafe { RES } == qmk::serial::CHAINE {
-                qmk::graphics::draw_char('o', 0, 0);
+                QmkKeyboard::<UserKeyboard>::draw_char('o', 0, 0);
             } else {
-                qmk::graphics::draw_char('x', 0, 0);
+                QmkKeyboard::<UserKeyboard>::draw_char('x', 0, 0);
                 unsafe { ERROR_COUNT += 1 };
 
-                qmk::graphics::draw_u8(unsafe { ERROR_COUNT }, 0, CHAR_HEIGHT);
+                QmkKeyboard::<UserKeyboard>::draw_u8(
+                    unsafe { ERROR_COUNT },
+                    0,
+                    UserKeyboard::CHAR_HEIGHT,
+                );
             }
         } else {
-            qmk::graphics::draw_char('E', 0, 0);
+            QmkKeyboard::<UserKeyboard>::draw_char('E', 0, 0);
             unsafe { ERROR_COUNT += 1 };
 
-            qmk::graphics::draw_u8(unsafe { ERROR_COUNT }, 0, CHAR_HEIGHT);
+            QmkKeyboard::<UserKeyboard>::draw_u8(
+                unsafe { ERROR_COUNT },
+                0,
+                UserKeyboard::CHAR_HEIGHT,
+            );
         }
     }
 }
@@ -132,6 +115,16 @@ const CS_GO_DEF: u16 = to!(0); */
     },
 } */
 
+#[panic_handler]
+fn panic(_info: &PanicInfo) -> ! {
+    QmkKeyboard::<UserKeyboard>::panic_handler()
+}
+
+#[unsafe(no_mangle)]
+extern "avr-interrupt" fn __vector_3() {
+    QmkKeyboard::<UserKeyboard>::serial_interrupt();
+}
+
 struct UserKeyboard {
     a: u8,
 }
@@ -146,7 +139,12 @@ impl Keyboard for UserKeyboard {
     const RED_LED_PIN: Pin = D5;
     const SOFT_SERIAL_PIN: Pin = D2;
 
-    const USER_KEYMAP: &'static Keymap<Self> = &KEYMAP;
+    const FONT_DIM: (u8, u8, usize) = image_dimension!("images/fontplate.png");
+    const CHAR_WIDTH: u8 = 6;
+    const CHAR_HEIGHT: u8 = 13;
+    const USER_FONTPLATE: [u8; Self::FONT_SIZE] = include_font_plate!("images/fontplate.png");
+
+    const KEYMAP: &'static Keymap<Self> = &KEYMAP;
 
     fn test(keyboard: &mut QmkKeyboard<Self>) {
         keyboard.user.a = 3;

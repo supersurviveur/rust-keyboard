@@ -5,7 +5,6 @@ edition = "2024"
 
 [dependencies]
 keyboard_macros = { path = "../keyboard_macros" }
-keyboard_constants = { path = "../keyboard_constants" }
 qmk = { path = "../qmk" }
 qmk_sys = { path = "../qmk_sys" }
 avr-base = { path = "../avr-base" }

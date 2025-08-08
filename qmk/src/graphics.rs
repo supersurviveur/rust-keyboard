@@ -1,9 +1,8 @@
-use core::{iter::Iterator,cmp::min};
+use core::{cmp::min, iter::Iterator};
 
-use crate::i2c;
-use keyboard_constants::*;
+use crate::{Keyboard, QmkKeyboard, i2c};
 
-use keyboard_macros::progmem;
+use keyboard_macros::{config_constraints, progmem};
 use qmk_sys::progmem::RamOrFlash;
 const OLED_DISPLAY_HEIGHT: u8 = 32;
 const OLED_DISPLAY_WIDTH: u8 = 128;
@@ -24,11 +23,6 @@ fn as_u8_buf(
 {
     SizedView::<4,128,_,[u8;OLED_MATRIX_SIZE as usize],&mut [u8;OLED_MATRIX_SIZE as usize]>::new(&mut buffer.backend_mut().data)
 }
-
-const FONTPLATE: Array2D<{ FONT_DIM.0 }, { FONT_DIM.1 }, u16, BinPackedArray<{ FONT_DIM.2 }>> =
-    Array2D::from_existing(BinPackedArray {
-        data: keyboard_constants::FONTPLATE,
-    });
 
 static mut INITIALIZED: bool = false;
 static mut OLED_ACTIVE: bool = false;
@@ -133,232 +127,241 @@ static DISPLAY_ON_DATA: [u8; 2] = [I2C_CMD, DISPLAY_ON];
 #[progmem]
 static DISPLAY_OFF_DATA: [u8; 2] = [I2C_CMD, DISPLAY_OFF];
 
-#[inline(always)]
-pub fn oled_send_array<const SIZE: usize, T: RamOrFlash<[u8; SIZE]>>(data: &T) -> Result<(), ()> {
-    i2c::i2c_transmit(
-        (OLED_DISPLAY_ADDRESS as u8) << 1,
-        data.iter(),
-        OLED_I2C_TIMEOUT,
-    )
-}
-#[inline(always)]
-pub fn oled_send_iter<T: Iterator<Item = u8>>(data: T) -> Result<(), ()> {
-    i2c::i2c_transmit((OLED_DISPLAY_ADDRESS as u8) << 1, data, OLED_I2C_TIMEOUT)
-}
-
-pub fn init_graphics() -> Result<(), ()> {
-    i2c::i2c_init();
-    oled_send_array(&DISPLAY_SETUP1)?;
-    oled_send_array(&DISPLAY_NORMAL)?;
-    oled_send_array(&DISPLAY_SETUP2)?;
-    unsafe { INITIALIZED = true };
-    unsafe { OLED_ACTIVE = true };
-    unsafe { NEXT_OLED_TIMEOUT = timer_read() + OLED_TIMEOUT };
-    clear();
-    Ok(())
-}
-
-pub fn oled_on() -> Result<(), ()> {
-    if !unsafe { INITIALIZED } {
-        init_graphics()?;
-        unsafe { OLED_ACTIVE = false };
+#[config_constraints]
+impl<User: Keyboard> QmkKeyboard<User> {
+    #[inline(always)]
+    pub fn oled_send_array<const SIZE: usize, T: RamOrFlash<[u8; SIZE]>>(
+        data: &T,
+    ) -> Result<(), ()> {
+        i2c::i2c_transmit(
+            (OLED_DISPLAY_ADDRESS as u8) << 1,
+            data.iter(),
+            OLED_I2C_TIMEOUT,
+        )
     }
-    if !unsafe { OLED_ACTIVE } {
-        oled_send_array(&DISPLAY_ON_DATA)?;
+    #[inline(always)]
+    pub fn oled_send_iter<T: Iterator<Item = u8>>(data: T) -> Result<(), ()> {
+        i2c::i2c_transmit((OLED_DISPLAY_ADDRESS as u8) << 1, data, OLED_I2C_TIMEOUT)
+    }
+
+    pub fn init_graphics() -> Result<(), ()> {
+        i2c::i2c_init();
+        Self::oled_send_array(&DISPLAY_SETUP1)?;
+        Self::oled_send_array(&DISPLAY_NORMAL)?;
+        Self::oled_send_array(&DISPLAY_SETUP2)?;
+        unsafe { INITIALIZED = true };
         unsafe { OLED_ACTIVE = true };
         unsafe { NEXT_OLED_TIMEOUT = timer_read() + OLED_TIMEOUT };
-    }
-    Ok(())
-}
-pub fn oled_off() -> Result<(), ()> {
-    if !unsafe { INITIALIZED } {
-        return Ok(());
-    }
-    if unsafe { OLED_ACTIVE } {
-        oled_send_array(&DISPLAY_OFF_DATA)?;
-        unsafe { OLED_ACTIVE = false };
-    }
-    Ok(())
-}
-
-//row: 1 to 128
-//col: 1 to 4
-fn oled_goto(row: u8, col_x8: u8) -> Result<(), ()> {
-    let commands = [
-        I2C_CMD,
-        PAGE_SELECT | col_x8,
-        ROW_LOW_SELECT | (row & 0xF),
-        ROW_HIGH_SELECT | (row >> 4),
-    ];
-    oled_send_array(&commands)?;
-    Ok(())
-}
-
-fn oled_draw_lines<
-    Backend: IndexByValueMut<usize, Data = u8>,
-    T: Container2D<usize, Backend, SliceContainer: IndexByValue<usize, Data = u8>>,
->(
-    starting_row: u8,
-    data: T,
-) -> Result<(), ()> {
-    oled_goto(starting_row, 0)?;
-
-    oled_send_iter(
-        [I2C_DATA].into_iter().chain(
-            (0..data.row())
-                .flat_map(|row| (0..4_u8).map(move |col| (col as usize, row as usize)))
-                .map(|(col, row)| data.get(col, row)),
-        ),
-    )
-}
-
-#[inline(always)]
-pub fn render(activity_has_occured: bool) -> Result<(), ()> {
-    if !unsafe { INITIALIZED } {
-        //nothing to do as screen is not started
-        return Ok(());
+        Self::clear();
+        Ok(())
     }
 
-    if activity_has_occured {
+    pub fn oled_on() -> Result<(), ()> {
+        if !unsafe { INITIALIZED } {
+            Self::init_graphics()?;
+            unsafe { OLED_ACTIVE = false };
+        }
         if !unsafe { OLED_ACTIVE } {
-            oled_on()?;
-        } else {
-            // Update timeout
+            Self::oled_send_array(&DISPLAY_ON_DATA)?;
+            unsafe { OLED_ACTIVE = true };
             unsafe { NEXT_OLED_TIMEOUT = timer_read() + OLED_TIMEOUT };
         }
-    } else {
-        if !unsafe { OLED_ACTIVE } {
-            //nothing to do as screen is off
+        Ok(())
+    }
+    pub fn oled_off() -> Result<(), ()> {
+        if !unsafe { INITIALIZED } {
             return Ok(());
         }
-
-        if unsafe { timer_expired(NEXT_OLED_TIMEOUT) } {
-            oled_off()?;
-            return Ok(());
+        if unsafe { OLED_ACTIVE } {
+            Self::oled_send_array(&DISPLAY_OFF_DATA)?;
+            unsafe { OLED_ACTIVE = false };
         }
-    }
-    let mut framebuffer_as_u8 = as_u8_buf(unsafe { &mut FRAMEBUF_BINARRAY });
-
-    for chunk in 0..OLED_BLOCK_COUNT {
-        if (unsafe { DIRTY } & ((1 as u16) << chunk)) != 0 {
-            oled_draw_lines(chunk * OLED_BLOCK_ROWS, unsafe {
-                framebuffer_as_u8
-                    .extract_sized_view_unchecked::<4, OLED_BLOCK_ROWS>(0, chunk * OLED_BLOCK_ROWS)
-            })?;
-        }
+        Ok(())
     }
 
-    unsafe { DIRTY = 0 };
-    Ok(())
-}
-
-#[inline(always)]
-pub fn clear() {
-    unsafe { FRAMEBUF_BINARRAY.backend_mut().data = [0; OLED_MATRIX_SIZE as usize] };
-    unsafe { DIRTY = ALL_DIRTY };
-}
-
-pub fn write_pixel(col: u8, row: u8, on: bool) {
-    unsafe {
-        FRAMEBUF_BINARRAY.set(col as u16, row as u16, on);
+    //row: 1 to 128
+    //col: 1 to 4
+    fn oled_goto(row: u8, col_x8: u8) -> Result<(), ()> {
+        let commands = [
+            I2C_CMD,
+            PAGE_SELECT | col_x8,
+            ROW_LOW_SELECT | (row & 0xF),
+            ROW_HIGH_SELECT | (row >> 4),
+        ];
+        Self::oled_send_array(&commands)?;
+        Ok(())
     }
-    let chunk = row / OLED_BLOCK_ROWS as u8;
-    unsafe { DIRTY |= 1_u16 << chunk };
-}
 
-pub fn draw_char(ascii: char, offset_x: u8, offset_y: u8) {
-    let char_code = ascii as u8 - b' ';
+    fn oled_draw_lines<
+        Backend: IndexByValueMut<usize, Data = u8>,
+        T: Container2D<usize, Backend, SliceContainer: IndexByValue<usize, Data = u8>>,
+    >(
+        starting_row: u8,
+        data: T,
+    ) -> Result<(), ()> {
+        Self::oled_goto(starting_row, 0)?;
 
-    let char_col = char_code % CHAR_PER_ROWS;
-    let char_row = char_code / CHAR_PER_ROWS;
-    let char_x: u16 = (char_col * CHAR_WIDTH) as u16;
-    let char_y: u16 = (char_row * CHAR_HEIGHT) as u16;
-    let mut buffer_view = unsafe {
-        FRAMEBUF_BINARRAY
-            .extract_sized_view_unchecked::<CHAR_WIDTH, CHAR_HEIGHT>(offset_x, offset_y)
-    };
-    for col in 0..CHAR_WIDTH {
-        for row in 0..CHAR_HEIGHT {
-            buffer_view.set(
-                col as u16,
-                row as u16,
-                FONTPLATE.get(char_x + col as u16, char_y + row as u16),
-            );
-        }
-    }
-    for row in offset_y..offset_y + CHAR_HEIGHT {
-        let block = row / OLED_BLOCK_ROWS;
-        unsafe { DIRTY |= 1_u16 << block }
-    }
-}
-
-pub fn draw_u8(mut n: u8, offset_x: u8, offset_y: u8) {
-    let mut len = 0;
-    let mut n2 = n;
-    loop {
-        len += 1;
-        n2 /= 10;
-        if n2 == 0 {
-            break;
-        }
-    }
-    for i in 0..len {
-        draw_char(
-            (b'0' + n % 10) as char,
-            offset_x + (len - i - 1) * CHAR_WIDTH,
-            offset_y,
-        );
-        n /= 10;
-    }
-}
-
-pub fn clear_char(offset_x: u8, offset_y: u8) {
-    for cx in 0..CHAR_WIDTH {
-        let x = offset_x + cx;
-        for cy in 0..CHAR_HEIGHT {
-            let y = offset_y + cy;
-            write_pixel(x, y, false);
-        }
-    }
-}
-
-pub fn draw_text<'a, T: RamOrFlash<&'a str>>(text: T, mut offset_x: u8, mut offset_y: u8) {
-    for ascii in text.load().chars() {
-        if offset_x + CHAR_WIDTH >= OLED_DISPLAY_HEIGHT as u8 {
-            offset_x = 0;
-            offset_y += CHAR_HEIGHT
-        }
-        draw_char(ascii, offset_x, offset_y);
-        offset_x += CHAR_WIDTH;
-    }
-}
-
-pub fn draw_image<const N: usize>(image: QmkImage<N>, offset_x: u8, offset_y: u8) {
-    let mut view = unsafe {
-        FRAMEBUF_BINARRAY.extract_unsized_view_unchecked(
-            offset_x,
-            offset_y,
-            image.width,
-            image.height,
+        Self::oled_send_iter(
+            [I2C_DATA].into_iter().chain(
+                (0..data.row())
+                    .flat_map(|row| (0..4_u8).map(move |col| (col as usize, row as usize)))
+                    .map(|(col, row)| data.get(col, row)),
+            ),
         )
-    };
-    let display_width = OLED_DISPLAY_HEIGHT as u8;
-    let display_height = OLED_DISPLAY_WIDTH as u8;
+    }
 
-    for y in 0..image.height {
-        if y + offset_y >= display_height {
-            break;
+    #[inline(always)]
+    pub fn render(activity_has_occured: bool) -> Result<(), ()> {
+        if !unsafe { INITIALIZED } {
+            //nothing to do as screen is not started
+            return Ok(());
         }
-        for x in 0..image.width {
-            if x + offset_x >= display_width {
+
+        if activity_has_occured {
+            if !unsafe { OLED_ACTIVE } {
+                Self::oled_on()?;
+            } else {
+                // Update timeout
+                unsafe { NEXT_OLED_TIMEOUT = timer_read() + OLED_TIMEOUT };
+            }
+        } else {
+            if !unsafe { OLED_ACTIVE } {
+                //nothing to do as screen is off
+                return Ok(());
+            }
+
+            if unsafe { timer_expired(NEXT_OLED_TIMEOUT) } {
+                Self::oled_off()?;
+                return Ok(());
+            }
+        }
+        let mut framebuffer_as_u8 = as_u8_buf(unsafe { &mut FRAMEBUF_BINARRAY });
+
+        for chunk in 0..OLED_BLOCK_COUNT {
+            if (unsafe { DIRTY } & ((1 as u16) << chunk)) != 0 {
+                Self::oled_draw_lines(chunk * OLED_BLOCK_ROWS, unsafe {
+                    framebuffer_as_u8.extract_sized_view_unchecked::<4, OLED_BLOCK_ROWS>(
+                        0,
+                        chunk * OLED_BLOCK_ROWS,
+                    )
+                })?;
+            }
+        }
+
+        unsafe { DIRTY = 0 };
+        Ok(())
+    }
+
+    #[inline(always)]
+    pub fn clear() {
+        unsafe { FRAMEBUF_BINARRAY.backend_mut().data = [0; OLED_MATRIX_SIZE as usize] };
+        unsafe { DIRTY = ALL_DIRTY };
+    }
+
+    pub fn write_pixel(col: u8, row: u8, on: bool) {
+        unsafe {
+            FRAMEBUF_BINARRAY.set(col as u16, row as u16, on);
+        }
+        let chunk = row / OLED_BLOCK_ROWS as u8;
+        unsafe { DIRTY |= 1_u16 << chunk };
+    }
+
+    pub fn draw_char(ascii: char, offset_x: u8, offset_y: u8) {
+        let char_code = ascii as u8 - b' ';
+
+        let char_col = char_code % User::CHAR_PER_ROWS;
+        let char_row = char_code / User::CHAR_PER_ROWS;
+        let char_x: u16 = (char_col * User::CHAR_WIDTH) as u16;
+        let char_y: u16 = (char_row * User::CHAR_HEIGHT) as u16;
+        let mut buffer_view = unsafe {
+            FRAMEBUF_BINARRAY
+                .extract_sized_view_unchecked::<{ User::CHAR_WIDTH }, { User::CHAR_HEIGHT }>(
+                    offset_x, offset_y,
+                )
+        };
+        for col in 0..User::CHAR_WIDTH {
+            for row in 0..User::CHAR_HEIGHT {
+                buffer_view.set(
+                    col as u16,
+                    row as u16,
+                    User::FONTPLATE.get(char_x + col as u16, char_y + row as u16),
+                );
+            }
+        }
+        for row in offset_y..offset_y + User::CHAR_HEIGHT {
+            let block = row / OLED_BLOCK_ROWS;
+            unsafe { DIRTY |= 1_u16 << block }
+        }
+    }
+
+    pub fn draw_u8(mut n: u8, offset_x: u8, offset_y: u8) {
+        let mut len = 0;
+        let mut n2 = n;
+        loop {
+            len += 1;
+            n2 /= 10;
+            if n2 == 0 {
                 break;
             }
-            view.set(x as u16, y as u16, image.get_pixel(x, y).unwrap());
+        }
+        for i in 0..len {
+            Self::draw_char(
+                (b'0' + n % 10) as char,
+                offset_x + (len - i - 1) * User::CHAR_WIDTH,
+                offset_y,
+            );
+            n /= 10;
         }
     }
-    for y in offset_y..(min(display_height, offset_y + image.height)) {
-        let block = y / OLED_BLOCK_ROWS;
-        unsafe { DIRTY |= 1 << block }
+
+    pub fn clear_char(offset_x: u8, offset_y: u8) {
+        for cx in 0..User::CHAR_WIDTH {
+            let x = offset_x + cx;
+            for cy in 0..User::CHAR_HEIGHT {
+                let y = offset_y + cy;
+                Self::write_pixel(x, y, false);
+            }
+        }
+    }
+
+    pub fn draw_text<'a, T: RamOrFlash<&'a str>>(text: T, mut offset_x: u8, mut offset_y: u8) {
+        for ascii in text.load().chars() {
+            if offset_x + User::CHAR_WIDTH >= OLED_DISPLAY_HEIGHT as u8 {
+                offset_x = 0;
+                offset_y += User::CHAR_HEIGHT
+            }
+            Self::draw_char(ascii, offset_x, offset_y);
+            offset_x += User::CHAR_WIDTH;
+        }
+    }
+
+    pub fn draw_image<const N: usize>(image: QmkImage<N>, offset_x: u8, offset_y: u8) {
+        let mut view = unsafe {
+            FRAMEBUF_BINARRAY.extract_unsized_view_unchecked(
+                offset_x,
+                offset_y,
+                image.width,
+                image.height,
+            )
+        };
+        let display_width = OLED_DISPLAY_HEIGHT as u8;
+        let display_height = OLED_DISPLAY_WIDTH as u8;
+
+        for y in 0..image.height {
+            if y + offset_y >= display_height {
+                break;
+            }
+            for x in 0..image.width {
+                if x + offset_x >= display_width {
+                    break;
+                }
+                view.set(x as u16, y as u16, image.get_pixel(x, y).unwrap());
+            }
+        }
+        for y in offset_y..(min(display_height, offset_y + image.height)) {
+            let block = y / OLED_BLOCK_ROWS;
+            unsafe { DIRTY |= 1 << block }
+        }
     }
 }
 
@@ -379,8 +382,4 @@ impl<const N: usize> QmkImage<N> {
         let bit_index = y % 8;
         Some((self.bytes[byte_index] >> bit_index) & 1 == 1)
     }
-}
-
-pub fn test() {
-    draw_text("AAABBAA", 0, 0);
 }
