@@ -10,6 +10,7 @@
 )]
 #![no_main]
 
+use avr_base::pins::{B1, B2, B3, B4, B5, B6, C6, D2, D5, D7, E6, F6, F7, Pin};
 use avr_base::register::{USBCON, USBE};
 use avr_delay::{delay_ms, delay_us};
 use keyboard_constants::{CHAR_HEIGHT, CHAR_WIDTH, pins::RED_LED_PIN};
@@ -32,7 +33,6 @@ use qmk::{Keyboard, QmkKeyboard, is_master};
 use qmk::{
     graphics,
     init::disable_watchdog,
-    matrix::{matrix_init, matrix_read_cols_on_row},
     mo,
     serial::{
         ERROR, RES, master_exec_transaction, soft_serial_initiator_init, soft_serial_target_init,
@@ -136,17 +136,23 @@ struct UserKeyboard {
     a: u8,
 }
 
-// #[user_config]
 impl Keyboard for UserKeyboard {
     const LAYER_COUNT: usize = 2;
     const MATRIX_ROWS: u8 = 10;
     const MATRIX_COLUMNS: u8 = 6;
+
+    const ROW_PINS: [Pin; Self::ROWS_PER_HAND as usize] = [C6, D7, E6, B4, B5];
+    const COL_PINS: [Pin; Self::MATRIX_COLUMNS as usize] = [F6, F7, B1, B3, B2, B6];
+    const RED_LED_PIN: Pin = D5;
+    const SOFT_SERIAL_PIN: Pin = D2;
 
     const USER_KEYMAP: &'static Keymap<Self> = &KEYMAP;
 
     fn test(keyboard: &mut QmkKeyboard<Self>) {
         keyboard.user.a = 3;
     }
+
+    type MatrixRowType = u8;
 }
 
 #[unsafe(link_section = ".progmem.data")]

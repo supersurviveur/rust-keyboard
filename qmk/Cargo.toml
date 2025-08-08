@@ -10,3 +10,4 @@ keyboard_constants = { path = "../keyboard_constants" }
 lufa-rs = { path = "../lufa-rs" }
 avr-base = { path = "../avr-base" }
 avr_delay = { git = "https://github.com/avr-rust/delay", branch = "cycacc" }
+num-traits = { version = "0.2.19", default-features = false }

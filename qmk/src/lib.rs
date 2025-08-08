@@ -6,24 +6,31 @@
     abi_avr_interrupt,
     optimize_attribute,
     generic_const_exprs,
-    generic_const_items
+    generic_const_items,
+    associated_type_defaults,
+    const_trait_impl,
+    const_from
 )]
 // We are on only one proc, with one thread, so there is no need to worry about static mut ref
 #![allow(static_mut_refs)]
 
+use avr_base::pins::Pin;
 use core::{
     arch::asm,
-    ops::{Index, IndexMut, Range},
+    ops::{BitOrAssign, ShlAssign},
 };
+use num_traits::PrimInt;
 
-use keyboard_constants::{matrix::MatrixRowType, pins::RED_LED_PIN};
+use keyboard_constants::pins::RED_LED_PIN;
+use keyboard_macros::config_constraints;
 use lufa_rs::{USB_Init, USB_USBTask};
+use num_traits::Unsigned;
+// use num::Unsigned;
 use qmk_sys::progmem;
 
 use crate::{
     init::disable_watchdog,
-    keymap::{CustomKey, Keymap, Layer},
-    matrix::matrix_init,
+    keymap::{CustomKey, Keymap},
     serial::{soft_serial_initiator_init, soft_serial_target_init},
     timer::timer_init,
     usb::events::hid_task,
@@ -31,6 +38,7 @@ use crate::{
 
 pub mod atomic;
 pub mod graphics;
+pub mod helper_traits;
 pub mod i2c;
 pub mod init;
 pub mod keymap;
@@ -47,75 +55,54 @@ pub trait Keyboard: Sized + 'static {
 
     const MATRIX_ROWS: u8;
     const MATRIX_COLUMNS: u8;
-    const ROWS_PER_HAND: u8 = Self::MATRIX_ROWS / 2;
+    type MatrixRowType: Unsigned + PrimInt + BitOrAssign + ShlAssign<u8> + const From<u8> = u8;
+
+    #[config_constraints(Self)]
+    const ROW_PINS: [Pin; Self::ROWS_PER_HAND as usize];
+    #[config_constraints(Self)]
+    const COL_PINS: [Pin; Self::MATRIX_COLUMNS as usize];
+    const RED_LED_PIN: Pin;
+    const SOFT_SERIAL_PIN: Pin;
 
     /// This **MUST** be in progmem !
-    const USER_KEYMAP: &'static Keymap<Self> where Self: KeyboardAuto;
+    #[config_constraints(Self)]
+    const USER_KEYMAP: &'static Keymap<Self>;
 
-    fn test(keyboard: &mut QmkKeyboard<Self>)
-    where
-        Self: KeyboardAuto;
+    #[config_constraints(Self)]
+    fn test(keyboard: &mut QmkKeyboard<Self>);
+
+    const ROWS_PER_HAND: u8 = Self::MATRIX_ROWS / 2;
+    const THIS_HAND_OFFSET: u8 = if is_right() { Self::ROWS_PER_HAND } else { 0 };
+    const OTHER_HAND_OFFSET: u8 = Self::ROWS_PER_HAND - Self::THIS_HAND_OFFSET;
+    const MATRIX_ROW_SHIFTER: Self::MatrixRowType = 1.into();
 }
 
-pub trait KeyboardAuto: Keyboard {
-    type KeymapType;
-    type LayersArrayType: Index<usize, Output = Layer<Self>>;
-    type KeysArrayType: Index<usize, Output = &'static dyn CustomKey<Self>>;
-    type MatrixType: IndexMut<usize, Output = MatrixRowType>
-        + IndexMut<Range<usize>, Output = [MatrixRowType]>
-        + Copy;
-    type MatrixSplitType: IndexMut<usize, Output = MatrixRowType>
-        + IndexMut<Range<usize>, Output = [MatrixRowType]>
-        + Copy
-        + Eq
-    where
-        for<'a> &'a mut <Self as KeyboardAuto>::MatrixSplitType: TryFrom<&'a mut [u8]>;
-    const KEYMAP: &'static Self::KeymapType;
-    fn get_layers() -> &'static Self::LayersArrayType;
-}
-
-impl<T: Keyboard> KeyboardAuto for T
-where
-    [(); Self::LAYER_COUNT]:,
-    [(); Self::MATRIX_ROWS as usize * Self::MATRIX_COLUMNS as usize]:,
-    [(); Self::ROWS_PER_HAND as usize]:,
-{
-    type KeymapType = Keymap<Self>;
-    type LayersArrayType = [Layer<Self>; Self::LAYER_COUNT];
-    type KeysArrayType =
-        [&'static dyn CustomKey<Self>; Self::MATRIX_ROWS as usize * Self::MATRIX_COLUMNS as usize];
-    type MatrixType = [MatrixRowType; Self::MATRIX_ROWS as usize];
-    type MatrixSplitType = [MatrixRowType; Self::ROWS_PER_HAND as usize];
-
-    const KEYMAP: &'static Keymap<Self> = Self::USER_KEYMAP;
-
-    fn get_layers() -> &'static Self::LayersArrayType {
-        &Self::KEYMAP.layers
-    }
-}
-
-pub struct QmkKeyboard<User: KeyboardAuto> {
+#[config_constraints]
+pub struct QmkKeyboard<User: Keyboard> {
     pub user: User,
 
-    pub previous_matrix: User::MatrixType,
-    pub current_matrix: User::MatrixType,
+    pub raw_matrix: [User::MatrixRowType; User::ROWS_PER_HAND as usize],
+    pub previous_matrix: [User::MatrixRowType; User::MATRIX_ROWS as usize],
+    pub current_matrix: [User::MatrixRowType; User::MATRIX_ROWS as usize],
 
     pub layer: u8,
 }
 
-impl<User: KeyboardAuto<MatrixType = [MatrixRowType; User::MATRIX_ROWS as usize]>>
-    QmkKeyboard<User>
-{
+#[config_constraints]
+impl<User: Keyboard> QmkKeyboard<User> {
     pub fn new(user: User) -> Self {
         Self {
             user,
-            previous_matrix: [0; User::MATRIX_ROWS as usize],
-            current_matrix: [0; User::MATRIX_ROWS as usize],
+            raw_matrix: [0.into(); _],
+            previous_matrix: [0.into(); _],
+            current_matrix: [0.into(); _],
             layer: 0,
         }
     }
 }
-impl<User: KeyboardAuto> QmkKeyboard<User> {
+
+#[config_constraints]
+impl<User: Keyboard> QmkKeyboard<User> {
     pub fn init(&self) {
         RED_LED_PIN.gpio_set_pin_output();
         RED_LED_PIN.gpio_write_pin_low();
@@ -127,7 +114,7 @@ impl<User: KeyboardAuto> QmkKeyboard<User> {
         } else {
             soft_serial_target_init();
         }
-        matrix_init();
+        self.matrix_init();
 
         // Needed for the code to works directly after flash, but seems to crash LUFA, which already resolve the problem on flash
         // USBCON.write(USBCON & !USBE);
@@ -164,7 +151,7 @@ impl<User: KeyboardAuto> QmkKeyboard<User> {
     pub fn get_key(&self, layer: u8, column: u8, row: u8) -> &'static dyn CustomKey<User> {
         unsafe {
             progmem::read_value(
-                &User::get_layers()[layer as usize].keys[(column
+                &User::USER_KEYMAP.layers[layer as usize].keys[(column
                     + (row % User::ROWS_PER_HAND) * User::MATRIX_COLUMNS * 2
                     + if row >= User::ROWS_PER_HAND {
                         User::MATRIX_COLUMNS

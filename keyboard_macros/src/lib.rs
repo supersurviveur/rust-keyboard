@@ -1,4 +1,5 @@
 mod config;
+mod constraints;
 mod image;
 mod keymap;
 mod pins;
@@ -55,6 +56,11 @@ pub fn include_animation(input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn user_config(args: TokenStream, item: TokenStream) -> TokenStream {
     config::user_config_impl(args, item)
+}
+
+#[proc_macro_attribute]
+pub fn config_constraints(args: TokenStream, item: TokenStream) -> TokenStream {
+    constraints::config_constraints_impl(args, item)
 }
 
 #[proc_macro_attribute]
