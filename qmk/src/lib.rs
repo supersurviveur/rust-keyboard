@@ -35,6 +35,7 @@ use crate::{
     init::disable_watchdog,
     keymap::{CustomKey, Keymap},
     primitive::{Array2D, BinPackedArray},
+    rotary_encoder::RotaryEncoder,
     serial::shared_memory::{MasterSharedMemory, SlaveSharedMemory},
     timer::timer_init,
     usb::events::hid_task,
@@ -50,6 +51,7 @@ pub mod keys;
 pub mod matrix;
 pub mod pins;
 pub mod primitive;
+pub mod rotary_encoder;
 pub mod serial;
 pub mod timer;
 pub mod usb;
@@ -72,6 +74,21 @@ pub trait Keyboard: Sized + 'static {
     const ROW_PINS: [Pin; Self::ROWS_PER_HAND as usize];
     #[config_constraints(Self)]
     const COL_PINS: [Pin; Self::MATRIX_COLUMNS as usize];
+    const LEFT_ENCODER_PIN1: Pin;
+    const LEFT_ENCODER_PIN2: Pin;
+    const RIGHT_ENCODER_PIN1: Pin;
+    const RIGHT_ENCODER_PIN2: Pin;
+    const ROTARY_ENCODER_PIN1: Pin = if is_left() {
+        Self::LEFT_ENCODER_PIN1
+    } else {
+        Self::RIGHT_ENCODER_PIN1
+    };
+    const ROTARY_ENCODER_PIN2: Pin = if is_left() {
+        Self::LEFT_ENCODER_PIN2
+    } else {
+        Self::RIGHT_ENCODER_PIN2
+    };
+
     const RED_LED_PIN: Pin;
     const SOFT_SERIAL_PIN: Pin;
 
@@ -125,6 +142,9 @@ pub struct QmkKeyboard<User: Keyboard> {
     pub slave_shared_memory: SlaveSharedMemory<User>,
 
     pub layer: u8,
+
+    pub rotary_encoder: RotaryEncoder<User>,
+    pub test: u8,
 }
 
 #[config_constraints]
@@ -138,6 +158,8 @@ impl<User: Keyboard> QmkKeyboard<User> {
             master_shared_memory: MasterSharedMemory::new(),
             slave_shared_memory: SlaveSharedMemory::new(),
             layer: 0,
+            rotary_encoder: RotaryEncoder::new(),
+            test: 0,
         }
     }
 }
@@ -167,6 +189,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
         Self::init_graphics().unwrap();
         timer_init();
         self.serial_init();
+        self.rotary_encoder.init();
         self.matrix_init();
 
         if is_master() {
@@ -189,6 +212,17 @@ impl<User: Keyboard> QmkKeyboard<User> {
                 USB_USBTask();
             }
         }
+        let dir = self.rotary_encoder.task();
+        match dir {
+            rotary_encoder::Direction::Clockwise => {
+                self.test -= 1;
+            }
+            rotary_encoder::Direction::CounterClockwise => {
+                self.test += 1;
+            }
+            rotary_encoder::Direction::None => {}
+        }
+        Self::draw_u8(self.test, 0, 100);
         let changed = self.matrix_task();
         Self::render(changed).unwrap();
     }

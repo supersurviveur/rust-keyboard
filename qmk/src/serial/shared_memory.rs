@@ -1,6 +1,9 @@
+// Use the minimum number of constraints here, otherwise cargo take a long time to compile/lint
+
 use keyboard_macros::config_constraints;
 
 use crate::Keyboard;
+
 
 #[derive(Debug)]
 pub struct MasterSharedMemory<User: Keyboard>

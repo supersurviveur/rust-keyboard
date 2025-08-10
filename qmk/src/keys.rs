@@ -382,10 +382,8 @@ pub const KC_MEDIA_CALCULATOR: Key = Key(251);
 pub struct NoOpKey;
 
 #[config_constraints]
-impl<User: Keyboard> CustomKey<User> for NoOpKey {
-    fn on_pressed(&self, _keyboard: &mut crate::QmkKeyboard<User>) {}
-    fn on_released(&self, _keyboard: &mut crate::QmkKeyboard<User>) {}
-}
+impl<User: Keyboard> CustomKey<User> for NoOpKey {}
+
 pub const NO_OP: NoOpKey = NoOpKey;
 
 pub struct LayerUp(pub u8);
@@ -395,8 +393,6 @@ impl<User: Keyboard> CustomKey<User> for LayerUp {
     fn on_pressed(&self, keyboard: &mut crate::QmkKeyboard<User>) {
         keyboard.layer_up(self.0);
     }
-
-    fn on_released(&self, _keyboard: &mut crate::QmkKeyboard<User>) {}
 }
 pub struct LayerDown(pub u8);
 
@@ -405,8 +401,6 @@ impl<User: Keyboard> CustomKey<User> for LayerDown {
     fn on_pressed(&self, keyboard: &mut crate::QmkKeyboard<User>) {
         keyboard.layer_down(self.0);
     }
-
-    fn on_released(&self, _keyboard: &mut crate::QmkKeyboard<User>) {}
 }
 
 pub struct TransparentUp;
@@ -419,5 +413,4 @@ impl<User: Keyboard> CustomKey<User> for TransparentUp {
             .get_key(layer, row, column)
             .complete_on_pressed(keyboard, row, column);
     }
-    fn on_released(&self, _keyboard: &mut crate::QmkKeyboard<User>) {}
 }
