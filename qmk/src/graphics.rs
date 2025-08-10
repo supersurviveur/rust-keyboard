@@ -135,11 +135,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
     pub fn oled_send_array<const SIZE: usize, T: RamOrFlash<[u8; SIZE]>>(
         data: &T,
     ) -> Result<(), I2CError> {
-        i2c::i2c_transmit(
-            OLED_DISPLAY_ADDRESS << 1,
-            data.iter(),
-            OLED_I2C_TIMEOUT,
-        )
+        i2c::i2c_transmit(OLED_DISPLAY_ADDRESS << 1, data.iter(), OLED_I2C_TIMEOUT)
     }
     #[inline(always)]
     pub fn oled_send_iter<T: Iterator<Item = u8>>(data: T) -> Result<(), I2CError> {

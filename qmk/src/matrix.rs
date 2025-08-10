@@ -1,6 +1,7 @@
 use crate::{
     Keyboard, QmkKeyboard,
     atomic::atomic,
+    is_left,
     timer::{timer_elapsed, timer_read},
 };
 use avr_base::pins::{GPIO_INPUT_PIN_DELAY, NO_PIN, Pin};
@@ -64,7 +65,11 @@ impl<User: Keyboard> QmkKeyboard<User> {
 
             // Populate the matrix row with the state of the col pin
             current_row_value |= if pin_state { 0.into() } else { row_shifter };
-            row_shifter <<= 1;
+            if is_left() {
+                row_shifter <<= 1;
+            } else {
+                row_shifter >>= 1;
+            }
         }
 
         // Unselect row
@@ -95,11 +100,27 @@ impl<User: Keyboard> QmkKeyboard<User> {
             true
         };
 
-        self.debounce(changed) | matrix_post_scan()
+        self.debounce(changed)
     }
     pub fn matrix_task(&mut self) -> bool {
-        let changed = self.matrix_scan();
+        let our_matrix_changed = self.matrix_scan();
+        self.serial_task();
+        self.key_task(our_matrix_changed)
+    }
+    pub fn key_task(&mut self, our_matrix_changed: bool) -> bool {
+        let changed = our_matrix_changed
+            || unsafe {
+                self.previous_matrix[User::OTHER_HAND_OFFSET as usize
+                    ..(User::OTHER_HAND_OFFSET + User::ROWS_PER_HAND) as usize]
+                    .as_mut_array::<{ User::ROWS_PER_HAND as usize }>()
+                    .unwrap_unchecked()
+                    != self.current_matrix[User::OTHER_HAND_OFFSET as usize
+                        ..(User::OTHER_HAND_OFFSET + User::ROWS_PER_HAND) as usize]
+                        .as_mut_array()
+                        .unwrap_unchecked()
+            };
         if changed {
+            Self::draw_char('c', 0, 26);
             for row in 0..User::MATRIX_ROWS {
                 if self.previous_matrix[row as usize] != self.current_matrix[row as usize] {
                     for column in 0..User::MATRIX_COLUMNS {
@@ -109,6 +130,8 @@ impl<User: Keyboard> QmkKeyboard<User> {
                             != current_press
                         {
                             if current_press != 0.into() {
+                                Self::draw_u8(column, 0, 0);
+                                Self::draw_u8(row, 0, 13);
                                 self.key_pressed(column, row)
                             } else {
                                 self.key_released(column, row)
@@ -121,57 +144,6 @@ impl<User: Keyboard> QmkKeyboard<User> {
         }
         changed
     }
-}
-
-// static mut LAST_CONNECTED: bool = false;
-
-fn matrix_post_scan() -> bool {
-    false
-    // let mut changed = false;
-    // if is_master() {
-    //     let mut slave_matrix = [0; ROWS_PER_HAND as usize];
-    //     if unsafe {
-    //         qmk_sys::transport_master_if_connected(
-    //             MATRIX.as_mut_ptr().wrapping_add(THIS_HAND_OFFSET as usize),
-    //             slave_matrix.as_mut_ptr(),
-    //         )
-    //     } {
-    //         let other_matrix =
-    //             TryInto::<&mut [MatrixRowType; ROWS_PER_HAND as usize]>::try_into(unsafe {
-    //                 &mut MATRIX
-    //                     [OTHER_HAND_OFFSET as usize..(OTHER_HAND_OFFSET + ROWS_PER_HAND) as usize]
-    //             })
-    //             .unwrap();
-    //         changed = *other_matrix != slave_matrix;
-
-    //         unsafe { LAST_CONNECTED = true };
-    //     } else if unsafe { LAST_CONNECTED } {
-    //         // reset other half when disconnected
-    //         slave_matrix = [0; ROWS_PER_HAND as usize];
-    //         changed = true;
-
-    //         unsafe { LAST_CONNECTED = false };
-    //     }
-
-    //     if changed {
-    //         let other_matrix =
-    //             TryInto::<&mut [MatrixRowType; ROWS_PER_HAND as usize]>::try_into(unsafe {
-    //                 &mut MATRIX
-    //                     [OTHER_HAND_OFFSET as usize..(OTHER_HAND_OFFSET + ROWS_PER_HAND) as usize]
-    //             })
-    //             .unwrap();
-    //         *other_matrix = slave_matrix;
-    //     };
-    // } else {
-    //     unsafe {
-    //         qmk_sys::transport_slave(
-    //             MATRIX.as_mut_ptr().wrapping_add(OTHER_HAND_OFFSET as usize),
-    //             MATRIX.as_mut_ptr().wrapping_add(THIS_HAND_OFFSET as usize),
-    //         )
-    //     };
-    // }
-
-    // return changed;
 }
 
 static mut DEBOUNCING: bool = false;

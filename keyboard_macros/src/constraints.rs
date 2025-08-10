@@ -2,8 +2,8 @@ use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::{ToTokens, TokenStreamExt, quote};
 use syn::{
-    AttrStyle, Expr, ItemImpl, ItemStruct, ItemTrait, TraitItemConst, TraitItemFn, WhereClause,
-    parse::Parse, parse_macro_input, parse_quote,
+    AttrStyle, Expr, ImplItemFn, ItemImpl, ItemStruct, ItemTrait, TraitItemConst, TraitItemFn,
+    WhereClause, parse::Parse, parse_macro_input, parse_quote,
 };
 
 struct Args {
@@ -110,10 +110,16 @@ pub fn config_constraints_impl(args: TokenStream, item: TokenStream) -> TokenStr
         apply_clauses(where_clause);
 
         quote! {#item_trait_fn}
+    } else if let Ok(mut item_trait_fn) = syn::parse::<ImplItemFn>(item.clone()) {
+        let where_clause = item_trait_fn.sig.generics.make_where_clause();
+
+        apply_clauses(where_clause);
+
+        quote! {#item_trait_fn}
     } else {
         syn::Error::new(
             Span::call_site(),
-            "config_constraints macro must be used on a struct, an impl, a trait, a const in a trait or a function in a trait.",
+            "config_constraints macro must be used on a struct, an impl, a trait, a const in a trait, a function in a trait or a function in an impl.",
         )
         .into_compile_error()
 

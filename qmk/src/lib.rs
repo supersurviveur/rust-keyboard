@@ -7,17 +7,22 @@
     generic_const_items,
     associated_type_defaults,
     const_trait_impl,
-    const_from
+    const_from,
+    slice_as_array
 )]
 #![allow(incomplete_features)]
 // We are on only one proc, with one thread, so there is no need to worry about static mut ref
 #![allow(static_mut_refs)]
 
-use avr_base::pins::Pin;
+use avr_base::{
+    pins::Pin,
+    register::{USBCON, USBE},
+};
 use avr_delay::delay_us;
 use core::{
     arch::asm,
-    ops::{BitOrAssign, ShlAssign},
+    ops::{BitOrAssign, ShlAssign, ShrAssign},
+    panic::PanicInfo,
 };
 use num_traits::PrimInt;
 
@@ -30,6 +35,7 @@ use crate::{
     init::disable_watchdog,
     keymap::{CustomKey, Keymap},
     primitive::{Array2D, BinPackedArray},
+    serial::shared_memory::{MasterSharedMemory, SlaveSharedMemory},
     timer::timer_init,
     usb::events::hid_task,
 };
@@ -54,7 +60,13 @@ pub trait Keyboard: Sized + 'static {
     const MATRIX_ROWS: u8;
     const MATRIX_COLUMNS: u8;
     /// Smallest type containing at least MATRIX_ROWS bits
-    type MatrixRowType: Unsigned + PrimInt + BitOrAssign + ShlAssign<u8> + const From<u8> = u8;
+    type MatrixRowType: Unsigned
+        + PrimInt
+        + BitOrAssign
+        + ShlAssign<u8>
+        + ShrAssign<u8>
+        + Copy
+        + const From<u8> = u8;
 
     #[config_constraints(Self)]
     const ROW_PINS: [Pin; Self::ROWS_PER_HAND as usize];
@@ -83,7 +95,12 @@ pub trait Keyboard: Sized + 'static {
     const ROWS_PER_HAND: u8 = Self::MATRIX_ROWS / 2;
     const THIS_HAND_OFFSET: u8 = if is_right() { Self::ROWS_PER_HAND } else { 0 };
     const OTHER_HAND_OFFSET: u8 = Self::ROWS_PER_HAND - Self::THIS_HAND_OFFSET;
-    const MATRIX_ROW_SHIFTER: Self::MatrixRowType = 1.into();
+    const MATRIX_ROW_SHIFTER: Self::MatrixRowType = if is_left() {
+        1
+    } else {
+        1 << (Self::MATRIX_COLUMNS - 1)
+    }
+    .into();
 
     #[config_constraints(Self)]
     const FONTPLATE: Array2D<
@@ -104,6 +121,9 @@ pub struct QmkKeyboard<User: Keyboard> {
     pub previous_matrix: [User::MatrixRowType; User::MATRIX_ROWS as usize],
     pub current_matrix: [User::MatrixRowType; User::MATRIX_ROWS as usize],
 
+    pub master_shared_memory: MasterSharedMemory<User>,
+    pub slave_shared_memory: SlaveSharedMemory<User>,
+
     pub layer: u8,
 }
 
@@ -115,6 +135,8 @@ impl<User: Keyboard> QmkKeyboard<User> {
             raw_matrix: [0.into(); _],
             previous_matrix: [0.into(); _],
             current_matrix: [0.into(); _],
+            master_shared_memory: MasterSharedMemory::new(),
+            slave_shared_memory: SlaveSharedMemory::new(),
             layer: 0,
         }
     }
@@ -123,7 +145,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
 #[config_constraints]
 impl<User: Keyboard> QmkKeyboard<User> {
     #[inline(always)]
-    pub fn panic_handler() -> ! {
+    pub fn panic_handler(_info: &PanicInfo) -> ! {
         User::RED_LED_PIN.gpio_set_pin_output();
         User::RED_LED_PIN.gpio_write_pin_low();
         let _ = Self::oled_on();
@@ -138,23 +160,22 @@ impl<User: Keyboard> QmkKeyboard<User> {
         }
     }
 
-    pub fn init(&self) {
+    pub fn init(&mut self) {
         User::RED_LED_PIN.gpio_set_pin_output();
         User::RED_LED_PIN.gpio_write_pin_low();
         disable_watchdog();
         Self::init_graphics().unwrap();
         timer_init();
-        if is_master() {
-            Self::soft_serial_initiator_init();
-        } else {
-            Self::soft_serial_target_init();
-        }
+        self.serial_init();
         self.matrix_init();
 
-        // Needed for the code to works directly after flash, but seems to crash LUFA, which already resolve the problem on flash
-        // USBCON.write(USBCON & !USBE);
-        unsafe {
-            USB_Init();
+        if is_master() {
+            unsafe {
+                USB_Init();
+            }
+        } else {
+            // Needed for the code to works directly after flash, but seems to crash LUFA, which already resolve the problem on flash
+            USBCON.write(USBCON & !USBE);
         }
 
         // Enable interrupts
@@ -162,12 +183,14 @@ impl<User: Keyboard> QmkKeyboard<User> {
     }
 
     pub fn task(&mut self) {
-        hid_task();
-        unsafe {
-            USB_USBTask();
+        if is_master() {
+            hid_task();
+            unsafe {
+                USB_USBTask();
+            }
         }
-        self.matrix_task();
-        Self::render(true).unwrap();
+        let changed = self.matrix_task();
+        Self::render(changed).unwrap();
     }
 
     pub fn get_layer_up(&mut self, count: u8) -> u8 {
@@ -198,11 +221,13 @@ impl<User: Keyboard> QmkKeyboard<User> {
     }
 
     pub fn key_pressed(&mut self, column: u8, row: u8) {
-        self.get_key(self.layer, column, row).on_pressed(self);
+        self.get_key(self.layer, column, row)
+            .complete_on_pressed(self, row, column);
     }
 
     pub fn key_released(&mut self, column: u8, row: u8) {
-        self.get_key(self.layer, column, row).on_released(self);
+        self.get_key(self.layer, column, row)
+            .complete_on_released(self, row, column);
     }
 }
 

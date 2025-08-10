@@ -10,20 +10,18 @@ use qmk::keys::{
     KC_0_AND_CLOSING_PARENTHESIS, KC_1_AND_EXCLAMATION, KC_2_AND_AT, KC_3_AND_HASHMARK,
     KC_4_AND_DOLLAR, KC_5_AND_PERCENTAGE, KC_6_AND_CARET, KC_7_AND_AMPERSAND, KC_8_AND_ASTERISK,
     KC_9_AND_OPENING_PARENTHESIS, KC_A, KC_APOSTROPHE_AND_QUOTE, KC_B, KC_BACKSPACE, KC_C,
-    KC_COMMA_AND_LESS_THAN_SIGN, KC_D, KC_DOT_AND_GREATER_THAN_SIGN, KC_E, KC_ENTER, KC_ESCAPE,
-    KC_F, KC_F20, KC_F21, KC_G, KC_GRAVE_ACCENT_AND_TILDE, KC_H, KC_I, KC_J, KC_K, KC_L,
+    KC_COMMA_AND_LESS_THAN_SIGN, KC_D, KC_DELETE, KC_DOT_AND_GREATER_THAN_SIGN, KC_E, KC_ENTER,
+    KC_ESCAPE, KC_F, KC_F20, KC_F21, KC_G, KC_GRAVE_ACCENT_AND_TILDE, KC_H, KC_I, KC_J, KC_K, KC_L,
     KC_LEFT_ALT, KC_LEFT_CONTROL, KC_LEFT_GUI, KC_LEFT_SHIFT, KC_M, KC_N, KC_O, KC_P, KC_Q, KC_R,
-    KC_RIGHT_ALT, KC_RIGHT_ARROW, KC_RIGHT_CONTROL, KC_RIGHT_SHIFT, KC_S, KC_SEMICOLON_AND_COLON,
-    KC_SPACE, KC_T, KC_TAB, KC_U, KC_V, KC_W, KC_X, KC_Y, KC_Z, LayerDown, LayerUp, NO_OP,
+    KC_RIGHT_ALT, KC_RIGHT_ARROW, KC_RIGHT_CONTROL, KC_RIGHT_GUI, KC_RIGHT_SHIFT, KC_S,
+    KC_SEMICOLON_AND_COLON, KC_SLASH_AND_QUESTION_MARK, KC_SPACE, KC_T, KC_TAB, KC_U, KC_V, KC_W,
+    KC_X, KC_Y, KC_Z, LayerDown, LayerUp, NO_OP,
 };
-use qmk::serial::{ERROR, RES};
-use qmk::{Keyboard, QmkKeyboard, is_master};
+use qmk::{Keyboard, QmkKeyboard};
 
 use core::panic::PanicInfo;
 
 // include_image!("images/test.png");
-
-static mut ERROR_COUNT: u8 = 0;
 
 #[unsafe(no_mangle)]
 pub extern "C" fn main() {
@@ -31,32 +29,6 @@ pub extern "C" fn main() {
     kb.init();
     loop {
         kb.task();
-        if is_master() {
-            // delay_us::<1000>();
-            QmkKeyboard::<UserKeyboard>::master_exec_transaction(qmk::serial::Transaction::Test);
-        } else if !unsafe { ERROR } {
-            if unsafe { RES } == qmk::serial::CHAINE {
-                QmkKeyboard::<UserKeyboard>::draw_char('o', 0, 0);
-            } else {
-                QmkKeyboard::<UserKeyboard>::draw_char('x', 0, 0);
-                unsafe { ERROR_COUNT += 1 };
-
-                QmkKeyboard::<UserKeyboard>::draw_u8(
-                    unsafe { ERROR_COUNT },
-                    0,
-                    UserKeyboard::CHAR_HEIGHT,
-                );
-            }
-        } else {
-            QmkKeyboard::<UserKeyboard>::draw_char('E', 0, 0);
-            unsafe { ERROR_COUNT += 1 };
-
-            QmkKeyboard::<UserKeyboard>::draw_u8(
-                unsafe { ERROR_COUNT },
-                0,
-                UserKeyboard::CHAR_HEIGHT,
-            );
-        }
     }
 }
 
@@ -89,8 +61,8 @@ const CS_GO_DEF: u16 = to!(0); */
 } */
 
 #[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    QmkKeyboard::<UserKeyboard>::panic_handler()
+fn panic(info: &PanicInfo) -> ! {
+    QmkKeyboard::<UserKeyboard>::panic_handler(info)
 }
 
 #[unsafe(no_mangle)]
@@ -140,7 +112,7 @@ static KEYMAP: Keymap<UserKeyboard> = Keymap::new([
         &KC_8_AND_ASTERISK,
         &KC_9_AND_OPENING_PARENTHESIS,
         &KC_0_AND_CLOSING_PARENTHESIS,
-        &KC_GRAVE_ACCENT_AND_TILDE,
+        &KC_DELETE,
         &KC_TAB,
         &KC_Q,
         &KC_W,
@@ -164,32 +136,31 @@ static KEYMAP: Keymap<UserKeyboard> = Keymap::new([
         &KC_K,
         &KC_L,
         &KC_SEMICOLON_AND_COLON,
-        &KC_APOSTROPHE_AND_QUOTE,
-        &KC_LEFT_CONTROL,
+        &KC_ENTER,
+        &KC_LEFT_SHIFT,
         &KC_Z,
         &KC_X,
         &KC_C,
         &KC_V,
         &KC_B,
-        &KC_F20,
-        &KC_F21,
         &KC_N,
         &KC_M,
         &KC_COMMA_AND_LESS_THAN_SIGN,
         &KC_DOT_AND_GREATER_THAN_SIGN,
-        // &KC_SLASH_AND_QUESTION_MARK,
-        &LayerDown(1),
+        &KC_SLASH_AND_QUESTION_MARK,
         &KC_RIGHT_SHIFT,
         &KC_LEFT_GUI,
         &KC_LEFT_ALT,
-        &KC_LEFT_CONTROL,
-        &KC_BACKSPACE,
+        &LayerDown(1),
         &KC_SPACE,
-        &KC_ENTER,
+        &KC_LEFT_CONTROL,
+        &NO_OP,
         &NO_OP,
         &KC_RIGHT_CONTROL,
+        &KC_SPACE,
         &KC_RIGHT_ALT,
-        &KC_RIGHT_ARROW,
+        &KC_LEFT_ALT,
+        &KC_RIGHT_GUI,
     ]),
     Layer::new([
         &KC_ESCAPE,

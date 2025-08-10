@@ -12,6 +12,10 @@ pub trait CustomKey<User: Keyboard> {
         self.on_pressed(keyboard);
     }
     fn on_pressed(&self, _keyboard: &mut QmkKeyboard<User>) {}
+    #[inline(always)]
+    fn complete_on_released(&self, keyboard: &mut QmkKeyboard<User>, _row: u8, _column: u8) {
+        self.on_released(keyboard);
+    }
     fn on_released(&self, _keyboard: &mut QmkKeyboard<User>) {}
 }
 
