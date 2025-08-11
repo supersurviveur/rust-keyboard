@@ -17,7 +17,7 @@ use crate::{
     timer::cycles_read,
 };
 
-const SERIAL_DELAY: u64 = 6; // in microseconds
+const SERIAL_DELAY: u64 = 4; // in microseconds
 const SERIAL_DELAY_CYCLES: u64 = SERIAL_DELAY * (F_CPU / 1_000_000); // Must be less than 255 due to many cast to u8
 
 const _: () = if SERIAL_DELAY_CYCLES > 255 {
@@ -30,7 +30,7 @@ const SLAVE_INT_WIDTH_US: u64 = 1;
 const CHECK_CODE_SUCCESS: u8 = 0b10001;
 const CHECK_CODE_ERROR: u8 = 0b01110;
 const CHECK_CODE_SIZE: u8 = 5;
-const MAX_TRY_COUNT: u8 = 5;
+const MAX_TRY_COUNT: u8 = 1;
 
 #[derive(Debug)]
 pub struct SerialError;
@@ -43,7 +43,6 @@ pub enum Transaction {
     EndOfCommunication,
     SyncSlave,
     SyncMaster,
-    Test,
     User,
 }
 
@@ -53,7 +52,6 @@ impl Transaction {
         match self {
             Transaction::Reserved => (null_mut(), 0),
             Transaction::EndOfCommunication => (null_mut(), 0),
-            Transaction::Test => unsafe { ({ &mut RES }.as_mut_ptr(), CHAINE.len() as u8) },
             Transaction::SyncSlave => unsafe {
                 (
                     SHARED_MEMORY_SLAVE,
@@ -76,7 +74,6 @@ impl Transaction {
         match self {
             Transaction::Reserved => (null_mut(), 0),
             Transaction::EndOfCommunication => (null_mut(), 0),
-            Transaction::Test => (CHAINE.as_ptr(), CHAINE.len() as u8),
             Transaction::SyncSlave => unsafe {
                 (
                     SHARED_MEMORY_SLAVE,
@@ -97,16 +94,17 @@ impl Transaction {
 }
 
 const MAX_TRANSACTION_NUMBER: u8 = Transaction::User as u8;
+const TRANSACTION_BITS_SIZE: usize = MAX_TRANSACTION_NUMBER.ilog2() as usize
+    + if 2u8.pow(MAX_TRANSACTION_NUMBER.ilog2()) == MAX_TRANSACTION_NUMBER {
+        0
+    } else {
+        1
+    };
 
 /// Shared memory from slave
 pub(crate) static mut SHARED_MEMORY_SLAVE: *mut u8 = null_mut();
 /// Shared memory from master
 pub(crate) static mut SHARED_MEMORY_MASTER: *mut u8 = null_mut();
-
-pub static CHAINE:&[u8] = "Compiling keymap with make -r -R -f builddefs/build_keyboard.mk -s flash KEYBOARD=sofle/rev1 KEYMAP=supersurviveurRBOSE=false COLOR=true SILENT=false".as_bytes();
-
-pub static mut RES: [u8; CHAINE.len()] = [0; CHAINE.len()];
-pub static mut ERROR: bool = false;
 
 #[config_constraints]
 impl<User: Keyboard> QmkKeyboard<User> {
@@ -193,14 +191,14 @@ impl<User: Keyboard> QmkKeyboard<User> {
     fn sync_sender() -> u8 {
         User::SOFT_SERIAL_PIN.gpio_write_pin_low();
 
-        delay_us::<30>();
+        delay_us::<{ SERIAL_DELAY * 2 }>();
         User::SOFT_SERIAL_PIN.gpio_write_pin_high();
         cycles_read().wrapping_add(SERIAL_DELAY_CYCLES as u8)
     }
 
     fn sync_receiver() -> u8 {
         let mut cpt: u8 = 0;
-        while cpt < (SERIAL_DELAY * 5) as u8 && User::SOFT_SERIAL_PIN.gpio_read_pin() {
+        while cpt < (SERIAL_DELAY * 2) as u8 && User::SOFT_SERIAL_PIN.gpio_read_pin() {
             cpt += 1;
             delay_cycles::<5>();
         }
@@ -212,10 +210,10 @@ impl<User: Keyboard> QmkKeyboard<User> {
     }
 
     #[inline(always)]
-    pub fn receive_u8_checked(has_error: &mut bool, mut target: u8) -> (u8, u8) {
+    fn receive_sized_checked<const SIZE: usize>(has_error: &mut bool, mut target: u8) -> (u8, u8) {
         let mut transaction = 0;
         let mut parity = false;
-        for _ in 0..u8::BITS as u8 {
+        for _ in 0..SIZE as u8 {
             let res;
             (res, target) = Self::serial_read_pin(target);
 
@@ -236,10 +234,25 @@ impl<User: Keyboard> QmkKeyboard<User> {
         (transaction, target)
     }
     #[inline(always)]
-    pub fn write_u8_checked(byte: u8, mut target: u8) -> u8 {
+    fn receive_sized_unchecked<const SIZE: usize>(mut target: u8) -> (u8, u8) {
+        let mut transaction = 0;
+        for _ in 0..SIZE as u8 {
+            let res;
+            (res, target) = Self::serial_read_pin(target);
+
+            if res {
+                transaction = (transaction << 1) | 1;
+            } else {
+                transaction <<= 1;
+            }
+        }
+        (transaction, target)
+    }
+    #[inline(always)]
+    fn write_sized_checked<const SIZE: usize>(byte: u8, mut target: u8) -> u8 {
         let mut parity = false;
-        let mut bit = 1 << (u8::BITS as u8 - 1);
-        for _ in 0..u8::BITS as u8 {
+        let mut bit = 1 << (SIZE as u8 - 1);
+        for _ in 0..SIZE as u8 {
             if byte & bit != 0 {
                 target = Self::serial_high(target);
                 parity ^= true;
@@ -257,6 +270,20 @@ impl<User: Keyboard> QmkKeyboard<User> {
             Self::serial_low(target)
         }
     }
+    #[inline(always)]
+    fn write_sized_unchecked<const SIZE: usize>(byte: u8, mut target: u8) -> u8 {
+        let mut bit = 1 << (SIZE as u8 - 1);
+        for _ in 0..SIZE as u8 {
+            if byte & bit != 0 {
+                target = Self::serial_high(target);
+            } else {
+                target = Self::serial_low(target);
+            }
+
+            bit >>= 1;
+        }
+        target
+    }
 
     #[inline(never)]
     /// # Safety
@@ -273,67 +300,59 @@ impl<User: Keyboard> QmkKeyboard<User> {
 
         // Receive transaction byte
         let transaction;
-        (transaction, target) = Self::receive_u8_checked(&mut has_error, target);
-        if has_error || (transaction > MAX_TRANSACTION_NUMBER && transaction != u8::MAX) {
-            has_error = true;
-        } else if transaction == Transaction::Reserved as u8 || transaction == u8::MAX {
+        (transaction, target) =
+            Self::receive_sized_checked::<TRANSACTION_BITS_SIZE>(&mut has_error, target);
+        if has_error
+            || (transaction > MAX_TRANSACTION_NUMBER || transaction == Transaction::Reserved as u8)
+        {
             // This is probably an issue like disconnected keyboards, trying again is useless
             return Err(SerialError);
         }
 
-        let ((ptr, len), end) = if has_error {
-            ((null_mut(), 0), false)
-        } else {
-            let transaction: Transaction = unsafe { transmute(transaction) };
+        let transaction: Transaction = unsafe { transmute(transaction) };
 
-            (
-                transaction.get_receive_address(),
-                transaction == Transaction::EndOfCommunication,
-            )
-        };
-
-        for i in 0..len {
-            let byte;
-            (byte, target) = Self::receive_u8_checked(&mut has_error, target);
-
-            if !has_error {
-                xor_check ^= byte;
-                unsafe {
-                    ptr.add(i as usize).write_volatile(byte);
-                };
-            }
+        let (ptr, len) = transaction.get_receive_address();
+        if transaction == Transaction::EndOfCommunication {
+            return Ok(true);
         }
 
-        // Receive xor_mask byte
-        let recv_xor_check;
-        (recv_xor_check, target) = Self::receive_u8_checked(&mut has_error, target);
+        if len != 0 {
+            for i in 0..len {
+                let byte;
+                (byte, target) =
+                    Self::receive_sized_checked::<{ u8::BITS as usize }>(&mut has_error, target);
 
-        // Send response
-        let check_code = if recv_xor_check != xor_check || has_error {
-            CHECK_CODE_ERROR
-        } else {
-            CHECK_CODE_SUCCESS
-        };
-        let mut bit = 1 << (CHECK_CODE_SIZE - 1);
-        target = unsafe { Self::serial_receiver_to_sender(target) };
+                if !has_error {
+                    xor_check ^= byte;
+                    unsafe {
+                        ptr.add(i as usize).write_volatile(byte);
+                    };
+                }
+            }
 
-        for _ in 0..CHECK_CODE_SIZE {
-            if check_code & bit != 0 {
-                target = Self::serial_high(target);
+            // Receive xor_mask byte
+            let recv_xor_check;
+            (recv_xor_check, target) =
+                Self::receive_sized_unchecked::<{ u8::BITS as usize }>(target);
+
+            // Send response
+            let check_code = if recv_xor_check != xor_check || has_error {
+                CHECK_CODE_ERROR
             } else {
-                target = Self::serial_low(target);
+                CHECK_CODE_SUCCESS
+            };
+            target = unsafe { Self::serial_receiver_to_sender(target) };
+
+            target =
+                Self::write_sized_unchecked::<{ CHECK_CODE_SIZE as usize }>(check_code, target);
+
+            let _target = Self::serial_sender_to_receiver(target);
+
+            if check_code == CHECK_CODE_ERROR {
+                return unsafe { Self::serial_read_data(try_count + 1) };
             }
-
-            bit >>= 1;
         }
-
-        let _target = Self::serial_sender_to_receiver(target);
-
-        if check_code == CHECK_CODE_ERROR {
-            unsafe { Self::serial_read_data(try_count + 1) }
-        } else {
-            Ok(end)
-        }
+        Ok(false)
     }
 
     #[inline(never)]
@@ -348,40 +367,47 @@ impl<User: Keyboard> QmkKeyboard<User> {
         let mut target = Self::sync_sender();
 
         // Send transaction byte
-        target = Self::write_u8_checked(transaction as u8, target);
+        target = Self::write_sized_checked::<TRANSACTION_BITS_SIZE>(transaction as u8, target);
 
-        for i in 0..len {
-            let byte = unsafe { data.add(i as usize).read_volatile() };
-            xor_check ^= byte;
+        if len != 0 {
+            for i in 0..len {
+                let byte = unsafe { data.add(i as usize).read_volatile() };
+                xor_check ^= byte;
 
-            target = Self::write_u8_checked(byte, target);
-        }
-
-        // Send xor_mask byte
-        target = Self::write_u8_checked(xor_check, target);
-
-        // Receive response
-        let mut check_code = 0;
-        target = Self::serial_sender_to_receiver(target);
-
-        for _ in 0..CHECK_CODE_SIZE as usize {
-            let res;
-            (res, target) = Self::serial_read_pin(target);
-
-            if res {
-                check_code = (check_code << 1) | 1;
-            } else {
-                check_code <<= 1;
+                target = Self::write_sized_checked::<{ u8::BITS as usize }>(byte, target);
             }
-        }
-        target = unsafe { Self::serial_receiver_to_sender(target) };
-        let _target = Self::serial_low(target); // sync_send() / senc_recv() need raise edge
 
-        // Loop in case of errors
-        match check_code {
-            // These codes are probably a success code
-            0b10001 | 0b01001 | 0b10010 | 0b11001 | 0b10011 => Ok(()),
-            _ => Self::serial_write_data(transaction, try_count + 1),
+            // Send xor_mask byte
+            target = Self::write_sized_unchecked::<{ u8::BITS as usize }>(xor_check, target);
+
+            // Receive response
+            let mut check_code: u8 = 0;
+            target = Self::serial_sender_to_receiver(target);
+
+            for _ in 0..CHECK_CODE_SIZE as usize {
+                let res;
+                (res, target) = Self::serial_read_pin(target);
+
+                if res {
+                    check_code = (check_code << 1) | 1;
+                } else {
+                    check_code <<= 1;
+                }
+            }
+            target = unsafe { Self::serial_receiver_to_sender(target) };
+            let _target = Self::serial_low(target); // sync_send() / senc_recv() need raise edge
+
+            // Loop in case of errors
+            match check_code {
+                // These codes are probably a success code
+                0b10001 | 0b01001 | 0b10010 | 0b11001 | 0b10011 => Ok(()),
+                // This is probably an issue like disconnected keyboards, trying again is useless
+                0 | 0b11111111 => Err(SerialError),
+                _ => Self::serial_write_data(transaction, try_count + 1),
+            }
+        } else {
+            let _target = Self::serial_low(target); // sync_send() / senc_recv() need raise edge
+            Ok(())
         }
     }
 
@@ -389,13 +415,12 @@ impl<User: Keyboard> QmkKeyboard<User> {
         loop {
             match unsafe { Self::serial_read_data(0) } {
                 Ok(end) => {
-                    unsafe { ERROR = false };
                     if end {
                         return false;
                     }
                 }
                 Err(SerialError) => {
-                    unsafe { ERROR = true };
+                    unsafe { ERROR_COUNT += 1 };
                     return true;
                 }
             }
@@ -406,9 +431,6 @@ impl<User: Keyboard> QmkKeyboard<User> {
         atomic(|| {
             Self::trigger_serial_interrupt();
 
-            // if Self::serial_write_data(Transaction::Test, 0).is_err() {
-            //     return;
-            // }
             if Self::serial_write_data(Transaction::SyncMaster, 0).is_err() {
                 return;
             }
@@ -446,9 +468,6 @@ impl<User: Keyboard> QmkKeyboard<User> {
         if Self::serial_write_data(Transaction::SyncSlave, 0).is_err() {
             return;
         }
-        // if Self::serial_write_data(Transaction::Test, 0).is_err() {
-        //     return;
-        // }
         if Self::serial_write_data(Transaction::EndOfCommunication, 0).is_err() {
             return;
         }
@@ -463,7 +482,8 @@ impl<User: Keyboard> QmkKeyboard<User> {
     #[config_constraints]
     pub fn serial_task(&mut self) {
         if is_master() {
-            delay_us::<1000>();
+            // Delay to avoid blocking the slave in the interrupt
+            // delay_us::<1000>();
             unsafe {
                 // Copy the matrix in the shared memory
                 self.master_shared_memory.master_matrix = *self.current_matrix
@@ -496,21 +516,6 @@ impl<User: Keyboard> QmkKeyboard<User> {
                     .unwrap_unchecked() = self.master_shared_memory.master_matrix;
             };
         }
-        if !unsafe { ERROR } {
-            if unsafe { RES } == CHAINE {
-                Self::draw_char('o', 0, 0);
-            } else {
-                Self::draw_char('x', 0, 0);
-                unsafe { ERROR_COUNT += 1 };
-
-                Self::draw_u8(unsafe { ERROR_COUNT }, 0, User::CHAR_HEIGHT);
-            }
-        } else {
-            Self::draw_char('E', 0, 0);
-            unsafe { ERROR_COUNT += 1 };
-
-            Self::draw_u8(unsafe { ERROR_COUNT }, 0, User::CHAR_HEIGHT);
-        }
     }
 }
-static mut ERROR_COUNT: u8 = 0;
+pub static mut ERROR_COUNT: u8 = 0;

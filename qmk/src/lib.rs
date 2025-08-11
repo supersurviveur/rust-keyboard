@@ -36,7 +36,10 @@ use crate::{
     keymap::{CustomKey, Keymap},
     primitive::{Array2D, BinPackedArray},
     rotary_encoder::RotaryEncoder,
-    serial::shared_memory::{MasterSharedMemory, SlaveSharedMemory},
+    serial::{
+        ERROR_COUNT,
+        shared_memory::{MasterSharedMemory, SlaveSharedMemory},
+    },
     timer::timer_init,
     usb::events::hid_task,
 };
@@ -223,6 +226,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
             rotary_encoder::Direction::None => {}
         }
         Self::draw_u8(self.test, 0, 100);
+        Self::draw_u8(unsafe { ERROR_COUNT }, 0, 50);
         let changed = self.matrix_task();
         Self::render(changed).unwrap();
     }
