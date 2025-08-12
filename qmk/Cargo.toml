@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-qmk_sys = { path = "../qmk_sys" }
 keyboard_macros = { path = "../keyboard_macros" }
 lufa-rs = { path = "../lufa-rs" }
 avr-base = { path = "../avr-base" }

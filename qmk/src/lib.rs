@@ -8,7 +8,7 @@
     associated_type_defaults,
     const_trait_impl,
     const_from,
-    slice_as_array
+    slice_as_array,
 )]
 #![allow(incomplete_features)]
 // We are on only one proc, with one thread, so there is no need to worry about static mut ref
@@ -26,15 +26,14 @@ use core::{
 };
 use num_traits::PrimInt;
 
-use keyboard_macros::config_constraints;
+use keyboard_macros::{config_constraints, progmem};
 use lufa_rs::{USB_Init, USB_USBTask};
 use num_traits::Unsigned;
-use qmk_sys::progmem;
 
 use crate::{
     init::disable_watchdog,
     keymap::{CustomKey, Keymap},
-    primitive::{Array2D, BinPackedArray},
+    primitive::{Array2D, BinPackedArray, IndexByValue},
     rotary_encoder::RotaryEncoder,
     serial::{
         ERROR_COUNT,
@@ -54,6 +53,7 @@ pub mod keys;
 pub mod matrix;
 pub mod pins;
 pub mod primitive;
+pub use primitive::progmem;
 pub mod rotary_encoder;
 pub mod serial;
 pub mod timer;
@@ -107,7 +107,7 @@ pub trait Keyboard: Sized + 'static {
 
     /// This **MUST** be in progmem !
     #[config_constraints(Self)]
-    const KEYMAP: &'static Keymap<Self>;
+    const KEYMAP: progmem::ProgmemRef<Keymap<Self>>;
 
     #[config_constraints(Self)]
     fn test(keyboard: &mut QmkKeyboard<Self>);
@@ -167,6 +167,9 @@ impl<User: Keyboard> QmkKeyboard<User> {
     }
 }
 
+#[progmem]
+static PANIC_TEXT: [u8; 9] = *b"PANIC /!\\";
+
 #[config_constraints]
 impl<User: Keyboard> QmkKeyboard<User> {
     #[inline(always)]
@@ -175,7 +178,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
         User::RED_LED_PIN.gpio_write_pin_low();
         let _ = Self::oled_on();
         // Self::clear();
-        Self::draw_text("PANICKED /!\\", 0, 0);
+        Self::draw_text(PANIC_TEXT.iter_u8().map(|x| x as char), 0, 0);
         let _ = Self::render(true);
         loop {
             delay_us::<1000000>();
@@ -245,17 +248,16 @@ impl<User: Keyboard> QmkKeyboard<User> {
         self.layer = self.get_layer_down(count);
     }
     pub fn get_key(&self, layer: u8, column: u8, row: u8) -> &'static dyn CustomKey<User> {
-        unsafe {
-            progmem::read_value(
-                &User::KEYMAP.layers[layer as usize].keys[(column
-                    + (row % User::ROWS_PER_HAND) * User::MATRIX_COLUMNS * 2
-                    + if row >= User::ROWS_PER_HAND {
-                        User::MATRIX_COLUMNS
-                    } else {
-                        0
-                    }) as usize],
-            )
-        }
+        User::KEYMAP
+            .at(layer as usize)
+            .at((column
+                + (row % User::ROWS_PER_HAND) * User::MATRIX_COLUMNS * 2
+                + if row >= User::ROWS_PER_HAND {
+                    User::MATRIX_COLUMNS
+                } else {
+                    0
+                }) as usize)
+            .read()
     }
 
     pub fn key_pressed(&mut self, column: u8, row: u8) {

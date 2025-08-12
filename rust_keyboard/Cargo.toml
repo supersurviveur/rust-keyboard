@@ -6,7 +6,6 @@ edition = "2024"
 [dependencies]
 keyboard_macros = { path = "../keyboard_macros" }
 qmk = { path = "../qmk" }
-qmk_sys = { path = "../qmk_sys" }
 avr-base = { path = "../avr-base" }
 lufa-rs = { path = "../lufa-rs" }
 compiler_builtins = "0.1.160"

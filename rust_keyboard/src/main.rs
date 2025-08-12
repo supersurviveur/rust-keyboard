@@ -17,8 +17,8 @@ use qmk::keys::{
     KC_SEMICOLON_AND_COLON, KC_SLASH_AND_QUESTION_MARK, KC_SPACE, KC_T, KC_TAB, KC_U, KC_V, KC_W,
     KC_X, KC_Y, KC_Z, LayerDown, LayerUp, NO_OP,
 };
-use qmk::{Keyboard, QmkKeyboard};
-
+use qmk::{Keyboard, QmkKeyboard, progmem};
+use keyboard_macros::progmem;
 // include_image!("images/test.png");
 
 #[entry]
@@ -53,7 +53,7 @@ impl Keyboard for UserKeyboard {
     const CHAR_HEIGHT: u8 = 13;
     const USER_FONTPLATE: [u8; Self::FONT_SIZE] = include_font_plate!("images/fontplate.png");
 
-    const KEYMAP: &'static Keymap<Self> = &KEYMAP;
+    const KEYMAP: progmem::ProgmemRef<Keymap<Self>> = KEYMAP;
 
     fn test(keyboard: &mut QmkKeyboard<Self>) {
         keyboard.user.a = 3;
@@ -62,9 +62,9 @@ impl Keyboard for UserKeyboard {
     type MatrixRowType = u8;
 }
 
-#[unsafe(link_section = ".progmem.data")]
-static KEYMAP: Keymap<UserKeyboard> = Keymap::new([
-    Layer::new([
+#[progmem]
+static KEYMAP: Keymap<UserKeyboard> = [
+    [
         &KC_ESCAPE,
         &KC_1_AND_EXCLAMATION,
         &KC_2_AND_AT,
@@ -125,8 +125,8 @@ static KEYMAP: Keymap<UserKeyboard> = Keymap::new([
         &KC_RIGHT_ALT,
         &KC_LEFT_ALT,
         &KC_RIGHT_GUI,
-    ]),
-    Layer::new([
+    ],
+    [
         &KC_ESCAPE,
         &KC_1_AND_EXCLAMATION,
         &KC_2_AND_AT,
@@ -188,5 +188,5 @@ static KEYMAP: Keymap<UserKeyboard> = Keymap::new([
         &KC_RIGHT_CONTROL,
         &KC_RIGHT_ALT,
         &KC_RIGHT_ARROW,
-    ]),
-]);
+    ],
+];

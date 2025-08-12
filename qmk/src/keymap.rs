@@ -6,7 +6,7 @@ use crate::{
 };
 
 #[config_constraints]
-pub trait CustomKey<User: Keyboard> {
+pub trait CustomKey<User: Keyboard>: Send + Sync {
     #[inline(always)]
     fn complete_on_pressed(&self, keyboard: &mut QmkKeyboard<User>, _row: u8, _column: u8) {
         self.on_pressed(keyboard);
@@ -32,38 +32,5 @@ impl<User: Keyboard> CustomKey<User> for Key {
     }
 }
 
-#[config_constraints]
-#[derive(Debug, Clone, Copy)]
-pub struct Layer<User: Keyboard>
-where
-    [(); User::MATRIX_ROWS as usize * User::MATRIX_COLUMNS as usize]:,
-{
-    pub keys:
-        [&'static dyn CustomKey<User>; User::MATRIX_ROWS as usize * User::MATRIX_COLUMNS as usize],
-}
-
-#[config_constraints]
-#[derive(Debug, Clone, Copy)]
-pub struct Keymap<User: Keyboard> {
-    pub layers: [Layer<User>; User::LAYER_COUNT],
-}
-
-#[config_constraints]
-unsafe impl<User: Keyboard> Sync for Keymap<User> {}
-
-#[config_constraints]
-impl<User: Keyboard> Keymap<User> {
-    pub const fn new(layers: [Layer<User>; User::LAYER_COUNT]) -> Self {
-        Self { layers }
-    }
-}
-
-#[config_constraints]
-impl<User: Keyboard> Layer<User> {
-    pub const fn new(
-        keys: [&'static dyn CustomKey<User>;
-            User::MATRIX_ROWS as usize * User::MATRIX_COLUMNS as usize],
-    ) -> Self {
-        Self { keys }
-    }
-}
+pub type Layer<User: Keyboard> = [&'static dyn CustomKey<User>;User::MATRIX_ROWS as usize * User::MATRIX_COLUMNS as usize];
+pub type Keymap<User: Keyboard> = [Layer<User>;User::LAYER_COUNT];

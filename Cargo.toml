@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = [ "avr-base", "lufa-rs", "rust_keyboard", "qmk", "qmk_sys" ]
+members = [ "avr-base", "lufa-rs", "rust_keyboard", "qmk"]
 exclude = [ "keyboard_macros" ]
 
 [profile.dev]

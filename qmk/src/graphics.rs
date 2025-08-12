@@ -1,10 +1,9 @@
 use core::{cmp::min, iter::Iterator};
 
 use crate::i2c::I2CError;
-use crate::{Keyboard, QmkKeyboard, i2c};
+use crate::{Keyboard, QmkKeyboard, i2c, progmem};
 
-use keyboard_macros::{config_constraints, progmem};
-use qmk_sys::progmem::RamOrFlash;
+use keyboard_macros::{config_constraints};
 const OLED_DISPLAY_HEIGHT: u8 = 32;
 const OLED_DISPLAY_WIDTH: u8 = 128;
 const OLED_MATRIX_SIZE: usize = (OLED_DISPLAY_HEIGHT as usize) * (OLED_DISPLAY_WIDTH as usize) / 8;
@@ -132,21 +131,15 @@ static DISPLAY_OFF_DATA: [u8; 2] = [I2C_CMD, DISPLAY_OFF];
 #[config_constraints]
 impl<User: Keyboard> QmkKeyboard<User> {
     #[inline(always)]
-    pub fn oled_send_array<const SIZE: usize, T: RamOrFlash<[u8; SIZE]>>(
-        data: &T,
-    ) -> Result<(), I2CError> {
-        i2c::i2c_transmit(OLED_DISPLAY_ADDRESS << 1, data.iter(), OLED_I2C_TIMEOUT)
-    }
-    #[inline(always)]
     pub fn oled_send_iter<T: Iterator<Item = u8>>(data: T) -> Result<(), I2CError> {
         i2c::i2c_transmit(OLED_DISPLAY_ADDRESS << 1, data, OLED_I2C_TIMEOUT)
     }
 
     pub fn init_graphics() -> Result<(), I2CError> {
         i2c::i2c_init();
-        Self::oled_send_array(&DISPLAY_SETUP1)?;
-        Self::oled_send_array(&DISPLAY_NORMAL)?;
-        Self::oled_send_array(&DISPLAY_SETUP2)?;
+        Self::oled_send_iter(DISPLAY_SETUP1.iter_u8())?;
+        Self::oled_send_iter(DISPLAY_NORMAL.iter_u8())?;
+        Self::oled_send_iter(DISPLAY_SETUP2.iter_u8())?;
         unsafe { INITIALIZED = true };
         unsafe { OLED_ACTIVE = true };
         unsafe { NEXT_OLED_TIMEOUT = timer_read() + OLED_TIMEOUT };
@@ -160,7 +153,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
             unsafe { OLED_ACTIVE = false };
         }
         if !unsafe { OLED_ACTIVE } {
-            Self::oled_send_array(&DISPLAY_ON_DATA)?;
+            Self::oled_send_iter(DISPLAY_ON_DATA.iter_u8())?;
             unsafe { OLED_ACTIVE = true };
             unsafe { NEXT_OLED_TIMEOUT = timer_read() + OLED_TIMEOUT };
         }
@@ -171,7 +164,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
             return Ok(());
         }
         if unsafe { OLED_ACTIVE } {
-            Self::oled_send_array(&DISPLAY_OFF_DATA)?;
+            Self::oled_send_iter(DISPLAY_OFF_DATA.iter_u8())?;
             unsafe { OLED_ACTIVE = false };
         }
         Ok(())
@@ -186,7 +179,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
             ROW_LOW_SELECT | (row & 0xF),
             ROW_HIGH_SELECT | (row >> 4),
         ];
-        Self::oled_send_array(&commands)?;
+        Self::oled_send_iter(commands.into_iter())?;
         Ok(())
     }
 
@@ -322,8 +315,8 @@ impl<User: Keyboard> QmkKeyboard<User> {
         }
     }
 
-    pub fn draw_text<'a, T: RamOrFlash<&'a str>>(text: T, mut offset_x: u8, mut offset_y: u8) {
-        for ascii in text.load().chars() {
+    pub fn draw_text<'a, T: Iterator<Item = char>>(text: T, mut offset_x: u8, mut offset_y: u8) {
+        for ascii in text {
             if offset_x + User::CHAR_WIDTH >= OLED_DISPLAY_HEIGHT {
                 offset_x = 0;
                 offset_y += User::CHAR_HEIGHT
