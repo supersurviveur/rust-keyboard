@@ -190,7 +190,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
 
     pub fn init(&mut self) {
         User::RED_LED_PIN.gpio_set_pin_output();
-        User::RED_LED_PIN.gpio_write_pin_low();
+        User::RED_LED_PIN.gpio_write_pin_high();
         disable_watchdog();
         Self::init_graphics().unwrap();
         timer_init();
