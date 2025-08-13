@@ -136,6 +136,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
     }
 
     pub fn init_graphics() -> Result<(), I2CError> {
+
         i2c::i2c_init();
         Self::oled_send_iter(DISPLAY_SETUP1.iter_u8())?;
         Self::oled_send_iter(DISPLAY_NORMAL.iter_u8())?;

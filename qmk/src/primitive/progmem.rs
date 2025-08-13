@@ -216,6 +216,7 @@ impl<T> Iterator for ProgmemIterator<T> {
         if self.remaining == 0 {
             None
         } else {
+            self.remaining -= 1;
             unsafe { Some(self.ptr.read_incr()) }
         }
     }

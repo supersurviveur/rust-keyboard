@@ -176,10 +176,10 @@ impl<User: Keyboard> QmkKeyboard<User> {
     pub fn panic_handler(_info: &PanicInfo) -> ! {
         User::RED_LED_PIN.gpio_set_pin_output();
         User::RED_LED_PIN.gpio_write_pin_low();
-        let _ = Self::oled_on();
+        // let _ = Self::oled_on();
         // Self::clear();
-        Self::draw_text(PANIC_TEXT.iter_u8().map(|x| x as char), 0, 0);
-        let _ = Self::render(true);
+        // Self::draw_text(PANIC_TEXT.iter_u8().map(|x| x as char), 0, 0);
+        // let _ = Self::render(true);
         loop {
             delay_us::<1000000>();
             User::RED_LED_PIN.gpio_write_pin_high();
@@ -189,11 +189,13 @@ impl<User: Keyboard> QmkKeyboard<User> {
     }
 
     pub fn init(&mut self) {
+        avr_base::pins::B0.gpio_set_pin_output();
+        avr_base::pins::B0.gpio_write_pin_high();
         User::RED_LED_PIN.gpio_set_pin_output();
         User::RED_LED_PIN.gpio_write_pin_high();
         disable_watchdog();
-        Self::init_graphics().unwrap();
         timer_init();
+        Self::init_graphics().unwrap();
         self.serial_init();
         self.rotary_encoder.init();
         self.matrix_init();

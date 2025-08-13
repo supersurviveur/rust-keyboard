@@ -156,7 +156,7 @@ pub unsafe extern "C" fn CALLBACK_USB_GetDescriptor(
         }
         c if c == UsbDescriptorTypes::Configuration as u8 => {
             address = CONFIGURATION_DESCRIPTOR.as_ptr().cast();
-            size = DEVICE_DESCRIPTOR.len();
+            size = CONFIGURATION_DESCRIPTOR.len();
         }
         c if c == UsbDescriptorTypes::String  as u8 => match descriptor_number {
             code if code == StringDescriptors::Language as u8 => {
