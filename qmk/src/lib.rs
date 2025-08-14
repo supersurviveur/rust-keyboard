@@ -9,6 +9,7 @@
     const_trait_impl,
     const_from,
     slice_as_array,
+    likely_unlikely,
 )]
 #![allow(incomplete_features)]
 // We are on only one proc, with one thread, so there is no need to worry about static mut ref
@@ -51,7 +52,6 @@ pub mod init;
 pub mod keymap;
 pub mod keys;
 pub mod matrix;
-pub mod pins;
 pub mod primitive;
 pub use primitive::progmem;
 pub mod rotary_encoder;

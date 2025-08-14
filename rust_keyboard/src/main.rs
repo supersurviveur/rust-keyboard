@@ -19,12 +19,19 @@ use qmk::keys::{
 };
 use qmk::{Keyboard, QmkKeyboard, progmem};
 use keyboard_macros::progmem;
+use qmk::primitive::eeprom::{EepromRefMut};
 // include_image!("images/test.png");
+
+type Kb = QmkKeyboard<UserKeyboard>;
 
 #[entry]
 fn main() {
     let mut kb = QmkKeyboard::new(UserKeyboard { a: 3 });
     kb.init();
+    let mut progmemtest = unsafe {EepromRefMut::new(0 as *mut u8)};
+    let old_value = progmemtest.read();
+    Kb::draw_u8(old_value, 1, 0);
+    progmemtest.write(&old_value.wrapping_add(1));
     loop {
         kb.task();
     }

@@ -84,3 +84,17 @@ pub const USBE: u8 = 1 << 7;
 pub const WDE: u8 = 1 << 3;
 /// Watch Dog Change Enable
 pub const WDCE: u8 = 1 << 4;
+
+/// EEPROM Registers
+pub const EECR: Register<0x3F> = Register();
+pub const EEARH: Register<0x42> = Register();
+pub const EEARL: Register<0x41> = Register();
+pub const EEDR: Register<0x40> = Register();
+
+/// EECR (EEPROM Control Register) bits
+pub const EEPM1: u8 = 1<<5;
+pub const EEPM0: u8 = 1<<4;
+pub const EERIE: u8 = 1<<3;
+pub const EEMPE: u8 = 1<<2;
+pub const EEPE: u8 = 1<<1;
+pub const EERE: u8 = 1<<0;
