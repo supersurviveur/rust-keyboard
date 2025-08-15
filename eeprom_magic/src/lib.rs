@@ -51,11 +51,11 @@ pub fn eeprom(_attr: TokenStream, item: TokenStream) -> TokenStream {
         }
 
         // Public constant wrapper exposing the offset from section start.
-        #vis const #name: ::eeprom_magic::eeprom::EepromRefMut<'static,#ty> = {
+        #vis const #name: eeprom::EepromRefMut<'static,#ty> = {
             // Const-evaluable address arithmetic.
             let data_ptr = (&raw const #placed_name) as usize;
             let start_ptr = unsafe { (&raw const #start_sym) as usize };
-            ::eeprom_magic::eeprom::EepromRefMut::<'static,#ty>::new(data_ptr - start_ptr)
+            unsafe {eeprom::EepromRefMut::<'static,#ty>::new((data_ptr - start_ptr) as *mut #ty)}
         };
     };
 

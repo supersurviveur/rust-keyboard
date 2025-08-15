@@ -3,7 +3,8 @@
 target = "./atmega32u4.json"
 
 [target.atmega32u4]
-rustflags = [ "-C", "target-feature=+crt-static", "-C", "target-cpu=atmega32u4", "-Zlocation-detail=none", "-Zfmt-debug=none" , "-C", "link-arg=-Teeprom_magic/eeprom.ld"]
+rustflags = [ "-C", "target-feature=+crt-static", "-C", "target-cpu=atmega32u4", "-Zlocation-detail=none", "-Zfmt-debug=none" ]
+# , "-C", "link-arg=-Teeprom_magic/eeprom.ld"]
 
 [unstable]
 build-std = [ "core" ]

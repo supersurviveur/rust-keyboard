@@ -41,7 +41,7 @@ pub struct EepromRef<'a, T> {
 }
 
 impl<T> EepromPtr<T> {
-    pub fn new(ptr: *const T) -> Self {
+    pub const fn new(ptr: *const T) -> Self {
         Self { ptr }
     }
     /// # Safety
@@ -71,7 +71,7 @@ impl<T> EepromPtr<T> {
         }
         unsafe { res.assume_init() }
     }
-    pub fn cast<U>(&self) -> EepromPtr<U> {
+    pub const fn cast<U>(&self) -> EepromPtr<U> {
         EepromPtr {
             ptr: self.ptr.cast(),
         }
@@ -90,13 +90,13 @@ impl<'a, T> EepromRef<'a, T> {
     /// # Safety
     /// Must point to a T in progmem
     /// no live ProgmemRefMut must overlap while this one live
-    pub unsafe fn new(ptr: *const T) -> Self {
+    pub const unsafe fn new(ptr: *const T) -> Self {
         Self {
             ptr,
             _phantom: PhantomData,
         }
     }
-    pub fn as_ptr(&self) -> EepromPtr<T> {
+    pub const fn as_ptr(&self) -> EepromPtr<T> {
         EepromPtr { ptr: self.ptr }
     }
     pub fn read_byte(&self) -> u8 {
@@ -127,10 +127,10 @@ impl<T> Clone for EepromPtrMut<T> {
 impl<T> Copy for EepromPtrMut<T> {}
 
 impl<T> EepromPtrMut<T> {
-    pub fn new(ptr: *mut T) -> Self {
+    pub const fn new(ptr: *mut T) -> Self {
         Self { ptr }
     }
-    pub fn as_ptr(&self) -> EepromPtr<T> {
+    pub const fn as_ptr(&self) -> EepromPtr<T> {
         EepromPtr { ptr: self.ptr }
     }
     /// # Safety
@@ -168,7 +168,7 @@ impl<T> EepromPtrMut<T> {
             eeptr.ptr = eeptr.ptr.wrapping_byte_add(1);
         }
     }
-    pub fn cast<U>(&self) -> EepromPtrMut<U> {
+    pub const fn cast<U>(&self) -> EepromPtrMut<U> {
         EepromPtrMut {
             ptr: self.ptr.cast(),
         }
@@ -178,19 +178,19 @@ impl<T> EepromPtrMut<T> {
 impl<'a, T> EepromRefMut<'a, T> {
     /// # Safety
     /// Only one must be created, no other ProgmemRef or ProgmemRefMut shall live at the same time
-    pub unsafe fn new(ptr: *mut T) -> Self {
+    pub const unsafe fn new(ptr: *mut T) -> Self {
         Self {
             ptr,
             _phantom: PhantomData,
         }
     }
-    pub fn as_mut_ptr(&self) -> EepromPtrMut<T> {
+    pub const fn as_mut_ptr(&self) -> EepromPtrMut<T> {
         EepromPtrMut { ptr: self.ptr }
     }
-    pub fn as_ptr(&self) -> EepromPtr<T> {
+    pub const fn as_ptr(&self) -> EepromPtr<T> {
         EepromPtr { ptr: self.ptr }
     }
-    pub fn as_ref<'b>(&'b self) -> EepromRef<'b, T>
+    pub const fn as_ref<'b>(&'b self) -> EepromRef<'b, T>
     where
         'a: 'b,
     {

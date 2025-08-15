@@ -1,5 +1,6 @@
 TARGET_RS := atmega32u4
 
+.PHONY: build
 
 left: build
 left: flash
