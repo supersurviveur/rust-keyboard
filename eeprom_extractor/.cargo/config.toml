@@ -1,0 +1,6 @@
+build = {}
+
+[unsatble]
+build-std = ""
+
+[env]
