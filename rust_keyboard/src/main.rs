@@ -17,25 +17,13 @@ use qmk::keys::{
     KC_SEMICOLON_AND_COLON, KC_SLASH_AND_QUESTION_MARK, KC_SPACE, KC_T, KC_TAB, KC_U, KC_V, KC_W,
     KC_X, KC_Y, KC_Z, LayerDown, LayerUp, NO_OP,
 };
-use qmk::{Keyboard, QmkKeyboard, progmem};
+use qmk::{Keyboard, QmkKeyboard, progmem, eeprom};
 use keyboard_macros::progmem;
-use qmk::primitive::eeprom::{self, EepromRefMut};
 use eeprom_magic::eeprom;
 // include_image!("images/test.png");
 
-// #[eeprom]
-// static mut TEST: u8 = 42;
-
-#[unsafe(no_mangle)]
-#[unsafe(link_section = ".eeprom")]
-static mut TEST_EEPROM: u8 = 42;
-
-const TEST: eeprom::EepromRefMut<'static, u8> = {
-    // let data_ptr = (&raw const TEST_EEPROM) as usize;
-    // let start_ptr = unsafe { (&raw const __eeprom_data_start) as usize};
-    // let ptr = unsafe { data_ptr - start_ptr };
-    unsafe {eeprom::EepromRefMut::<'static, u8>::new(&raw mut TEST_EEPROM)}
-};
+#[eeprom]
+static mut TEST: u8 = 42;
 
 type Kb = QmkKeyboard<UserKeyboard>;
 
@@ -43,7 +31,7 @@ type Kb = QmkKeyboard<UserKeyboard>;
 fn main() {
     let mut kb = QmkKeyboard::new(UserKeyboard { a: 3 });
     kb.init();
-    let mut progmemtest = unsafe {TEST};
+    let mut progmemtest = TEST;
     let old_value = progmemtest.read();
     Kb::draw_u8(old_value, 1, 0);
     progmemtest.write(&old_value.wrapping_add(1));

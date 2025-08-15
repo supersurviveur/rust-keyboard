@@ -53,7 +53,7 @@ pub mod keymap;
 pub mod keys;
 pub mod matrix;
 pub mod primitive;
-pub use primitive::progmem;
+pub use primitive::{progmem,eeprom};
 pub mod rotary_encoder;
 pub mod serial;
 pub mod timer;
