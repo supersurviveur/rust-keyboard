@@ -19,7 +19,7 @@ use qmk::keys::{
 };
 use qmk::{Keyboard, QmkKeyboard, progmem};
 use keyboard_macros::progmem;
-use qmk::primitive::eeprom::{EepromRefMut};
+use qmk::primitive::eeprom::{self, EepromRefMut};
 // include_image!("images/test.png");
 
 type Kb = QmkKeyboard<UserKeyboard>;

@@ -1,13 +1,13 @@
 [workspace]
 resolver = "3"
 members = [ "avr-base", "lufa-rs", "rust_keyboard", "qmk"]
-exclude = [ "keyboard_macros" ]
+exclude = [ "keyboard_macros", "eeprom_magic" ]
 
 [profile.dev]
 panic = "abort"
 
 [profile.release]
 panic = "abort"
-lto = true
+lto = "fat"
 opt-level = "z"
 codegen-units = 1

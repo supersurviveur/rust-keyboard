@@ -1,8 +1,16 @@
-[workspace]
-resolver = "3"
-members = [ "eeprom_macro", "eeprom_extractor",]
+[package]
+name = "eeprom_magic"
+version = "0.0.1"
+edition = "2024"
 
-[profile.release]
-lto = "fat"
-opt-level = 3
-codegen-units = 1
+[lib]
+proc-macro = true
+path = "src/lib.rs"
+
+[dependencies]
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "2", features = ["full"] }
+
+[build-dependencies]
+# Optional, used to print linker hints
