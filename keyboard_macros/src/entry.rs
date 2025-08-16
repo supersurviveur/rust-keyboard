@@ -1,23 +1,35 @@
 use proc_macro::TokenStream;
-use quote::quote;
-use syn::{ItemFn, parse_macro_input, parse_quote};
+use quote::{format_ident, quote};
+use syn::{parse_macro_input, parse_quote, Ident, ItemFn};
 
-pub fn entry_impl(_args: TokenStream, item: TokenStream) -> TokenStream {
+pub fn entry_impl(args: TokenStream, item: TokenStream) -> TokenStream {
     let mut main = parse_macro_input!(item as ItemFn);
-    main.sig.abi = Some(parse_quote! {extern "C"});
-    main.attrs.push(parse_quote! {#[unsafe(no_mangle)]});
+    let userkbtype = parse_macro_input!(args as Ident);
+    // main.sig.abi = Some(parse_quote! {extern "C"});
+    main.attrs.push(parse_quote! {#[inline(always)]});
+    main.sig.ident = format_ident!("_main_rs");
 
     quote! {
         #[panic_handler]
         fn panic(info: &::core::panic::PanicInfo) -> ! {
-            qmk::QmkKeyboard::<UserKeyboard>::panic_handler(info)
+            qmk::QmkKeyboard::<#userkbtype>::panic_handler(info)
         }
 
         #[unsafe(no_mangle)]
         extern "avr-interrupt" fn __vector_3() {
-            qmk::QmkKeyboard::<UserKeyboard>::serial_interrupt();
+            qmk::QmkKeyboard::<#userkbtype>::serial_interrupt();
         }
 
+        #[unsafe(no_mangle)]
+        extern "avr-non-blocking-interrupt" fn __vector_21() {
+            unsafe {qmk::timer::timer_interupt::<#userkbtype>();}
+        }
+
+        #[unsafe(no_mangle)]
+        extern "C" fn main() {
+            let mut kb = unsafe {QmkKeyboard::<#userkbtype>::new()};
+            _main_rs(&mut kb);
+        }
         #main
     }
     .into()

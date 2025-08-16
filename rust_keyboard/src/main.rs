@@ -27,10 +27,8 @@ static mut TEST: u8 = 42;
 
 type Kb = QmkKeyboard<UserKeyboard>;
 
-#[entry]
-fn main() {
-    let mut kb = QmkKeyboard::new(UserKeyboard { a: 3 });
-    kb.init();
+#[entry(UserKeyboard)]
+fn main(kb: &mut QmkKeyboard<UserKeyboard>) {
     let mut progmemtest = TEST;
     let old_value = progmemtest.read();
     Kb::draw_u8(old_value, 1, 0);
@@ -70,6 +68,10 @@ impl Keyboard for UserKeyboard {
     }
 
     type MatrixRowType = u8;
+
+    fn new() -> Self {
+        Self {a:3}
+    }
 }
 
 #[rustfmt::skip]

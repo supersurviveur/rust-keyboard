@@ -131,6 +131,7 @@ pub trait Keyboard: Sized + 'static {
     > = Array2D::from_existing(BinPackedArray {
         data: Self::USER_FONTPLATE,
     });
+    fn new() -> Self;
 }
 
 #[config_constraints]
@@ -152,9 +153,12 @@ pub struct QmkKeyboard<User: Keyboard> {
 
 #[config_constraints]
 impl<User: Keyboard> QmkKeyboard<User> {
-    pub fn new(user: User) -> Self {
-        Self {
-            user,
+    /// # Safety
+    /// Due to the usage of some externals (pins, configuration), this function must be called
+    /// ONCE for the whole program. Generaly, one does so using the entry macro.
+    pub unsafe fn new() -> Self {
+        let mut new = Self {
+            user: User::new(),
             raw_matrix: [0.into(); _],
             previous_matrix: [0.into(); _],
             current_matrix: [0.into(); _],
@@ -163,7 +167,9 @@ impl<User: Keyboard> QmkKeyboard<User> {
             layer: 0,
             rotary_encoder: RotaryEncoder::new(),
             test: 0,
-        }
+        };
+        new.init();
+        new
     }
 }
 
@@ -176,10 +182,10 @@ impl<User: Keyboard> QmkKeyboard<User> {
     pub fn panic_handler(_info: &PanicInfo) -> ! {
         User::RED_LED_PIN.gpio_set_pin_output();
         User::RED_LED_PIN.gpio_write_pin_low();
-        // let _ = Self::oled_on();
-        // Self::clear();
-        // Self::draw_text(PANIC_TEXT.iter_u8().map(|x| x as char), 0, 0);
-        // let _ = Self::render(true);
+        let _ = Self::oled_on();
+        Self::clear();
+        Self::draw_text(PANIC_TEXT.iter_u8().map(|x| x as char), 0, 0);
+        let _ = Self::render(true);
         loop {
             delay_us::<1000000>();
             User::RED_LED_PIN.gpio_write_pin_high();
@@ -221,15 +227,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
             }
         }
         let dir = self.rotary_encoder.task();
-        match dir {
-            rotary_encoder::Direction::Clockwise => {
-                self.test -= 1;
-            }
-            rotary_encoder::Direction::CounterClockwise => {
-                self.test += 1;
-            }
-            rotary_encoder::Direction::None => {}
-        }
+        self.test += dir as u8;
         Self::draw_u8(self.test, 0, 100);
         Self::draw_u8(unsafe { ERROR_COUNT }, 0, 50);
         let changed = self.matrix_task();
