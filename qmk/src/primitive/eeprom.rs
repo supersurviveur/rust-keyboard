@@ -41,6 +41,7 @@ pub struct EepromRef<'a, T> {
 }
 
 impl<T> EepromPtr<T> {
+    #[inline(always)]
     pub const fn new(ptr: *const T) -> Self {
         Self { ptr }
     }
@@ -60,6 +61,7 @@ impl<T> EepromPtr<T> {
     /// # Safety
     /// Must point to a T in progmem
     /// Warning: due to potential previous write failure, if T is several bytes, all repr must be correct, and potential illegal value check must be performed
+    #[inline(always)]
     pub unsafe fn read(&self) -> T {
         let mut res = MaybeUninit::<T>::uninit();
         let mut ee_addr = *self;
@@ -71,6 +73,7 @@ impl<T> EepromPtr<T> {
         }
         unsafe { res.assume_init() }
     }
+    #[inline(always)]
     pub const fn cast<U>(&self) -> EepromPtr<U> {
         EepromPtr {
             ptr: self.ptr.cast(),
@@ -79,6 +82,7 @@ impl<T> EepromPtr<T> {
 }
 
 impl<'a, T> Clone for EepromRef<'a, T> {
+    #[inline(always)]
     fn clone(&self) -> Self {
         *self
     }
@@ -90,21 +94,26 @@ impl<'a, T> EepromRef<'a, T> {
     /// # Safety
     /// Must point to a T in progmem
     /// no live ProgmemRefMut must overlap while this one live
+    #[inline(always)]
     pub const unsafe fn new(ptr: *const T) -> Self {
         Self {
             ptr,
             _phantom: PhantomData,
         }
     }
+    #[inline(always)]
     pub const fn as_ptr(&self) -> EepromPtr<T> {
         EepromPtr { ptr: self.ptr }
     }
+    #[inline(always)]
     pub fn read_byte(&self) -> u8 {
         unsafe { self.as_ptr().read_byte() }
     }
+    #[inline(always)]
     pub fn read(&self) -> T {
         unsafe { self.as_ptr().read() }
     }
+    #[inline(always)]
     pub fn iter_u8<'b>(&'b self) -> EepromIterator<'b, u8>
     where
         'a: 'b,
@@ -120,6 +129,7 @@ impl<'a, T> EepromRef<'a, T> {
 }
 
 impl<T> Clone for EepromPtrMut<T> {
+    #[inline(always)]
     fn clone(&self) -> Self {
         *self
     }
@@ -127,19 +137,23 @@ impl<T> Clone for EepromPtrMut<T> {
 impl<T> Copy for EepromPtrMut<T> {}
 
 impl<T> EepromPtrMut<T> {
+    #[inline(always)]
     pub const fn new(ptr: *mut T) -> Self {
         Self { ptr }
     }
+    #[inline(always)]
     pub const fn as_ptr(&self) -> EepromPtr<T> {
         EepromPtr { ptr: self.ptr }
     }
     /// # Safety
     /// Must point correctly
+    #[inline(always)]
     pub unsafe fn read(&self) -> T {
         unsafe { self.as_ptr().read() }
     }
     /// # Safety
     /// Must point correctly
+    #[inline(always)]
     pub unsafe fn read_byte(&self) -> u8 {
         unsafe { self.as_ptr().read_byte() }
     }
@@ -159,6 +173,7 @@ impl<T> EepromPtrMut<T> {
     }
     /// # Safety
     /// Must Point correctly
+    #[inline(always)]
     pub unsafe fn write(&self, data: &T) {
         let mut dataptr: *const u8 = (data as *const T).cast();
         let mut eeptr = *self;
@@ -168,6 +183,7 @@ impl<T> EepromPtrMut<T> {
             eeptr.ptr = eeptr.ptr.wrapping_byte_add(1);
         }
     }
+    #[inline(always)]
     pub const fn cast<U>(&self) -> EepromPtrMut<U> {
         EepromPtrMut {
             ptr: self.ptr.cast(),
@@ -178,18 +194,22 @@ impl<T> EepromPtrMut<T> {
 impl<'a, T> EepromRefMut<'a, T> {
     /// # Safety
     /// Only one must be created, no other ProgmemRef or ProgmemRefMut shall live at the same time
+    #[inline(always)]
     pub const unsafe fn new(ptr: *mut T) -> Self {
         Self {
             ptr,
             _phantom: PhantomData,
         }
     }
+    #[inline(always)]
     pub const fn as_mut_ptr(&self) -> EepromPtrMut<T> {
         EepromPtrMut { ptr: self.ptr }
     }
+    #[inline(always)]
     pub const fn as_ptr(&self) -> EepromPtr<T> {
         EepromPtr { ptr: self.ptr }
     }
+    #[inline(always)]
     pub const fn as_ref<'b>(&'b self) -> EepromRef<'b, T>
     where
         'a: 'b,
@@ -199,15 +219,19 @@ impl<'a, T> EepromRefMut<'a, T> {
             _phantom: PhantomData,
         }
     }
+    #[inline(always)]
     pub fn read(&self) -> T {
         self.as_ref().read()
     }
+    #[inline(always)]
     pub fn read_byte(&self) -> u8 {
         self.as_ref().read_byte()
     }
+    #[inline(always)]
     pub fn write(&mut self, data: &T) {
         unsafe { self.as_mut_ptr().write(data) };
     }
+    #[inline(always)]
     pub fn iter_u8<'b>(&'b self) -> EepromIterator<'b, u8>
     where
         'a: 'b,
@@ -230,6 +254,7 @@ pub struct EepromIterator<'a, T> {
 impl<'a, T> Iterator for EepromIterator<'a, T> {
     type Item = EepromRef<'a, T>;
 
+    #[inline(always)]
     fn next(&mut self) -> Option<Self::Item> {
         if self.remaining == 0 {
             None
@@ -240,9 +265,11 @@ impl<'a, T> Iterator for EepromIterator<'a, T> {
             Some(res)
         }
     }
+    #[inline(always)]
     fn size_hint(&self) -> (usize, Option<usize>) {
         (self.remaining, Some(self.remaining))
     }
+    #[inline(always)]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         if self.remaining <= n {
             None
@@ -255,6 +282,7 @@ impl<'a, T> Iterator for EepromIterator<'a, T> {
 }
 
 impl<'a, const N: usize, T> EepromRef<'a, [T; N]> {
+    #[inline(always)]
     fn iter_T<'b>(&'b self) -> EepromIterator<'b, T>
     where
         'a: 'b,
@@ -270,6 +298,7 @@ impl<'a, const N: usize, T> EepromRef<'a, [T; N]> {
 }
 
 impl<'a, const N: usize, T> EepromRefMut<'a, [T; N]> {
+    #[inline(always)]
     fn iter_T<'b>(&'b self) -> EepromIterator<'b, T>
     where
         'a: 'b,
@@ -287,6 +316,7 @@ impl<'a, const N: usize, T> EepromRefMut<'a, [T; N]> {
 impl<T, const N: usize> IndexByValue<usize> for EepromPtr<[T; N]> {
     type Data = EepromPtr<T>;
 
+    #[inline(always)]
     fn at(&self, index: usize) -> Self::Data {
         EepromPtr {
             ptr: self.ptr.cast::<T>().wrapping_add(index),
@@ -297,6 +327,7 @@ impl<T, const N: usize> IndexByValue<usize> for EepromPtr<[T; N]> {
 impl<T, const N: usize> IndexByValue<usize> for EepromPtrMut<[T; N]> {
     type Data = EepromPtrMut<T>;
 
+    #[inline(always)]
     fn at(&self, index: usize) -> Self::Data {
         EepromPtrMut {
             ptr: self.ptr.cast::<T>().wrapping_add(index),
@@ -307,6 +338,7 @@ impl<T, const N: usize> IndexByValue<usize> for EepromPtrMut<[T; N]> {
 impl<'a, T, const N: usize> IndexByValue<usize> for EepromRef<'a, [T; N]> {
     type Data = EepromRef<'a, T>;
 
+    #[inline(always)]
     fn at(&self, index: usize) -> Self::Data {
         if index >= N {
             panic!()
@@ -321,6 +353,7 @@ impl<'a, T, const N: usize> IndexByValue<usize> for EepromRef<'a, [T; N]> {
 impl<'a, T, const N: usize> IndexByValue<usize> for EepromRefMut<'a, [T; N]> {
     type Data = EepromRef<'a, T>;
 
+    #[inline(always)]
     fn at(&self, index: usize) -> Self::Data {
         if index >= N {
             panic!()
