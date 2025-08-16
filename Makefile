@@ -1,5 +1,6 @@
 TARGET_RS := atmega32u4
 
+.PHONY: build
 
 left: build
 left: flash
@@ -9,17 +10,22 @@ right::
 right:: flash
 
 flash:
-	avr-strip ./target/$(TARGET_RS)/release/rust_keyboard.elf
+	avr-strip ./build/rust_keyboard.elf
 	DEVICE=$$(./autoflash.sh); \
-	avrdude -p m32u4 -c avr109 -P $$DEVICE -U flash:w:./target/$(TARGET_RS)/release/rust_keyboard.elf
+	avrdude -p m32u4 -c avr109 -P $$DEVICE -U flash:w:./build/rust_keyboard.elf -U eeprom:w:./build/rust_keyboard.elf
 
 both: left
 both: right
 
-build:
-	LUFA_CONFIG_PATH=$$(pwd)/qmk \
+build: lufa-rs/lufa/LUFA
 	cargo build --release
+	mkdir -p build
+	cp ./target/$(TARGET_RS)/release/rust_keyboard.elf build
 
+lufa-rs/lufa/LUFA:
+	@echo You need to init and update the lufa git submodule. Run git submodule update --init lufa-rs/lufa
+	@false
+	
 clean:
 	cargo clean
 

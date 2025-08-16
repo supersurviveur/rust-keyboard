@@ -171,6 +171,14 @@ impl ParseCallbacks for RenameToRust {
         new_name.remove_matches("Dtype");
         Some(new_name)
     }
+    fn int_macro(&self, name: &str, value: i64) -> Option<bindgen::callbacks::IntKind> {
+        if name.starts_with("HID_KEYBOARD") {
+            assert!(u8::try_from(value).is_ok());
+            Some(bindgen::callbacks::IntKind::U8)
+        } else {
+            None
+        }
+    }
 }
 
 /// Rename ident which can't be edited with bindgen callbacks, like structures fields.

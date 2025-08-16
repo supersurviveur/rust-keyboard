@@ -14,7 +14,7 @@ pub(crate) fn progmem_impl(_args: TokenStream, input: TokenStream) -> proc_macro
     quote!(
         #[unsafe(link_section = ".progmem.data")]
         #input
-        const #name: qmk_sys::progmem::Progmem<#ty> = qmk_sys::progmem::Progmem(&raw const #new_name);
+        const #name: progmem::ProgmemRef<#ty> = unsafe {progmem::ProgmemRef::<#ty>::new(&raw const #new_name)};
     )
     .into()
 }

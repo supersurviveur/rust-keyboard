@@ -1,5 +1,6 @@
 [language-server.rust-analyzer.config]
-check = { allTargets = false }
+check = { allTargets = false, command = "clippy" }
+cargo.features = "all"
 
 [language-server.rust-analyzer.config.cargo.extraEnv]
-LUFA_CONFIG_PATH = "/home/julien/code/rust-keyboard/qmk"
+LUFA_CONFIG_PATH = "/home/mwa/Documents/Lycee/Info/rust-keyboard/qmk"

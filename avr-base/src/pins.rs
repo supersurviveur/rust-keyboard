@@ -9,7 +9,7 @@ pub const PINF_ADDRESS: u8 = 0xF;
 pub const NO_PIN: Pin = Pin(!0);
 
 pins! {
-    F6, F7, B1, B3, B2, B6, C6, D2, D5, D7, E6, B4, B5
+    F4, F5, F6, F7, B1, B3, B2, B6, C6, D2, D5, D7, E6, B4, B5, B0
 }
 
 pub const PORT_SHIFTER: u8 = 4;
@@ -23,7 +23,7 @@ pub struct Pin(pub u8);
 impl Pin {
     #[inline(always)]
     const fn pin_address(self, offset: usize) -> *mut u8 {
-        (ADDRESS_BASE as usize + (self.0 >> PORT_SHIFTER) as usize + offset) as *mut u8
+        (ADDRESS_BASE + (self.0 >> PORT_SHIFTER) as usize + offset) as *mut u8
     }
     #[inline(always)]
     const fn pinx_register(self) -> *mut u8 {

@@ -4,9 +4,11 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-qmk_sys = { path = "../qmk_sys" }
 keyboard_macros = { path = "../keyboard_macros" }
-keyboard_constants = { path = "../keyboard_constants" }
 lufa-rs = { path = "../lufa-rs" }
 avr-base = { path = "../avr-base" }
 avr_delay = { git = "https://github.com/avr-rust/delay", branch = "cycacc" }
+num-traits = { version = "0.2.19", default-features = false }
+
+[build-dependencies]
+eeprom_magic = { path = "../eeprom_magic"}

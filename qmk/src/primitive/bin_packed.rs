@@ -22,6 +22,12 @@ impl<const N: usize> DataStorage for BinPackedArray<N> {}
 impl<const N: usize, T> DataStorage for [T; N] {}
 impl<T> DataStorage for [T] {}
 
+impl<const N: usize> Default for BinPackedArray<N> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<const N: usize> BinPackedArray<N> {
     #[inline(always)]
     pub const fn new() -> Self {
@@ -33,7 +39,7 @@ impl<const N: usize> BinPackedArray<N> {
             let mut loctet = *octet;
             let mut result: u8 = 0;
             let index = 8 * i;
-            for i in 0..(8_u8) {
+            for i in 0..8_u8 {
                 result <<= 1;
                 result += fun(loctet & 1 != 0, index as u16 + i as u16) as u8;
                 loctet >>= 1;
