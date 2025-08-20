@@ -7,13 +7,13 @@ use lufa_rs::{
     Endpoint_Write_Control_Stream_LE, Endpoint_Write_Stream_LE, HidClassRequests,
     REQDIR_DEVICETOHOST, REQDIR_HOSTTODEVICE, REQREC_INTERFACE, REQTYPE_CLASS, USB_CONTROL_REQUEST,
     USB_DEVICE_STATE, USB_Device_EnableSOFEvents, UsbDeviceStates, UsbKeyboardReportData,
-    UsbMouseReportData,
 };
 
 use crate::usb::{
     MAX_KEYS,
     descriptors::{
         HID_ENDPOINT_SIZE, InterfaceDescriptors, KEYBOARD_IN_ENDPOINT_ADDR, MOUSE_IN_ENDPOINT_ADDR,
+        UsbMouseReportData,
     },
 };
 
@@ -183,6 +183,8 @@ static mut MOUSE_REPORT_DATA: UsbMouseReportData = UsbMouseReportData {
     button: 0,
     x: 0,
     y: 0,
+    v: 0,
+    h: 0,
 };
 
 static mut KEYBOARD_REPORT_DATA_UPDATED: bool = false;
@@ -263,7 +265,11 @@ pub fn send_next_report() {
             IDLE_MS_REMAINING = IDLE_COUNT;
             true
         } else {
-            (MOUSE_REPORT_DATA.x != 0 || MOUSE_REPORT_DATA.y != 0) || MOUSE_REPORT_DATA_UPDATED
+            (MOUSE_REPORT_DATA.x != 0
+                || MOUSE_REPORT_DATA.y != 0
+                || MOUSE_REPORT_DATA.v != 0
+                || MOUSE_REPORT_DATA.h != 0)
+                || MOUSE_REPORT_DATA_UPDATED
         };
 
         // Select the mouse endpoint

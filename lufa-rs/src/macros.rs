@@ -87,33 +87,146 @@ macro_rules! hid_descriptor_keyboard {
 macro_rules! hid_descriptor_mouse {
     () => {
         $crate::lufa_rs_macros::hid_descriptor! {
-            usage_page: 0x01, // Generic Desktop
-            usage: 0x02, // Mouse
-            collection: 0x01, // Application
-            usage: 0x01, // Pointer
-            collection: 0x00, // Physical
-            usage_page: 0x09, // Button
+            // USAGE_PAGE (Generic Desktop)
+            usage_page: 0x01,
+            // USAGE (Mouse)
+            usage: 0x02,
+            // COLLECTION (Application)
+            collection: 0x01,
+            // USAGE (Mouse)
+            usage: 0x02,
+            // COLLECTION (Logical)
+            collection: 0x02,
+            // USAGE (Pointer)
+            usage: 0x01,
+            // COLLECTION (Physical)
+            collection: 0x00,
+
+            // ------------------------------ Buttons
+            // USAGE_PAGE (Button)
+            usage_page: 0x09,
+            // USAGE_MINIMUM (Button 1)
             usage_minimum: 0x01,
-            usage_maximum: 0x03,
+            // USAGE_MAXIMUM (Button 5)
+            usage_maximum: 0x05,
+            // LOGICAL_MINIMUM (0)
             logical_minimum: 0x00,
+            // LOGICAL_MAXIMUM (1)
             logical_maximum: 0x01,
-            report_count: 0x03,
+            // REPORT_SIZE (1)
             report_size: 0x01,
+            // REPORT_COUNT (5)
+            report_count: 0x05,
+            // INPUT (Data,Var,Abs)
             input: ($crate::HID_IOF_DATA | $crate::HID_IOF_VARIABLE | $crate::HID_IOF_ABSOLUTE) as u8,
+
+            // ------------------------------ Padding
+            // REPORT_SIZE (3)
+            report_size: 0x03,
+            // REPORT_COUNT (1)
             report_count: 0x01,
-            report_size: 0x05,
+            // INPUT (Cnst,Var,Abs)
             input: $crate::HID_IOF_CONSTANT as u8,
-            usage_page: 0x01, // Generic Desktop
-            usage: 0x30, // Usage X
-            usage: 0x31, // Usage Y
-            logical_minimum: u8::MAX,
-            logical_maximum: 1,
-            physical_minimum: u8::MAX,
-            physical_maximum: 1,
-            report_count: 0x02,
+
+            // ------------------------------ X,Y position
+            // USAGE_PAGE (Generic Desktop)
+            usage_page: 0x01,
+            // USAGE (X)
+            usage: 0x30,
+            // USAGE (Y)
+            usage: 0x31,
+            // LOGICAL_MINIMUM (-127)
+            logical_minimum: 0x81,
+            // LOGICAL_MAXIMUM (127)
+            logical_maximum: 0x7F,
+            // REPORT_SIZE (8)
             report_size: 0x08,
+            // REPORT_COUNT (2)
+            report_count: 0x02,
+            // INPUT (Data,Var,Rel)
             input: ($crate::HID_IOF_DATA | $crate::HID_IOF_VARIABLE | $crate::HID_IOF_RELATIVE) as u8,
+
+            // ------------------------------ Vertical wheel res multiplier
+            // COLLECTION (Logical)
+            collection: 0x02,
+            // USAGE (Resolution Multiplier)
+            usage: 0x48,
+            // LOGICAL_MINIMUM (0)
+            logical_minimum: 0x00,
+            // LOGICAL_MAXIMUM (1)
+            logical_maximum: 0x01,
+            // PHYSICAL_MINIMUM (1)
+            physical_minimum: 0x01,
+            // PHYSICAL_MAXIMUM (4)
+            physical_maximum: 0x04,
+            // REPORT_SIZE (2)
+            report_size: 0x02,
+            // REPORT_COUNT (1)
+            report_count: 0x01,
+            // PUSH
+            push,
+            // FEATURE (Data,Var,Abs)
+            feature: ($crate::HID_IOF_DATA | $crate::HID_IOF_VARIABLE | $crate::HID_IOF_ABSOLUTE) as u8,
+
+            // ------------------------------ Vertical wheel
+            // USAGE (Wheel)
+            usage: 0x38,
+            // LOGICAL_MINIMUM (-127)
+            logical_minimum: 0x81,
+            // LOGICAL_MAXIMUM (127)
+            logical_maximum: 0x7F,
+            // PHYSICAL_MINIMUM (0) - reset physical
+            physical_minimum: 0x00,
+            // PHYSICAL_MAXIMUM (0)
+            physical_maximum: 0x00,
+            // REPORT_SIZE (8)
+            report_size: 0x08,
+            // INPUT (Data,Var,Rel)
+            input: ($crate::HID_IOF_DATA | $crate::HID_IOF_VARIABLE | $crate::HID_IOF_RELATIVE) as u8,
+            // END_COLLECTION
             end_collection,
+
+            // ------------------------------ Horizontal wheel res multiplier
+            // COLLECTION (Logical)
+            collection: 0x02,
+            // USAGE (Resolution Multiplier)
+            usage: 0x48,
+            // POP
+            pop,
+            // FEATURE (Data,Var,Abs)
+            feature: ($crate::HID_IOF_DATA | $crate::HID_IOF_VARIABLE | $crate::HID_IOF_ABSOLUTE) as u8,
+
+            // ------------------------------ Padding for Feature report
+            // PHYSICAL_MINIMUM (0) - reset physical
+            physical_minimum: 0x00,
+            // PHYSICAL_MAXIMUM (0)
+            physical_maximum: 0x00,
+            // REPORT_SIZE (4)
+            report_size: 0x04,
+            // FEATURE (Cnst,Var,Abs)
+            feature: $crate::HID_IOF_CONSTANT as u8,
+
+            // ------------------------------ Horizontal wheel
+            // USAGE_PAGE (Consumer Devices)
+            usage_page: 0x0C,
+            // USAGE (AC Pan) - 0x0238
+            usage: 0x0238: 16,
+            // LOGICAL_MINIMUM (-127)
+            logical_minimum: 0x81,
+            // LOGICAL_MAXIMUM (127)
+            logical_maximum: 0x7F,
+            // REPORT_SIZE (8)
+            report_size: 0x08,
+            // INPUT (Data,Var,Rel)
+            input: ($crate::HID_IOF_DATA | $crate::HID_IOF_VARIABLE | $crate::HID_IOF_RELATIVE) as u8,
+            // END_COLLECTION
+            end_collection,
+
+            // END_COLLECTION (Physical)
+            end_collection,
+            // END_COLLECTION (Logical)
+            end_collection,
+            // END_COLLECTION (Application)
             end_collection
         }
     };

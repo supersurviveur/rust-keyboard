@@ -7,6 +7,7 @@ pub enum HidItemType {
     UsagePage,
     Usage,
     Collection,
+    Feature,
     UsageMinimum,
     UsageMaximum,
     LogicalMinimum,
@@ -15,6 +16,8 @@ pub enum HidItemType {
     PhysicalMaximum,
     ReportSize,
     ReportCount,
+    Push,
+    Pop,
     Input,
     Output,
     EndCollection,
@@ -34,6 +37,7 @@ impl Parse for HidItem {
             "usage_page" => HidItemType::UsagePage,
             "usage" => HidItemType::Usage,
             "collection" => HidItemType::Collection,
+            "feature" => HidItemType::Feature,
             "usage_maximum" => HidItemType::UsageMaximum,
             "usage_minimum" => HidItemType::UsageMinimum,
             "logical_maximum" => HidItemType::LogicalMaximum,
@@ -42,6 +46,8 @@ impl Parse for HidItem {
             "physical_minimum" => HidItemType::PhysicalMinimum,
             "report_size" => HidItemType::ReportSize,
             "report_count" => HidItemType::ReportCount,
+            "push" => HidItemType::Push,
+            "pop" => HidItemType::Pop,
             "input" => HidItemType::Input,
             "output" => HidItemType::Output,
             "end_collection" => HidItemType::EndCollection,
@@ -91,6 +97,7 @@ impl ToTokens for HidItem {
         const USAGE_PAGE: u8 = 0x00;
         const USAGE: u8 = 0x00;
         const COLLECTION: u8 = 0xA0;
+        const FEATURE: u8 = 0xB0;
         const END_COLLECTION: u8 = 0xC0;
         const USAGE_MINIMUM: u8 = 0x10;
         const USAGE_MAXIMUM: u8 = 0x20;
@@ -100,6 +107,8 @@ impl ToTokens for HidItem {
         const PHYSICAL_MAXIMUM: u8 = 0x40;
         const REPORT_SIZE: u8 = 0x70;
         const REPORT_COUNT: u8 = 0x90;
+        const PUSH: u8 = 0xA0;
+        const POP: u8 = 0xB0;
         const INPUT: u8 = 0x80;
         const OUTPUT: u8 = 0x90;
 
@@ -107,6 +116,7 @@ impl ToTokens for HidItem {
             HidItemType::UsagePage => (GLOBAL, USAGE_PAGE),
             HidItemType::Usage => (LOCAL, USAGE),
             HidItemType::Collection => (MAIN, COLLECTION),
+            HidItemType::Feature => (MAIN, FEATURE),
             HidItemType::UsageMinimum => (LOCAL, USAGE_MINIMUM),
             HidItemType::UsageMaximum => (LOCAL, USAGE_MAXIMUM),
             HidItemType::LogicalMinimum => (GLOBAL, LOGICAL_MINIMUM),
@@ -115,6 +125,8 @@ impl ToTokens for HidItem {
             HidItemType::PhysicalMaximum => (GLOBAL, PHYSICAL_MAXIMUM),
             HidItemType::ReportSize => (GLOBAL, REPORT_SIZE),
             HidItemType::ReportCount => (GLOBAL, REPORT_COUNT),
+            HidItemType::Push => (GLOBAL, PUSH),
+            HidItemType::Pop => (GLOBAL, POP),
             HidItemType::Input => (MAIN, INPUT),
             HidItemType::Output => (MAIN, OUTPUT),
             HidItemType::EndCollection => (MAIN, END_COLLECTION),

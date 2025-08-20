@@ -46,6 +46,22 @@ pub(crate) enum InterfaceDescriptors {
     Mouse = 1,
 }
 
+#[doc = " \\brief Standard HID Boot Protocol Mouse Report.\n\n  Type define for a standard Boot Protocol Mouse report"]
+#[repr(C, packed)]
+#[derive(Debug, Default, Copy, Clone, PartialOrd, Ord, PartialEq, Eq)]
+pub struct UsbMouseReportData {
+    #[doc = "< Button mask for currently pressed buttons in the mouse."]
+    pub button: u8,
+    #[doc = "< Current delta X movement of the mouse."]
+    pub x: i8,
+    #[doc = "< Current delta Y movement on the mouse."]
+    pub y: i8,
+    #[doc = "< Current delta V movement of the wheel."]
+    pub v: i8,
+    #[doc = "< Current delta H movement on the wheel."]
+    pub h: i8,
+}
+
 /// Enum for the device string descriptor IDs within the device. Each string descriptor should
 /// have a unique ID index associated with it, which can be used to refer to the string from
 /// other descriptors.
@@ -285,4 +301,4 @@ static KEYBOARD_PRODUCT_STRING: PackedConcreteType<UsbDescriptorString, i16, 21>
 pub static KEYBOARD_DESCRIPTOR: [u8; 64] = hid_descriptor_keyboard!(MAX_KEYS);
 
 #[progmem]
-pub static MOUSE_DESCRIPTOR: [u8; 54] = hid_descriptor_mouse!();
+pub static MOUSE_DESCRIPTOR: [u8; 118] = hid_descriptor_mouse!();
