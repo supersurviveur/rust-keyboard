@@ -28,6 +28,7 @@ pub fn entry_impl(args: TokenStream, item: TokenStream) -> TokenStream {
         #[unsafe(no_mangle)]
         extern "C" fn main() {
             let mut kb = unsafe {QmkKeyboard::<#userkbtype>::new()};
+            kb.init();
             _main_rs(&mut kb);
         }
         #main

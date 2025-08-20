@@ -157,7 +157,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
     /// Due to the usage of some externals (pins, configuration), this function must be called
     /// ONCE for the whole program. Generaly, one does so using the entry macro.
     pub unsafe fn new() -> Self {
-        let mut new = Self {
+        Self {
             user: User::new(),
             raw_matrix: [0.into(); _],
             previous_matrix: [0.into(); _],
@@ -167,9 +167,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
             layer: 0,
             rotary_encoder: RotaryEncoder::new(),
             test: 0,
-        };
-        new.init();
-        new
+        }
     }
 }
 
