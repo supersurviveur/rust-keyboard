@@ -56,7 +56,7 @@ impl Transaction {
             },
             Transaction::SyncMaster => unsafe {
                 (
-                    { SHARED_MEMORY_MASTER },
+                    SHARED_MEMORY_MASTER,
                     size_of::<MasterSharedMemory<User>>() as u8,
                 )
             },
@@ -68,22 +68,12 @@ impl Transaction {
     #[config_constraints]
     pub fn get_send_address<User: Keyboard>(&self) -> (*const u8, u8) {
         match self {
-            Transaction::Reserved => (null_mut(), 0),
-            Transaction::EndOfCommunication => (null_mut(), 0),
-            Transaction::SyncSlave => unsafe {
-                (
-                    SHARED_MEMORY_SLAVE,
-                    size_of::<SlaveSharedMemory<User>>() as u8,
-                )
-            },
-            Transaction::SyncMaster => unsafe {
-                (
-                    { SHARED_MEMORY_MASTER },
-                    size_of::<MasterSharedMemory<User>>() as u8,
-                )
-            },
             Transaction::User => {
                 todo!()
+            }
+            _ => {
+                let (address, len) = self.get_receive_address();
+                (address, len)
             }
         }
     }
@@ -187,14 +177,14 @@ impl<User: Keyboard> QmkKeyboard<User> {
     fn sync_sender() -> u8 {
         User::SOFT_SERIAL_PIN.gpio_write_pin_low();
 
-        delay_us::<{ SERIAL_DELAY * 2 }>();
+        delay_us::<{ SERIAL_DELAY * 4 }>();
         User::SOFT_SERIAL_PIN.gpio_write_pin_high();
         cycles_read().wrapping_add(SERIAL_DELAY_CYCLES as u8)
     }
 
     fn sync_receiver() -> u8 {
         let mut cpt: u8 = 0;
-        while cpt < (SERIAL_DELAY * 2) as u8 && User::SOFT_SERIAL_PIN.gpio_read_pin() {
+        while cpt < (SERIAL_DELAY * 4) as u8 && User::SOFT_SERIAL_PIN.gpio_read_pin() {
             cpt += 1;
             delay_cycles::<5>();
         }

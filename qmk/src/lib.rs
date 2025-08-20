@@ -9,7 +9,7 @@
     const_trait_impl,
     const_from,
     slice_as_array,
-    likely_unlikely,
+    likely_unlikely
 )]
 #![allow(incomplete_features)]
 // We are on only one proc, with one thread, so there is no need to worry about static mut ref
@@ -53,7 +53,7 @@ pub mod keymap;
 pub mod keys;
 pub mod matrix;
 pub mod primitive;
-pub use primitive::{progmem,eeprom};
+pub use primitive::{eeprom, progmem};
 pub mod rotary_encoder;
 pub mod serial;
 pub mod timer;
@@ -91,6 +91,7 @@ pub trait Keyboard: Sized + 'static {
     } else {
         Self::RIGHT_ENCODER_PIN2
     };
+    const ROTARY_ENCODER_RESOLUTION: i8 = 1;
 
     const RED_LED_PIN: Pin;
     const SOFT_SERIAL_PIN: Pin;
@@ -108,9 +109,6 @@ pub trait Keyboard: Sized + 'static {
     /// This **MUST** be in progmem !
     #[config_constraints(Self)]
     const KEYMAP: progmem::ProgmemRef<Keymap<Self>>;
-
-    #[config_constraints(Self)]
-    fn test(keyboard: &mut QmkKeyboard<Self>);
 
     const ROWS_PER_HAND: u8 = Self::MATRIX_ROWS / 2;
     const THIS_HAND_OFFSET: u8 = if is_right() { Self::ROWS_PER_HAND } else { 0 };
@@ -132,6 +130,9 @@ pub trait Keyboard: Sized + 'static {
         data: Self::USER_FONTPLATE,
     });
     fn new() -> Self;
+
+    #[config_constraints(Self)]
+    fn rotary_encoder_handler(_keyboard: &mut QmkKeyboard<Self>, _rotation: i8) {}
 }
 
 #[config_constraints]
@@ -148,7 +149,6 @@ pub struct QmkKeyboard<User: Keyboard> {
     pub layer: u8,
 
     pub rotary_encoder: RotaryEncoder<User>,
-    pub test: u8,
 }
 
 #[config_constraints]
@@ -166,7 +166,6 @@ impl<User: Keyboard> QmkKeyboard<User> {
             slave_shared_memory: SlaveSharedMemory::new(),
             layer: 0,
             rotary_encoder: RotaryEncoder::new(),
-            test: 0,
         }
     }
 }
@@ -224,9 +223,8 @@ impl<User: Keyboard> QmkKeyboard<User> {
                 USB_USBTask();
             }
         }
-        let dir = self.rotary_encoder.task();
-        self.test += dir as u8;
-        Self::draw_u8(self.test, 0, 100);
+        let rotary = self.rotary_encoder.task();
+        User::rotary_encoder_handler(self, rotary);
         Self::draw_u8(unsafe { ERROR_COUNT }, 0, 50);
         let changed = self.matrix_task();
         Self::render(changed).unwrap();
