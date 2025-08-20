@@ -7,11 +7,14 @@ use lufa_rs::{
     Endpoint_Write_Control_Stream_LE, Endpoint_Write_Stream_LE, HidClassRequests,
     REQDIR_DEVICETOHOST, REQDIR_HOSTTODEVICE, REQREC_INTERFACE, REQTYPE_CLASS, USB_CONTROL_REQUEST,
     USB_DEVICE_STATE, USB_Device_EnableSOFEvents, UsbDeviceStates, UsbKeyboardReportData,
+    UsbMouseReportData,
 };
 
 use crate::usb::{
     MAX_KEYS,
-    descriptors::{KEYBOARD_ENDPOINT_SIZE, KEYBOARD_IN_ENDPOINT_ADDR, KEYBOARD_OUT_ENDPOINT_ADDR},
+    descriptors::{
+        HID_ENDPOINT_SIZE, InterfaceDescriptors, KEYBOARD_IN_ENDPOINT_ADDR, MOUSE_IN_ENDPOINT_ADDR,
+    },
 };
 
 /// Indicates what report mode the host has requested, `true` for normal HID
@@ -50,13 +53,13 @@ pub extern "C" fn EVENT_USB_Device_ConfigurationChanged() {
         config_success &= Endpoint_ConfigureEndpoint(
             KEYBOARD_IN_ENDPOINT_ADDR,
             EP_TYPE_INTERRUPT as u8,
-            KEYBOARD_ENDPOINT_SIZE as u16,
+            HID_ENDPOINT_SIZE as u16,
             1,
         );
         config_success &= Endpoint_ConfigureEndpoint(
-            KEYBOARD_OUT_ENDPOINT_ADDR,
+            MOUSE_IN_ENDPOINT_ADDR,
             EP_TYPE_INTERRUPT as u8,
-            KEYBOARD_ENDPOINT_SIZE as u16,
+            HID_ENDPOINT_SIZE as u16,
             1,
         );
     }
@@ -87,16 +90,27 @@ pub extern "C" fn EVENT_USB_Device_ControlRequest() {
                 if USB_CONTROL_REQUEST.bm_request_type
                     == (REQDIR_DEVICETOHOST | REQTYPE_CLASS | REQREC_INTERFACE) as u8
                 {
-                    // Initialisation selon votre structure
-                    let keyboard_report = UsbKeyboardReportData::default();
-
-                    // CreateKeyboardReport(&mut keyboard_report);
                     Endpoint_ClearSETUP();
 
-                    Endpoint_Write_Control_Stream_LE(
-                        &keyboard_report as *const _ as *const c_void,
-                        size_of::<UsbKeyboardReportData>() as u16,
-                    );
+                    match USB_CONTROL_REQUEST.w_index {
+                        c if c == InterfaceDescriptors::Keyboard as u16 => {
+                            let keyboard_report = UsbKeyboardReportData::default();
+
+                            Endpoint_Write_Control_Stream_LE(
+                                &keyboard_report as *const _ as *const c_void,
+                                size_of::<UsbKeyboardReportData>() as u16,
+                            );
+                        }
+                        c if c == InterfaceDescriptors::Mouse as u16 => {
+                            let mouse_report = UsbMouseReportData::default();
+
+                            Endpoint_Write_Control_Stream_LE(
+                                &mouse_report as *const _ as *const c_void,
+                                size_of::<UsbMouseReportData>() as u16,
+                            );
+                        }
+                        _ => panic!(),
+                    }
                     Endpoint_ClearOUT();
                 }
             }
@@ -165,8 +179,14 @@ static mut KEYBOARD_REPORT_DATA: UsbKeyboardReportData = UsbKeyboardReportData {
     key_code: [0; 6],
     reserved: 0,
 };
+static mut MOUSE_REPORT_DATA: UsbMouseReportData = UsbMouseReportData {
+    button: 0,
+    x: 0,
+    y: 0,
+};
 
 static mut KEYBOARD_REPORT_DATA_UPDATED: bool = false;
+static mut MOUSE_REPORT_DATA_UPDATED: bool = false;
 
 pub fn add_code(code: u8) {
     let mut empty = MAX_KEYS;
@@ -233,6 +253,28 @@ pub fn send_next_report() {
             Endpoint_Write_Stream_LE(
                 &KEYBOARD_REPORT_DATA as *const _ as *const c_void,
                 size_of::<UsbKeyboardReportData>() as u16,
+                null_mut(),
+            );
+
+            Endpoint_ClearIN();
+        }
+
+        let send_report = if IDLE_COUNT != 0 && IDLE_MS_REMAINING == 0 {
+            IDLE_MS_REMAINING = IDLE_COUNT;
+            true
+        } else {
+            (MOUSE_REPORT_DATA.x != 0 || MOUSE_REPORT_DATA.y != 0) || MOUSE_REPORT_DATA_UPDATED
+        };
+
+        // Select the mouse endpoint
+        Endpoint_SelectEndpoint(MOUSE_IN_ENDPOINT_ADDR);
+
+        if Endpoint_IsReadWriteAllowed() && send_report {
+            KEYBOARD_REPORT_DATA_UPDATED = false;
+
+            Endpoint_Write_Stream_LE(
+                &MOUSE_REPORT_DATA as *const _ as *const c_void,
+                size_of::<UsbMouseReportData>() as u16,
                 null_mut(),
             );
 

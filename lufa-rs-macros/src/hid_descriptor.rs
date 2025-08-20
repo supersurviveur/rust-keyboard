@@ -11,6 +11,8 @@ pub enum HidItemType {
     UsageMaximum,
     LogicalMinimum,
     LogicalMaximum,
+    PhysicalMinimum,
+    PhysicalMaximum,
     ReportSize,
     ReportCount,
     Input,
@@ -36,6 +38,8 @@ impl Parse for HidItem {
             "usage_minimum" => HidItemType::UsageMinimum,
             "logical_maximum" => HidItemType::LogicalMaximum,
             "logical_minimum" => HidItemType::LogicalMinimum,
+            "physical_maximum" => HidItemType::PhysicalMaximum,
+            "physical_minimum" => HidItemType::PhysicalMinimum,
             "report_size" => HidItemType::ReportSize,
             "report_count" => HidItemType::ReportCount,
             "input" => HidItemType::Input,
@@ -92,6 +96,8 @@ impl ToTokens for HidItem {
         const USAGE_MAXIMUM: u8 = 0x20;
         const LOGICAL_MINIMUM: u8 = 0x10;
         const LOGICAL_MAXIMUM: u8 = 0x20;
+        const PHYSICAL_MINIMUM: u8 = 0x30;
+        const PHYSICAL_MAXIMUM: u8 = 0x40;
         const REPORT_SIZE: u8 = 0x70;
         const REPORT_COUNT: u8 = 0x90;
         const INPUT: u8 = 0x80;
@@ -105,6 +111,8 @@ impl ToTokens for HidItem {
             HidItemType::UsageMaximum => (LOCAL, USAGE_MAXIMUM),
             HidItemType::LogicalMinimum => (GLOBAL, LOGICAL_MINIMUM),
             HidItemType::LogicalMaximum => (GLOBAL, LOGICAL_MAXIMUM),
+            HidItemType::PhysicalMinimum => (GLOBAL, PHYSICAL_MINIMUM),
+            HidItemType::PhysicalMaximum => (GLOBAL, PHYSICAL_MAXIMUM),
             HidItemType::ReportSize => (GLOBAL, REPORT_SIZE),
             HidItemType::ReportCount => (GLOBAL, REPORT_COUNT),
             HidItemType::Input => (MAIN, INPUT),

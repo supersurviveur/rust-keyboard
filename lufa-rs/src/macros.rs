@@ -83,3 +83,38 @@ macro_rules! hid_descriptor_keyboard {
         }
     };
 }
+#[macro_export]
+macro_rules! hid_descriptor_mouse {
+    () => {
+        $crate::lufa_rs_macros::hid_descriptor! {
+            usage_page: 0x01, // Generic Desktop
+            usage: 0x02, // Mouse
+            collection: 0x01, // Application
+            usage: 0x01, // Pointer
+            collection: 0x00, // Physical
+            usage_page: 0x09, // Button
+            usage_minimum: 0x01,
+            usage_maximum: 0x03,
+            logical_minimum: 0x00,
+            logical_maximum: 0x01,
+            report_count: 0x03,
+            report_size: 0x01,
+            input: ($crate::HID_IOF_DATA | $crate::HID_IOF_VARIABLE | $crate::HID_IOF_ABSOLUTE) as u8,
+            report_count: 0x01,
+            report_size: 0x05,
+            input: $crate::HID_IOF_CONSTANT as u8,
+            usage_page: 0x01, // Generic Desktop
+            usage: 0x30, // Usage X
+            usage: 0x31, // Usage Y
+            logical_minimum: u8::MAX,
+            logical_maximum: 1,
+            physical_minimum: u8::MAX,
+            physical_maximum: 1,
+            report_count: 0x02,
+            report_size: 0x08,
+            input: ($crate::HID_IOF_DATA | $crate::HID_IOF_VARIABLE | $crate::HID_IOF_RELATIVE) as u8,
+            end_collection,
+            end_collection
+        }
+    };
+}
