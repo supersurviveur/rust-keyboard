@@ -17,20 +17,16 @@ use crate::{
     timer::cycles_read,
 };
 
-const SERIAL_DELAY: u64 = 4; // in microseconds
+const SERIAL_DELAY: u64 = 3; // in microseconds
 const SERIAL_DELAY_CYCLES: u64 = SERIAL_DELAY * (F_CPU / 1_000_000); // Must be less than 255 due to many cast to u8
 
 const _: () = if SERIAL_DELAY_CYCLES > 255 {
     panic!("SERIAL_DELAY_CYCLES must be less or equal to 255 to fit in a u8")
 };
 
-const SERIAL_DELAY_HALF: u64 = SERIAL_DELAY / 2;
+const SERIAL_DELAY_HALF_CYCLES: u64 = SERIAL_DELAY_CYCLES / 2;
 
 const SLAVE_INT_WIDTH_US: u64 = 1;
-const CHECK_CODE_SUCCESS: u8 = 0b10001;
-const CHECK_CODE_ERROR: u8 = 0b01110;
-const CHECK_CODE_SIZE: u8 = 5;
-const MAX_TRY_COUNT: u8 = 1;
 
 #[derive(Debug)]
 pub struct SerialError;
@@ -140,7 +136,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
         while target.wrapping_sub(cycles_read()) as i8 >= 8 {}
         User::SOFT_SERIAL_PIN.gpio_write_pin_low();
         Self::serial_input_with_pullup();
-        target.wrapping_add(SERIAL_DELAY_CYCLES as u8)
+        target.wrapping_add(SERIAL_DELAY_CYCLES as u8 + SERIAL_DELAY_HALF_CYCLES as u8)
     }
 
     #[inline(always)]
@@ -155,7 +151,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
         while target.wrapping_sub(cycles_read()) as i8 >= 8 {}
         User::SOFT_SERIAL_PIN.gpio_write_pin_low();
         Self::serial_output();
-        target.wrapping_add(SERIAL_DELAY_HALF as u8)
+        target.wrapping_add(SERIAL_DELAY_HALF_CYCLES as u8)
     }
 
     pub(crate) fn serial_init(&mut self) {
@@ -206,7 +202,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
         // This shouldn't hang if the target disconnects because the
         // serial line will float to high if the target does disconnect.
         while !User::SOFT_SERIAL_PIN.gpio_read_pin() {}
-        cycles_read().wrapping_add(SERIAL_DELAY_CYCLES as u8 + SERIAL_DELAY_HALF as u8)
+        cycles_read().wrapping_add(SERIAL_DELAY_CYCLES as u8 + SERIAL_DELAY_HALF_CYCLES as u8)
     }
 
     #[inline(always)]
@@ -288,15 +284,11 @@ impl<User: Keyboard> QmkKeyboard<User> {
     #[inline(never)]
     /// # Safety
     /// the passed pointer must point to a valid allocation of at least len bytes, wich will be overriden
-    pub unsafe fn serial_read_data(try_count: u8) -> Result<bool, SerialError> {
-        if try_count >= MAX_TRY_COUNT {
-            return Err(SerialError);
-        }
+    pub unsafe fn serial_read_data() -> Result<bool, SerialError> {
         let mut xor_check = 0;
         let mut has_error = false;
         // Sync with master
         let mut target = Self::sync_receiver();
-        delay_cycles::<SERIAL_DELAY_HALF>();
 
         // Receive transaction byte
         let transaction;
@@ -332,34 +324,17 @@ impl<User: Keyboard> QmkKeyboard<User> {
 
             // Receive xor_mask byte
             let recv_xor_check;
-            (recv_xor_check, target) =
-                Self::receive_sized_unchecked::<{ u8::BITS as usize }>(target);
+            (recv_xor_check, _) = Self::receive_sized_unchecked::<{ u8::BITS as usize }>(target);
 
-            // Send response
-            let check_code = if recv_xor_check != xor_check || has_error {
-                CHECK_CODE_ERROR
-            } else {
-                CHECK_CODE_SUCCESS
-            };
-            target = unsafe { Self::serial_receiver_to_sender(target) };
-
-            target =
-                Self::write_sized_unchecked::<{ CHECK_CODE_SIZE as usize }>(check_code, target);
-
-            let _target = Self::serial_sender_to_receiver(target);
-
-            if check_code == CHECK_CODE_ERROR {
-                return unsafe { Self::serial_read_data(try_count + 1) };
+            if recv_xor_check != xor_check || has_error {
+                return Err(SerialError);
             }
         }
         Ok(false)
     }
 
     #[inline(never)]
-    pub fn serial_write_data(transaction: Transaction, try_count: u8) -> Result<(), SerialError> {
-        if try_count >= MAX_TRY_COUNT {
-            return Err(SerialError);
-        }
+    pub fn serial_write_data(transaction: Transaction) -> Result<(), SerialError> {
         let (data, len) = transaction.get_send_address();
         let mut xor_check = 0;
 
@@ -379,41 +354,14 @@ impl<User: Keyboard> QmkKeyboard<User> {
 
             // Send xor_mask byte
             target = Self::write_sized_unchecked::<{ u8::BITS as usize }>(xor_check, target);
-
-            // Receive response
-            let mut check_code: u8 = 0;
-            target = Self::serial_sender_to_receiver(target);
-
-            for _ in 0..CHECK_CODE_SIZE as usize {
-                let res;
-                (res, target) = Self::serial_read_pin(target);
-
-                if res {
-                    check_code = (check_code << 1) | 1;
-                } else {
-                    check_code <<= 1;
-                }
-            }
-            target = unsafe { Self::serial_receiver_to_sender(target) };
-            let _target = Self::serial_low(target); // sync_send() / senc_recv() need raise edge
-
-            // Loop in case of errors
-            match check_code {
-                // These codes are probably a success code
-                0b10001 | 0b01001 | 0b10010 | 0b11001 | 0b10011 => Ok(()),
-                // This is probably an issue like disconnected keyboards, trying again is useless
-                0 | 0b11111111 => Err(SerialError),
-                _ => Self::serial_write_data(transaction, try_count + 1),
-            }
-        } else {
-            let _target = Self::serial_low(target); // sync_send() / senc_recv() need raise edge
-            Ok(())
         }
+        let _target = Self::serial_low(target); // sync_send() / senc_recv() need raise edge
+        Ok(())
     }
 
     pub fn loop_read_until_end_of_communication() -> bool {
         loop {
-            match unsafe { Self::serial_read_data(0) } {
+            match unsafe { Self::serial_read_data() } {
                 Ok(end) => {
                     if end {
                         return false;
@@ -431,10 +379,10 @@ impl<User: Keyboard> QmkKeyboard<User> {
         atomic(|| {
             Self::trigger_serial_interrupt();
 
-            if Self::serial_write_data(Transaction::SyncMaster, 0).is_err() {
+            if Self::serial_write_data(Transaction::SyncMaster).is_err() {
                 return;
             }
-            if Self::serial_write_data(Transaction::EndOfCommunication, 0).is_err() {
+            if Self::serial_write_data(Transaction::EndOfCommunication).is_err() {
                 return;
             }
 
@@ -465,10 +413,10 @@ impl<User: Keyboard> QmkKeyboard<User> {
         target = unsafe { Self::serial_receiver_to_sender(target) };
         Self::wait_target(target);
 
-        if Self::serial_write_data(Transaction::SyncSlave, 0).is_err() {
+        if Self::serial_write_data(Transaction::SyncSlave).is_err() {
             return;
         }
-        if Self::serial_write_data(Transaction::EndOfCommunication, 0).is_err() {
+        if Self::serial_write_data(Transaction::EndOfCommunication).is_err() {
             return;
         }
 
@@ -482,8 +430,6 @@ impl<User: Keyboard> QmkKeyboard<User> {
     #[config_constraints]
     pub fn serial_task(&mut self) {
         if is_master() {
-            // Delay to avoid blocking the slave in the interrupt
-            // delay_us::<1000>();
             unsafe {
                 // Copy the matrix in the shared memory
                 self.master_shared_memory.master_matrix = *self.current_matrix
