@@ -2,3 +2,6 @@ target/
 build/
 Cargo.lock
 rustc-ice-*
+
+# Editor
+.helix/
