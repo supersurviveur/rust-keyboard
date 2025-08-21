@@ -135,6 +135,7 @@ impl<T> ProgmemPtr<T> {
             remaining: (size_of::<T>()),
         }
     }
+    #[allow(clippy::len_without_is_empty)]
     pub const fn len(self) -> usize {
         size_of::<T>()
     }
@@ -166,6 +167,7 @@ impl<T> ProgmemRef<T> {
             remaining: (size_of::<T>()),
         }
     }
+    #[allow(clippy::len_without_is_empty)]
     pub const fn len(self) -> usize {
         size_of::<T>()
     }
@@ -194,17 +196,25 @@ impl<T, const N: usize> IndexByValue<usize> for ProgmemRef<[T; N]> {
         }
     }
 }
-impl<T,const N: usize> ProgmemPtr<[T;N]> {
+impl<T, const N: usize> ProgmemPtr<[T; N]> {
     #[inline(always)]
+    #[allow(non_snake_case)]
     pub const unsafe fn iter_T(&self) -> ProgmemIterator<T> {
-        ProgmemIterator { ptr: self.cast(), remaining: N }
+        ProgmemIterator {
+            ptr: self.cast(),
+            remaining: N,
+        }
     }
 }
 
-impl<T,const N: usize> ProgmemRef<[T;N]> {
+impl<T, const N: usize> ProgmemRef<[T; N]> {
     #[inline(always)]
+    #[allow(non_snake_case)]
     pub const fn iter_T(&self) -> ProgmemIterator<T> {
-        ProgmemIterator { ptr: self.as_ptr().cast(), remaining: N }
+        ProgmemIterator {
+            ptr: self.as_ptr().cast(),
+            remaining: N,
+        }
     }
 }
 

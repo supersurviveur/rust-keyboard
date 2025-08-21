@@ -2,15 +2,13 @@
 //
 // Permit EEPROM access
 
-#[cfg(all(target_arch = "avr", not(doc)))]
-use core::arch::asm;
 use core::{
     marker::PhantomData,
     mem::{MaybeUninit, size_of},
 };
 
 use crate::primitive::IndexByValue;
-use crate::{atomic::atomic, primitive::IndexByValueMut};
+use crate::atomic::atomic;
 use avr_base::register::*;
 use core::hint::unlikely;
 
@@ -283,7 +281,8 @@ impl<'a, T> Iterator for EepromIterator<'a, T> {
 
 impl<'a, const N: usize, T> EepromRef<'a, [T; N]> {
     #[inline(always)]
-    fn iter_T<'b>(&'b self) -> EepromIterator<'b, T>
+    #[allow(non_snake_case)]
+    pub fn iter_T<'b>(&'b self) -> EepromIterator<'b, T>
     where
         'a: 'b,
     {
@@ -299,7 +298,8 @@ impl<'a, const N: usize, T> EepromRef<'a, [T; N]> {
 
 impl<'a, const N: usize, T> EepromRefMut<'a, [T; N]> {
     #[inline(always)]
-    fn iter_T<'b>(&'b self) -> EepromIterator<'b, T>
+    #[allow(non_snake_case)]
+    pub fn iter_T<'b>(&'b self) -> EepromIterator<'b, T>
     where
         'a: 'b,
     {

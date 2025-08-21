@@ -1,6 +1,5 @@
 use core::marker::PhantomData;
 
-use avr_base::pins::{F4, F5};
 use keyboard_macros::config_constraints;
 
 use crate::Keyboard;
