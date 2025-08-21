@@ -146,6 +146,7 @@ pub struct QmkKeyboard<User: Keyboard> {
     pub slave_shared_memory: SlaveSharedMemory<User>,
 
     pub layer: u8,
+    pub keys_actual_layer: [u8; User::MATRIX_ROWS as usize * User::MATRIX_COLUMNS as usize],
 
     pub rotary_encoder: RotaryEncoder<User>,
 }
@@ -164,6 +165,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
             master_shared_memory: MasterSharedMemory::new(),
             slave_shared_memory: SlaveSharedMemory::new(),
             layer: 0,
+            keys_actual_layer: [0; _],
             rotary_encoder: RotaryEncoder::new(),
         }
     }
@@ -256,12 +258,16 @@ impl<User: Keyboard> QmkKeyboard<User> {
     }
 
     pub fn key_pressed(&mut self, column: u8, row: u8) {
+        self.keys_actual_layer[(row * User::MATRIX_COLUMNS + column) as usize] = self.layer;
         self.get_key(self.layer, column, row)
             .complete_on_pressed(self, row, column);
     }
 
     pub fn key_released(&mut self, column: u8, row: u8) {
-        self.get_key(self.layer, column, row)
+        let key_actual_layer =
+            self.keys_actual_layer[(row * User::MATRIX_COLUMNS + column) as usize];
+
+        self.get_key(key_actual_layer, column, row)
             .complete_on_released(self, row, column);
     }
 }
