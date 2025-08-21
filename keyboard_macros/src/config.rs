@@ -1,11 +1,32 @@
+//! This module provides the implementation for the `user_config` procedural macro.
+//! 
+//! The macro ensures that certain types are not manually defined by the user and automatically
+//! adds required type definitions to the implementation block.
+
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, spanned::Spanned};
 
+/// Implements the `user_config` macro.
+/// 
+/// This function processes an implementation block, checks for prohibited type definitions,
+/// and adds the required `KeymapType` definition if it is not already present.
+/// 
+/// # Arguments
+/// - `_args`: A `TokenStream` representing the macro arguments (currently unused).
+/// - `item`: A `TokenStream` representing the implementation block to process.
+/// 
+/// # Returns
+/// A `TokenStream` containing the modified implementation block.
+/// 
+/// # Behavior
+/// - If the implementation block contains a prohibited type (e.g., `KeymapType`),
+///   the function generates a compile-time error instructing the user to remove it.
+/// - If the `KeymapType` definition is missing, it is automatically added to the block.
 pub fn user_config_impl(_args: TokenStream, item: TokenStream) -> TokenStream {
     let mut t = parse_macro_input!(item as syn::ItemImpl);
 
-    // Tell to the user to remove type definition if they have one
+    // Tell the user to remove type definitions if they have one
     const BLACK_LIST: [&str; 1] = ["KeymapType"];
     for item in &t.items {
         match item {

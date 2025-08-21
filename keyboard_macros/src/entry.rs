@@ -5,7 +5,7 @@ use syn::{parse_macro_input, parse_quote, Ident, ItemFn};
 pub fn entry_impl(args: TokenStream, item: TokenStream) -> TokenStream {
     let mut main = parse_macro_input!(item as ItemFn);
     let userkbtype = parse_macro_input!(args as Ident);
-    // main.sig.abi = Some(parse_quote! {extern "C"});
+
     main.attrs.push(parse_quote! {#[inline(always)]});
     main.sig.ident = format_ident!("_main_rs");
 

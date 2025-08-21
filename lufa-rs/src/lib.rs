@@ -4,6 +4,8 @@
 #![allow(unsafe_op_in_unsafe_fn)]
 #![allow(unpredictable_function_pointer_comparisons)]
 #![allow(clippy::all)]
+#![allow(rustdoc::broken_intra_doc_links)]
+#![allow(rustdoc::bare_urls)]
 
 pub mod macros;
 pub use macros::*;

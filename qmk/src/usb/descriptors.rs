@@ -1,3 +1,6 @@
+//! This module defines USB descriptors for the keyboard and mouse.
+//! It includes device, configuration, and string descriptors, as well as HID report descriptors.
+
 use core::{ffi::c_void, ptr::null};
 
 use crate::progmem::{self, ProgmemPtr};
@@ -46,6 +49,19 @@ pub(crate) enum InterfaceDescriptors {
     Mouse = 1,
 }
 
+/// Enum for the device string descriptor IDs within the device. Each string descriptor should
+/// have a unique ID index associated with it, which can be used to refer to the string from
+/// other descriptors.
+#[repr(u8)]
+pub enum StringDescriptors {
+    /// Supported Languages string descriptor ID (must be zero).
+    Language = 0,
+    /// Manufacturer string ID.
+    Manufacturer = 1,
+    /// Keyboard product string ID.
+    KeyboardProduct = 2,
+}
+
 #[doc = " \\brief Standard HID Boot Protocol Mouse Report.\n\n  Type define for a standard Boot Protocol Mouse report"]
 #[repr(C, packed)]
 #[derive(Debug, Default, Copy, Clone, PartialOrd, Ord, PartialEq, Eq)]
@@ -62,26 +78,13 @@ pub struct UsbMouseReportData {
     pub h: i8,
 }
 
-/// Enum for the device string descriptor IDs within the device. Each string descriptor should
-/// have a unique ID index associated with it, which can be used to refer to the string from
-/// other descriptors.
-#[repr(u8)]
-enum StringDescriptors {
-    /// Supported Languages string descriptor ID (must be zero)
-    Language = 0,
-    /// Manufacturer string ID
-    Manufacturer = 1,
-    /// Keyboard product string ID
-    KeyboardProduct = 2,
-}
-
 /// Endpoint address of the Keyboard HID reporting IN endpoint.
 pub const KEYBOARD_IN_ENDPOINT_ADDR: u8 = (ENDPOINT_DIR_IN | 1) as u8;
 
 /// Endpoint address of the Mouse HID reporting IN endpoint.
 pub const MOUSE_IN_ENDPOINT_ADDR: u8 = (ENDPOINT_DIR_IN | 3) as u8;
 
-/// Size in bytes of the Keyboard HID reporting IN endpoint
+/// Size in bytes of the Keyboard HID reporting IN endpoint.
 pub const HID_ENDPOINT_SIZE: u8 = 8;
 
 /// Descripteur de périphérique
@@ -205,6 +208,8 @@ const MOUSE_HID: ProgmemPtr<UsbHidDescriptorHid> =
     ProgmemPtr::new(const { &raw const CONFIGURATION_DESCRIPTOR_PROGMEM.hid_mouse_hid });
 
 #[unsafe(no_mangle)]
+/// Callback for retrieving USB descriptors.
+///
 /// # Safety
 /// `descriptor_address` parameter came from LUFA, which call this function with a pointer which can always be dereferenced
 pub unsafe extern "C" fn CALLBACK_USB_GetDescriptor(
@@ -276,29 +281,31 @@ pub unsafe extern "C" fn CALLBACK_USB_GetDescriptor(
     size as u16
 }
 
-/// Language descriptor structure. This descriptor, located in FLASH memory, is returned when the host requests
-/// the string descriptor with index 0 (the first index). It is actually an array of 16-bit integers, which indicate
-/// via the language ID table available at USB.org what languages the device supports for its string descriptors.
+/// Language descriptor structure.
+///
+/// This descriptor indicates the supported languages for string descriptors.
 #[progmem]
 static LANGUAGE_STRING: PackedConcreteType<UsbDescriptorString, i16, 1> =
     usb_string_descriptor_array!([LANGUAGE_ID_ENG as i16]);
 
-/// Manufacturer descriptor string. This is a Unicode string containing the manufacturer's details in human readable
-/// form, and is read out upon request by the host when the appropriate string ID is requested, listed in the Device
-/// Descriptor.
+/// Manufacturer descriptor string.
+///
+/// This string contains the manufacturer's details in human-readable form.
 #[progmem]
 static MANUFACTURER_STRING: PackedConcreteType<UsbDescriptorString, i16, 14> =
     usb_string_descriptor!("Surv&madcodder");
 
-/// Product descriptor string. This is a Unicode string containing the product's details in human readable form,
-/// and is read out upon request by the host when the appropriate string ID is requested, listed in the Device
-/// Descriptor.
+/// Product descriptor string.
+///
+/// This string contains the product's details in human-readable form.
 #[progmem]
 static KEYBOARD_PRODUCT_STRING: PackedConcreteType<UsbDescriptorString, i16, 21> =
     usb_string_descriptor!("Rust Keyboard & Mouse");
 
+/// HID report descriptor for the keyboard.
 #[progmem]
 pub static KEYBOARD_DESCRIPTOR: [u8; 64] = hid_descriptor_keyboard!(MAX_KEYS);
 
+/// HID report descriptor for the mouse.
 #[progmem]
 pub static MOUSE_DESCRIPTOR: [u8; 118] = hid_descriptor_mouse!();

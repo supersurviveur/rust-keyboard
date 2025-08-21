@@ -46,7 +46,6 @@ use crate::{
 
 pub mod atomic;
 pub mod graphics;
-pub mod helper_traits;
 pub mod i2c;
 pub mod init;
 pub mod keymap;

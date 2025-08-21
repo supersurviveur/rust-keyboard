@@ -14,7 +14,7 @@
 //! dedicated accessor methods that first load the data into the normal data
 //! memory domain.
 
-#[cfg(all(target_arch = "avr", not(doc)))]
+#[cfg(target_arch = "avr")]
 use core::arch::asm;
 use core::mem::{MaybeUninit, size_of};
 
@@ -57,7 +57,7 @@ pub struct ProgmemPtr<T> {
 }
 
 /// Similar to a ref in usage, but reference progmem instead
-/// unsafe to construct (prefer using the dedicated #[progmem] macro)
+/// unsafe to construct (prefer using the dedicated [keyboard_macros::progmem] macro)
 /// but safe to use
 pub struct ProgmemRef<T> {
     ptr: *const T,
@@ -144,7 +144,7 @@ impl<T> ProgmemPtr<T> {
 impl<T> ProgmemRef<T> {
     /// # Safety
     /// The address must be valid (aka, realy point to a T storred in progmem)
-    /// Prefer safe construction trough the use of #[progmem]
+    /// Prefer safe construction trough the use of [keyboard_macros::progmem]
     #[inline(always)]
     pub const unsafe fn new(ptr: *const T) -> Self {
         Self { ptr }

@@ -1,11 +1,10 @@
-// Use the minimum number of constraints here, otherwise cargo take a long time to compile/lint
-
+//! This module defines shared memory structures for master and slave devices in the serial communication system.
 use keyboard_macros::config_constraints;
 
 use crate::Keyboard;
 
-
-#[derive(Debug)]
+/// Represents the shared memory for a master device in the serial communication system.
+#[derive(Debug, Clone, Copy)]
 pub struct MasterSharedMemory<User: Keyboard>
 where
     [(); User::ROWS_PER_HAND as usize]:,
@@ -13,33 +12,28 @@ where
     pub(crate) master_matrix: [User::MatrixRowType; User::ROWS_PER_HAND as usize],
 }
 
-impl<User: Keyboard> Clone for MasterSharedMemory<User>
+impl<User: Keyboard> MasterSharedMemory<User>
 where
     [(); User::ROWS_PER_HAND as usize]:,
 {
-    #[inline]
-    fn clone(&self) -> MasterSharedMemory<User> {
-        *self
-    }
-}
-impl<User: Keyboard> Copy for MasterSharedMemory<User> where [(); User::ROWS_PER_HAND as usize]: {}
-
-#[config_constraints]
-impl<User: Keyboard> Default for MasterSharedMemory<User> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[config_constraints]
-impl<User: Keyboard> MasterSharedMemory<User> {
+    /// Creates a new instance of `MasterSharedMemory` with default values.
     pub fn new() -> Self {
         Self {
             master_matrix: [0.into(); _],
         }
     }
 }
-#[derive(Debug)]
+
+#[config_constraints]
+impl<User: Keyboard> Default for MasterSharedMemory<User> {
+    /// Provides a default instance of `MasterSharedMemory` by calling the `new` method.
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Represents the shared memory for a slave device in the serial communication system.
+#[derive(Debug, Clone, Copy)]
 pub struct SlaveSharedMemory<User: Keyboard>
 where
     [(); User::ROWS_PER_HAND as usize]:,
@@ -47,29 +41,22 @@ where
     pub(crate) slave_matrix: [User::MatrixRowType; User::ROWS_PER_HAND as usize],
 }
 
-impl<User: Keyboard> Clone for SlaveSharedMemory<User>
+impl<User: Keyboard> SlaveSharedMemory<User>
 where
     [(); User::ROWS_PER_HAND as usize]:,
 {
-    #[inline]
-    fn clone(&self) -> SlaveSharedMemory<User> {
-        *self
-    }
-}
-impl<User: Keyboard> Copy for SlaveSharedMemory<User> where [(); User::ROWS_PER_HAND as usize]: {}
-
-#[config_constraints]
-impl<User: Keyboard> Default for SlaveSharedMemory<User> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[config_constraints]
-impl<User: Keyboard> SlaveSharedMemory<User> {
+    /// Creates a new instance of `SlaveSharedMemory` with default values.
     pub fn new() -> Self {
         Self {
             slave_matrix: [0.into(); _],
         }
+    }
+}
+
+#[config_constraints]
+impl<User: Keyboard> Default for SlaveSharedMemory<User> {
+    /// Provides a default instance of `SlaveSharedMemory` by calling the `new` method.
+    fn default() -> Self {
+        Self::new()
     }
 }

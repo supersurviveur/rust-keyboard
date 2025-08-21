@@ -315,7 +315,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
         }
     }
 
-    pub fn draw_text<'a, T: Iterator<Item = char>>(text: T, mut offset_x: u8, mut offset_y: u8) {
+    pub fn draw_text<T: Iterator<Item = char>>(text: T, mut offset_x: u8, mut offset_y: u8) {
         for ascii in text {
             if offset_x + User::CHAR_WIDTH >= OLED_DISPLAY_HEIGHT {
                 offset_x = 0;

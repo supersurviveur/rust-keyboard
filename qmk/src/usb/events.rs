@@ -1,3 +1,6 @@
+//! This module handles USB events and HID report management.
+//! It includes event handlers for USB state changes and functions for managing keyboard and mouse reports.
+
 use core::{ffi::c_void, ptr::null_mut};
 
 use lufa_rs::{
@@ -33,17 +36,17 @@ static mut IDLE_COUNT: u16 = 0;
 /// preserved.
 static mut IDLE_MS_REMAINING: u16 = 0;
 
-/// Event handler for the USB_Connect event. This indicates that the device is
-/// enumerating via the status LEDs and starts the library USB task to begin the
-/// enumeration and USB management process.
+/// Event handler for the USB_Connect event.
+///
+/// This function is called when the USB device is connected and begins enumeration.
 #[unsafe(no_mangle)]
 pub extern "C" fn EVENT_USB_Device_Connect() {
     unsafe { USING_REPORT_PROTOCOL = true };
 }
 
-/// Event handler for the USB_ConfigurationChanged event. This is fired when the
-/// host sets the current configuration of the USB device after enumeration, and
-/// configures the keyboard device endpoints.
+/// Event handler for the USB_ConfigurationChanged event.
+///
+/// This function is called when the USB host sets the device configuration.
 #[unsafe(no_mangle)]
 pub extern "C" fn EVENT_USB_Device_ConfigurationChanged() {
     let mut config_success = true;
@@ -73,6 +76,8 @@ pub extern "C" fn EVENT_USB_Device_ConfigurationChanged() {
 }
 
 /// Event handler for the USB device Start Of Frame event.
+///
+/// This function is called every millisecond when the USB device is active.
 #[unsafe(no_mangle)]
 pub extern "C" fn EVENT_USB_Device_StartOfFrame() {
     unsafe {
@@ -82,6 +87,9 @@ pub extern "C" fn EVENT_USB_Device_StartOfFrame() {
     }
 }
 
+/// Event handler for USB control requests.
+///
+/// This function processes HID class requests from the USB host.
 #[unsafe(no_mangle)]
 pub extern "C" fn EVENT_USB_Device_ControlRequest() {
     unsafe {
@@ -190,6 +198,10 @@ static mut MOUSE_REPORT_DATA: UsbMouseReportData = UsbMouseReportData {
 static mut KEYBOARD_REPORT_DATA_UPDATED: bool = false;
 static mut MOUSE_REPORT_DATA_UPDATED: bool = false;
 
+/// Adds a keycode to the keyboard report.
+///
+/// # Arguments
+/// * `code` - The keycode to add.
 pub fn add_code(code: u8) {
     let mut empty = MAX_KEYS;
     for i in 0..MAX_KEYS {
@@ -207,6 +219,10 @@ pub fn add_code(code: u8) {
     }
 }
 
+/// Removes a keycode from the keyboard report.
+///
+/// # Arguments
+/// * `code` - The keycode to remove.
 pub fn remove_code(code: u8) {
     for i in 0..MAX_KEYS {
         unsafe {
@@ -218,6 +234,11 @@ pub fn remove_code(code: u8) {
         }
     }
 }
+
+/// Toggles a keycode in the keyboard report.
+///
+/// # Arguments
+/// * `code` - The keycode to toggle.
 pub fn toggle_code(code: u8) {
     let mut empty = MAX_KEYS;
     for i in 0..MAX_KEYS {
@@ -237,6 +258,7 @@ pub fn toggle_code(code: u8) {
     }
 }
 
+/// Sends the next HID report for the keyboard and mouse if needed.
 pub fn send_next_report() {
     unsafe {
         let send_report = if IDLE_COUNT != 0 && IDLE_MS_REMAINING == 0 {
@@ -289,6 +311,7 @@ pub fn send_next_report() {
     }
 }
 
+/// Handles the HID task, sending reports if the device is configured.
 pub fn hid_task() {
     if unsafe { USB_DEVICE_STATE } != UsbDeviceStates::DeviceStateConfigured as u8 {
         return;
