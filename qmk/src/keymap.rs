@@ -24,7 +24,7 @@ pub trait CustomKey<User: Keyboard>: Send + Sync {
 
     /// Called when the key is released. By default, it delegates to `on_released`.
     #[inline(always)]
-    fn complete_on_released(&self, keyboard: &mut QmkKeyboard<User>, _row: u8, _column: u8) {
+    fn complete_on_released(&self, keyboard: &mut QmkKeyboard<User>, _row: u8, _column: u8, _key_actual_layer: u8) {
         self.on_released(keyboard);
     }
 

@@ -4,7 +4,7 @@
 use keyboard_macros::{config_constraints, key_alias};
 
 use crate::{
-    Keyboard,
+    Keyboard, QmkKeyboard,
     keymap::{CustomKey, Key},
 };
 
@@ -310,7 +310,20 @@ pub struct TransparentUp;
 impl<User: Keyboard> CustomKey<User> for TransparentUp {
     /// Delegates the key press to the key in the layer above.
     fn complete_on_pressed(&self, keyboard: &mut crate::QmkKeyboard<User>, row: u8, column: u8) {
-        let layer = keyboard.get_layer_up(1);
+        let layer = QmkKeyboard::<User>::get_layer_up(keyboard.layer, 1);
+        keyboard
+            .get_key(layer, row, column)
+            .complete_on_pressed(keyboard, row, column);
+    }
+    /// Delegates the key release to the key in the layer above.
+    fn complete_on_released(
+        &self,
+        keyboard: &mut crate::QmkKeyboard<User>,
+        row: u8,
+        column: u8,
+        key_actual_layer: u8,
+    ) {
+        let layer = QmkKeyboard::<User>::get_layer_up(key_actual_layer, 1);
         keyboard
             .get_key(layer, row, column)
             .complete_on_pressed(keyboard, row, column);

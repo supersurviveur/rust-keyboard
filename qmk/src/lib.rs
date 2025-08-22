@@ -231,18 +231,18 @@ impl<User: Keyboard> QmkKeyboard<User> {
         Self::render(changed).unwrap();
     }
 
-    pub fn get_layer_up(&mut self, count: u8) -> u8 {
-        self.layer - count
+    pub fn get_layer_up(layer: u8, count: u8) -> u8 {
+        layer - count
     }
-    pub fn get_layer_down(&mut self, count: u8) -> u8 {
-        self.layer + count
+    pub fn get_layer_down(layer: u8, count: u8) -> u8 {
+        layer + count
     }
     pub fn layer_up(&mut self, count: u8) {
-        self.layer = self.get_layer_up(count);
+        self.layer = QmkKeyboard::<User>::get_layer_up(self.layer, count);
     }
 
     pub fn layer_down(&mut self, count: u8) {
-        self.layer = self.get_layer_down(count);
+        self.layer = QmkKeyboard::<User>::get_layer_down(self.layer, count);
     }
     pub fn get_key(&self, layer: u8, column: u8, row: u8) -> &'static dyn CustomKey<User> {
         User::KEYMAP
@@ -268,7 +268,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
             self.keys_actual_layer[(row * User::MATRIX_COLUMNS + column) as usize];
 
         self.get_key(key_actual_layer, column, row)
-            .complete_on_released(self, row, column);
+            .complete_on_released(self, row, column, key_actual_layer);
     }
 }
 
