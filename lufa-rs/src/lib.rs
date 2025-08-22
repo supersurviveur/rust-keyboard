@@ -1,3 +1,7 @@
+//! # lufa-rs
+//! 
+//! This library provides Rust bindings and macros for interacting with LUFA (Lightweight USB Framework for AVRs).
+
 #![no_std]
 #![allow(non_upper_case_globals)]
 #![allow(non_snake_case)]

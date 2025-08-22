@@ -1,15 +1,20 @@
+/// Re-exports the procedural macros from the `lufa_rs_macros` crate.
 pub use lufa_rs_macros;
+
+/// Converts version components (major, minor, revision) into a BCD (Binary-Coded Decimal) format.
 
 pub const fn version_bcd(major: u16, minor: u16, revision: u16) -> u16 {
     ((major & 0xFF) << 8) | ((minor & 0x0F) << 4) | (revision & 0x0F)
 }
 
+/// A packed structure that combines a base type with an array of elements.
 #[repr(C, packed)]
 pub struct PackedConcreteType<T, U = u8, const N: usize = 0> {
     pub base: T,
     pub array: [U; N],
 }
 
+/// Creates a USB string descriptor from a string literal.
 #[macro_export]
 macro_rules! usb_string_descriptor {
     ($i:expr) => {{
@@ -18,6 +23,7 @@ macro_rules! usb_string_descriptor {
     }};
 }
 
+/// Creates a USB string descriptor from a pre-defined array of wide characters.
 #[macro_export]
 macro_rules! usb_string_descriptor_array {
     ($array:expr) => {{
@@ -35,6 +41,7 @@ macro_rules! usb_string_descriptor_array {
     }};
 }
 
+/// Generates a HID descriptor for a keyboard device.
 #[macro_export]
 macro_rules! hid_descriptor_keyboard {
     ($keys:expr) => {
@@ -83,6 +90,7 @@ macro_rules! hid_descriptor_keyboard {
         }
     };
 }
+/// Generates a HID descriptor for a mouse device.
 #[macro_export]
 macro_rules! hid_descriptor_mouse {
     () => {

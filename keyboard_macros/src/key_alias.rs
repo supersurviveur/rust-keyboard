@@ -1,3 +1,8 @@
+//! # Key Alias Macro Implementation
+//! 
+//! This file defines a procedural macro for creating aliases for constants or structs.
+//! The macro can be used to define alternative names (aliases) for keys or types, improving code readability and flexibility.
+
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::{format_ident, quote};
@@ -9,6 +14,7 @@ use syn::{
 struct Aliases(Vec<Ident>);
 
 impl Parse for Aliases {
+    //! Parses a list of identifiers (aliases) separated by commas.
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         Ok(Self(
             Punctuated::<Ident, Token![,]>::parse_terminated(input)?
@@ -19,6 +25,7 @@ impl Parse for Aliases {
 }
 
 pub fn key_alias_impl(args: TokenStream, item: TokenStream) -> TokenStream {
+    //! Implements the `key_alias` macro.
     let aliases = parse_macro_input!(args as Aliases).0;
 
     if let Ok(const_item) = syn::parse::<ItemConst>(item.clone()) {

@@ -1,3 +1,19 @@
+//! # Pins Macro Implementation
+//! 
+//! This file defines a procedural macro for generating constants representing hardware pins.
+//! The macro takes a list of pins as input, where each pin is represented by a port (character) and a number.
+//! 
+//! ## Example
+//! ```rust
+//! pins!(A0, B1, C2);
+//! ```
+//! This will generate constants like:
+//! ```rust
+//! pub const A0: Pin = Pin(...);
+//! pub const B1: Pin = Pin(...);
+//! pub const C2: Pin = Pin(...);
+//! ```
+
 use proc_macro::TokenStream;
 use quote::ToTokens;
 use quote::{format_ident, quote};
@@ -21,10 +37,13 @@ pub(crate) fn pins_impl(input: TokenStream) -> proc_macro::TokenStream {
 }
 
 struct Pins(Vec<Pin>);
+
 #[derive(Clone)]
 struct Pin(char, u8);
 
 impl Parse for Pin {
+    //! Parses a single pin from the input stream.
+    //! A pin is represented as a character (port) followed by a number (pin index).
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let pin_ident = input.parse::<syn::Ident>()?;
         let binding = pin_ident.to_string();
@@ -38,6 +57,7 @@ impl Parse for Pin {
     }
 }
 impl Parse for Pins {
+    //! Parses a list of pins separated by commas.
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let pins = Punctuated::<Pin, Token![,]>::parse_terminated(input)?;
         Ok(Pins(pins.into_iter().collect()))
@@ -45,6 +65,8 @@ impl Parse for Pins {
 }
 
 impl ToTokens for Pin {
+    //! Converts a `Pin` into its token representation.
+    //! The token representation encodes the pin's port and index into a constant value.
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         let port = format_ident!("PIN{}_ADDRESS", self.0.to_ascii_uppercase());
         let pin = self.1;
