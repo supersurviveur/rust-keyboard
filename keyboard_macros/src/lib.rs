@@ -1,6 +1,7 @@
 mod constraints;
 mod entry;
 mod image;
+mod key_alias;
 mod pins;
 mod progmem;
 
@@ -48,4 +49,8 @@ pub fn config_constraints(args: TokenStream, item: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn entry(args: TokenStream, item: TokenStream) -> TokenStream {
     entry::entry_impl(args, item)
+}
+#[proc_macro_attribute]
+pub fn key_alias(args: TokenStream, item: TokenStream) -> TokenStream {
+    key_alias::key_alias_impl(args, item)
 }

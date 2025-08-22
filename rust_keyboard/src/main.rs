@@ -9,14 +9,10 @@ use keyboard_macros::progmem;
 use keyboard_macros::{entry, image_dimension, include_font_plate};
 use qmk::keymap::Keymap;
 use qmk::keys::{
-    KC_0, KC_1, KC_2, KC_3, KC_4, KC_5, KC_6, KC_7, KC_8, KC_9, KC_A, KC_APOSTROPHE_AND_QUOTE,
-    KC_B, KC_BACKSPACE, KC_C, KC_COMMA_AND_LESS_THAN_SIGN, KC_D, KC_DELETE,
-    KC_DOT_AND_GREATER_THAN_SIGN, KC_E, KC_ENTER, KC_ESCAPE, KC_F, KC_F20, KC_F21, KC_G,
-    KC_GRAVE_ACCENT_AND_TILDE, KC_H, KC_I, KC_J, KC_K, KC_L, KC_LEFT_ALT, KC_LEFT_CONTROL,
-    KC_LEFT_GUI, KC_LEFT_SHIFT, KC_M, KC_N, KC_O, KC_P, KC_Q, KC_R, KC_RIGHT_ALT, KC_RIGHT_ARROW,
-    KC_RIGHT_CONTROL, KC_RIGHT_GUI, KC_RIGHT_SHIFT, KC_S, KC_SEMICOLON_AND_COLON,
-    KC_SLASH_AND_QUESTION_MARK, KC_SPACE, KC_T, KC_TAB, KC_U, KC_V, KC_W, KC_X, KC_Y, KC_Z,
-    LayerDown, LayerUp, NO_OP,
+    BCKSPC, COMMA, DELETE, DOT, ENTER, ESCAPE, KC_0, KC_1, KC_2, KC_3, KC_4, KC_5, KC_6, KC_7,
+    KC_8, KC_9, KC_A, KC_B, KC_C, KC_D, KC_E, KC_F, KC_G, KC_H, KC_I, KC_J, KC_K, KC_L, KC_M, KC_N,
+    KC_O, KC_P, KC_Q, KC_R, KC_S, KC_T, KC_U, KC_V, KC_W, KC_X, KC_Y, KC_Z, L_ALT, L_CTRL, L_GUI,
+    L_SHFT, LAYDW1, LAYUP1, NO_OP, R_ALT, R_CTRL, R_GUI, R_SHFT, SLASH, SMICLN, SPACE, TAB,
 };
 use qmk::{Keyboard, QmkKeyboard, eeprom, progmem};
 // include_image!("images/test.png");
@@ -78,15 +74,15 @@ impl Keyboard for UserKeyboard {
 #[rustfmt::skip]
 #[progmem]
 static KEYMAP: Keymap<UserKeyboard> = [[
-&KC_ESCAPE,&KC_1     ,&KC_2     ,&KC_3     ,&KC_4     ,&KC_5     ,            &KC_6     ,&KC_7     ,&KC_8     ,&KC_9     ,&KC_0     ,&KC_DELETE,
-&KC_TAB,   &KC_Q     ,&KC_W     ,&KC_E     ,&KC_R     ,&KC_T     ,            &KC_Y     ,&KC_U     ,&KC_I     ,&KC_O     ,&KC_P     ,&KC_BACKSPACE,
-&KC_LEFT_SHIFT,&KC_A ,&KC_S     ,&KC_D     ,&KC_F     ,&KC_G     ,            &KC_H     ,&KC_J     ,&KC_K     ,&KC_L ,&KC_SEMICOLON_AND_COLON,&KC_ENTER,
-&KC_LEFT_SHIFT,&KC_Z ,&KC_X     ,&KC_C     ,&KC_V     ,&KC_B     ,            &KC_N     ,&KC_M,&KC_COMMA_AND_LESS_THAN_SIGN,&KC_DOT_AND_GREATER_THAN_SIGN,&KC_SLASH_AND_QUESTION_MARK,&KC_RIGHT_SHIFT,
-&KC_LEFT_GUI,&KC_LEFT_ALT,&LayerDown(1),&KC_SPACE,&KC_LEFT_CONTROL,&NO_OP,    &NO_OP,&KC_RIGHT_CONTROL,&KC_SPACE,&KC_RIGHT_ALT,&KC_LEFT_ALT,&KC_RIGHT_GUI,
- ],[
-&KC_ESCAPE,&KC_1    ,&KC_2      ,&KC_3     ,&KC_4     ,&KC_5     ,            &KC_6     ,&KC_7     ,&KC_8     ,&KC_9     ,&KC_0     ,&KC_GRAVE_ACCENT_AND_TILDE,
-&KC_TAB   ,&KC_W    ,&KC_W      ,&KC_E     ,&KC_R     ,&KC_T     ,            &KC_Y     ,&KC_U     ,&KC_I     ,&KC_O     ,&KC_P     ,&KC_BACKSPACE,
-&KC_LEFT_SHIFT,&KC_A,&KC_S      ,&KC_D     ,&KC_F     ,&KC_G     ,            &KC_H     ,&KC_J     ,&KC_K     ,&KC_L,&KC_SEMICOLON_AND_COLON,&KC_APOSTROPHE_AND_QUOTE,
-&KC_LEFT_CONTROL,&KC_Z,&KC_X    ,&KC_C     ,&KC_V     ,&KC_B     ,            &KC_F20   ,&KC_F21   ,&KC_N     ,&KC_M,&KC_COMMA_AND_LESS_THAN_SIGN,&KC_DOT_AND_GREATER_THAN_SIGN,
-&LayerUp(1),&KC_RIGHT_SHIFT,&KC_LEFT_GUI,&KC_LEFT_ALT,&KC_LEFT_CONTROL,&KC_BACKSPACE,      &KC_SPACE,&KC_ENTER,&NO_OP,&KC_RIGHT_CONTROL,&KC_RIGHT_ALT,&KC_RIGHT_ARROW,
-],];
+    ESCAPE, KC_1,   KC_2,   KC_3,   KC_4,   KC_5,   KC_6,   KC_7,   KC_8,   KC_9,   KC_0,   DELETE,
+    TAB,    KC_Q,   KC_W,   KC_E,   KC_R,   KC_T,   KC_Y,   KC_U,   KC_I,   KC_O,   KC_P,   BCKSPC,
+    L_SHFT, KC_A,   KC_S,   KC_D,   KC_F,   KC_G,   KC_H,   KC_J,   KC_K,   KC_L,   SMICLN, ENTER,
+    L_SHFT, KC_Z,   KC_X,   KC_C,   KC_V,   KC_B,   KC_N,   KC_M,   COMMA,  DOT,    SLASH,  R_SHFT,
+    L_GUI,  L_ALT,  LAYDW1, SPACE,  L_CTRL, NO_OP,  NO_OP,  R_CTRL, SPACE,  R_ALT,  L_ALT,  R_GUI,
+],[
+    ESCAPE, KC_1,   KC_2,   KC_3,   KC_4,   KC_5,   KC_6,   KC_7,   KC_8,   KC_9,   KC_0,   DELETE,
+    TAB,    KC_Q,   KC_W,   KC_E,   KC_R,   KC_T,   KC_Y,   KC_U,   KC_I,   KC_O,   KC_P,   BCKSPC,
+    L_SHFT, KC_A,   KC_S,   KC_D,   KC_F,   KC_G,   KC_H,   KC_J,   KC_K,   KC_L,   SMICLN, ENTER,
+    L_SHFT, KC_Z,   KC_X,   KC_C,   KC_V,   KC_B,   KC_N,   KC_M,   COMMA,  DOT,    SLASH,  R_SHFT,
+    L_GUI,  L_ALT,  LAYUP1, SPACE,  L_CTRL, NO_OP,  NO_OP,  R_CTRL, SPACE,  R_ALT,  L_ALT,  R_GUI,
+]];
