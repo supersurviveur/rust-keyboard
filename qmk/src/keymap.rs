@@ -17,7 +17,12 @@ use crate::{
 pub trait CustomKey<User: Keyboard>: Send + Sync {
     /// Called when the key is pressed. By default, it delegates to `on_pressed`.
     #[inline(always)]
-    fn complete_on_pressed(&self, keyboard: pin::Pin<&mut QmkKeyboard<User>>, _row: u8, _column: u8) {
+    fn complete_on_pressed(
+        &self,
+        keyboard: pin::Pin<&mut QmkKeyboard<User>>,
+        _row: u8,
+        _column: u8,
+    ) {
         self.on_pressed(keyboard);
     }
 
@@ -26,7 +31,13 @@ pub trait CustomKey<User: Keyboard>: Send + Sync {
 
     /// Called when the key is released. By default, it delegates to `on_released`.
     #[inline(always)]
-    fn complete_on_released(&self, keyboard: pin::Pin<&mut QmkKeyboard<User>>, _row: u8, _column: u8, _key_actual_layer: u8) {
+    fn complete_on_released(
+        &self,
+        keyboard: pin::Pin<&mut QmkKeyboard<User>>,
+        _row: u8,
+        _column: u8,
+        _key_actual_layer: u8,
+    ) {
         self.on_released(keyboard);
     }
 
@@ -53,9 +64,10 @@ impl<User: Keyboard> CustomKey<User> for Key {
 /// Represents a single layer in the keymap.
 ///
 /// Each layer is a 2D array of custom keys.
-pub type Layer<User: Keyboard> = [&'static dyn CustomKey<User>;User::MATRIX_ROWS as usize * User::MATRIX_COLUMNS as usize];
+pub type Layer<User: Keyboard> =
+    [&'static dyn CustomKey<User>; User::MATRIX_ROWS as usize * User::MATRIX_COLUMNS as usize];
 
 /// Represents the entire keymap, consisting of multiple layers.
 ///
 /// The keymap is a 3D array where each layer contains a 2D array of custom keys.
-pub type Keymap<User: Keyboard> = [Layer<User>;User::LAYER_COUNT];
+pub type Keymap<User: Keyboard> = [Layer<User>; User::LAYER_COUNT];

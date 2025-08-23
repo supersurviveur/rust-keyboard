@@ -78,7 +78,8 @@ impl Transaction {
     /// Returns the send address and length for the transaction.
     #[config_constraints]
     pub fn get_send_address<User: Keyboard + InterruptsHandler<User>>(&self) -> (*const u8, u8) {
-        self.get_receive_address()
+        let (address,size) = self.get_receive_address();
+        (address,size)
     }
 }
 
@@ -141,7 +142,6 @@ impl<User: Keyboard + InterruptsHandler<User>> QmkKeyboard<User> {
         Self::serial_output();
         target.wrapping_add(SERIAL_DELAY_HALF_CYCLES as u8)
     }
-
 
     /// Initializes the serial communication.
     ///
@@ -274,7 +274,7 @@ impl<User: Keyboard + InterruptsHandler<User>> QmkKeyboard<User> {
     /// Reads data from the serial line for a specific transaction.
     ///
     /// Returns `Ok(false)` if the data was successfully read, `Ok(true)` if the communication ended, or a `SerialError` otherwise.
-    /// 
+    ///
     /// # Safety
     /// the passed pointer must point to a valid allocation of at least len bytes, wich will be overriden
     #[inline(never)]

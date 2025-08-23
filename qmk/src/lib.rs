@@ -22,7 +22,10 @@ use avr_base::{
 };
 use avr_delay::delay_us;
 use core::{
-    arch::asm, cell::UnsafeCell, ops::{BitOrAssign, ShlAssign, ShrAssign}, panic::PanicInfo
+    arch::asm,
+    cell::UnsafeCell,
+    ops::{BitOrAssign, ShlAssign, ShrAssign},
+    panic::PanicInfo,
 };
 use num_traits::PrimInt;
 
@@ -39,11 +42,11 @@ use crate::{
     timer::timer_init,
     usb::events::hid_task,
 };
+use core::pin;
 use keyboard_macros::{config_constraints, progmem};
 use lufa_rs::{USB_Init, USB_USBTask};
 use num_traits::Unsigned;
 use pin_project::pin_project;
-use core::pin;
 
 pub mod atomic;
 pub mod graphics;
@@ -133,12 +136,12 @@ pub trait Keyboard: Sized + 'static {
     fn new() -> Self;
 
     #[config_constraints(Self)]
-    fn rotary_encoder_handler(_keyboard: &mut QmkKeyboard<Self>, _rotation: i8) {}
+    fn rotary_encoder_handler(_keyboard: pin::Pin<&mut QmkKeyboard<Self>>, _rotation: i8) {}
 }
 
 #[config_constraints]
-#[pin_project]
-pub struct QmkKeyboard<User: Keyboard> {
+#[pin_project(project = QmkKeyboardProjection)]
+pub  struct QmkKeyboard<User: Keyboard> {
     pub user: User,
 
     pub raw_matrix: [User::MatrixRowType; User::ROWS_PER_HAND as usize],
@@ -155,7 +158,6 @@ pub struct QmkKeyboard<User: Keyboard> {
 
     #[pin]
     pub rotary_encoder: UnsafeCell<RotaryEncoder<User>>,
-
 }
 
 #[config_constraints]
@@ -227,7 +229,10 @@ impl<User: Keyboard> QmkKeyboard<User> {
         unsafe { asm!("sei") };
     }
 
-    pub fn task(mut self: pin::Pin<&mut Self>) where User: InterruptsHandler<User> {
+    pub fn task(mut self: pin::Pin<&mut Self>)
+    where
+        User: InterruptsHandler<User>,
+    {
         if is_master() {
             hid_task();
             unsafe {
@@ -237,12 +242,11 @@ impl<User: Keyboard> QmkKeyboard<User> {
 
         let this = self.as_mut().project();
         let rotary = RotaryEncoder::<User>::task(this.rotary_encoder);
-        User::rotary_encoder_handler(self, rotary);
+        User::rotary_encoder_handler(self.as_mut(), rotary);
         Self::draw_u8(unsafe { ERROR_COUNT }, 0, 50);
         let changed = self.matrix_task();
         Self::render(changed).unwrap();
     }
-
 
     pub fn get_layer_up(self: pin::Pin<&mut Self>, count: u8) -> u8 {
         self.layer - count
@@ -272,15 +276,13 @@ impl<User: Keyboard> QmkKeyboard<User> {
             .read()
     }
 
-
     pub fn key_pressed(mut self: pin::Pin<&mut Self>, column: u8, row: u8) {
         let this = self.as_mut().project();
-        *this.keys_actual_layer[(row * User::MATRIX_COLUMNS + column) as usize] = *this.layer;
+        this.keys_actual_layer[(row * User::MATRIX_COLUMNS + column) as usize] = *this.layer;
 
         self.get_key(self.layer, column, row)
             .complete_on_pressed(self, row, column);
     }
-
 
     pub fn key_released(self: pin::Pin<&mut Self>, column: u8, row: u8) {
         let key_actual_layer =

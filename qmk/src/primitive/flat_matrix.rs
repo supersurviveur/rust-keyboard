@@ -41,7 +41,9 @@ pub struct UnsizedView<
     _phantom: PhantomData<(Idx, Backend)>,
 }
 
-impl<const COL: u8, const ROW: u8, const N: usize> Default for Array2D<COL, ROW, u16, BinPackedArray<N>> {
+impl<const COL: u8, const ROW: u8, const N: usize> Default
+    for Array2D<COL, ROW, u16, BinPackedArray<N>>
+{
     fn default() -> Self {
         Self::new()
     }

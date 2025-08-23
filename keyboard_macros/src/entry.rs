@@ -1,7 +1,7 @@
 //! # Entry Macro Implementation
-//! 
-//! This module provides the implementation for the `#[entry]` procedural macro. 
-//! The macro is used to define the entry point of the firmware, setting up the 
+//!
+//! This module provides the implementation for the `#[entry]` procedural macro.
+//! The macro is used to define the entry point of the firmware, setting up the
 //! keyboard environment and handling interrupts.
 
 use proc_macro::TokenStream;
@@ -9,15 +9,15 @@ use quote::{format_ident, quote};
 use syn::{Ident, ItemFn, parse_macro_input, parse_quote};
 
 /// Implements the `#[entry]` macro.
-/// 
+///
 /// This macro sets up the entry point for the firmware. It defines the panic handler,
 /// interrupt handlers, and initializes the keyboard environment before calling the
 /// user-defined entry function.
-/// 
+///
 /// # Arguments
 /// - `args`: The type of the keyboard (e.g., `MyKeyboard`) passed as an argument to the macro.
 /// - `item`: The user-defined entry function.
-/// 
+///
 /// # Example
 /// ```rust
 /// #[entry(MyKeyboard)]
@@ -42,7 +42,7 @@ pub fn entry_impl(args: TokenStream, item: TokenStream) -> TokenStream {
         static mut _THE_KEYBOARD: core::mem::MaybeUninit<qmk::QmkKeyboard<#userkbtype>> = core::mem::MaybeUninit::uninit();
 
         use qmk::interrupts::InterruptsHandler as _InterruptsHandler;
-        
+
         impl _InterruptsHandler<#userkbtype> for #userkbtype {
             const KEYBOARD_PTR: *mut QmkKeyboard<#userkbtype> = const { unsafe { _THE_KEYBOARD.as_mut_ptr() } };
         }

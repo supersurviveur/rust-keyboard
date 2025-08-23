@@ -2,10 +2,10 @@ use core::cell::SyncUnsafeCell;
 
 use crate::atomic::atomic;
 use avr_base::{
+    F_CPU,
     register::{
         CS00, CS01, CS10, OCIE0A, OCR0A, TCCR0A, TCCR0B, TCCR1A, TCCR1B, TCNT1L, TIMSK0, WGM01,
     },
-    F_CPU,
 };
 
 pub const TIMER_PRESCALER: u8 = 64;
@@ -14,15 +14,14 @@ pub const TIMER_RAW_TOP: u8 = (TIMER_RAW_FREQ / 1000) as u8;
 
 static TIMER: SyncUnsafeCell<u32> = SyncUnsafeCell::new(0);
 
-
 /// # Safety
 /// Only call from the timer interrupt, or if you want the clock to go faster ...
 /// call from timer interrupt is handled by #[keyboard_macros::entry] macro
 #[inline(always)]
-pub(crate) unsafe fn timer_increment(){
+pub(crate) unsafe fn timer_increment() {
     unsafe {
         let time = TIMER.get().read_volatile();
-        TIMER.get().write_volatile(time+1);
+        TIMER.get().write_volatile(time + 1);
     }
 }
 

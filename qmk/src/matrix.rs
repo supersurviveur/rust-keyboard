@@ -1,7 +1,6 @@
 //! This module provides functionality for managing the keyboard matrix.
 //! It includes methods for initializing, scanning, and processing the matrix state.
 
-use core::pin;
 use crate::{
     Keyboard, QmkKeyboard,
     atomic::atomic,
@@ -11,6 +10,7 @@ use crate::{
 };
 use avr_base::pins::{GPIO_INPUT_PIN_DELAY, NO_PIN, Pin};
 use avr_delay::{delay_cycles, delay_us};
+use core::pin;
 use keyboard_macros::config_constraints;
 
 pub const MATRIX_IO_DELAY: u64 = 30;

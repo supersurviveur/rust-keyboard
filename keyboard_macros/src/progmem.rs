@@ -1,11 +1,11 @@
 //! # Progmem Macro Implementation
-//! 
+//!
 //! This module provides the implementation for the `progmem` procedural macro.
 //! The macro is used to place static variables in the `.progmem.data` section of memory, which is typically used for read-only program memory in embedded systems.
-//! 
+//!
 //! ## Usage
 //! The `progmem` macro can be applied to static variables to store them in program memory.
-//! 
+//!
 //! ## Example
 //! ```rust
 //! progmem! {
@@ -24,7 +24,7 @@ use quote::{format_ident, quote};
 use syn::parse_macro_input;
 
 /// Implements the `progmem` macro.
-/// 
+///
 /// - Modifies the static variable to place it in the `.progmem.data` section.
 /// - Creates a `ProgmemRef` constant to reference the variable safely.
 pub(crate) fn progmem_impl(_args: TokenStream, input: TokenStream) -> proc_macro::TokenStream {

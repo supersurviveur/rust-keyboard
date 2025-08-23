@@ -1,9 +1,9 @@
 //! # Config Constraints Macro Implementation
-//! 
+//!
 //! This module provides the implementation for the `config_constraints` procedural macro.
 //! The macro is used to enforce compile-time constraints on generics in structs, traits, or functions.
 //! It ensures that certain conditions are met based on a configurable prefix (e.g., `User`).
-//! 
+//!
 //! ## Usage
 //! The `config_constraints` macro can be applied to:
 //! - Structs
@@ -11,7 +11,7 @@
 //! - Trait constants
 //! - Trait functions
 //! - Impl blocks
-//! 
+//!
 //! ## Example
 //! ```rust
 //! config_constraints!(User => struct MyStruct<T>);
@@ -30,7 +30,7 @@ use syn::{
 };
 
 /// Represents the arguments for the `config_constraints` macro.
-/// 
+///
 /// The arguments include a `prefix` expression, which defaults to `User` if not provided.
 struct Args {
     /// The prefix expression used to qualify the constraints.

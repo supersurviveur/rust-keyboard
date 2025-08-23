@@ -1,11 +1,11 @@
 //! # Keyboard Macros
-//! 
+//!
 //! This crate provides a collection of procedural macros for use in embedded systems programming,
 //! particularly for keyboard firmware development. These macros simplify common tasks such as
 //! managing pins, configuring constraints, and working with images and fonts.
-//! 
+//!
 //! ## Provided Macros
-//! 
+//!
 //! - **`#[progmem]`**: Places static variables in program memory (`.progmem.data` section).
 //! - **`pins!`**: Generates constants for hardware pins.
 //! - **`image_dimension!`**: Extracts dimensions and byte count from an image.

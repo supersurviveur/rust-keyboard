@@ -3,8 +3,7 @@ use core::{cell::UnsafeCell, marker::PhantomData};
 use keyboard_macros::config_constraints;
 use pin_project::pin_project;
 
-use crate::{atomic::atomic, Keyboard};
-
+use crate::{Keyboard, atomic::atomic};
 
 #[config_constraints]
 #[pin_project]
@@ -14,7 +13,6 @@ pub struct RotaryEncoder<User: Keyboard> {
     encoder: RotaryState,
     _phantom: PhantomData<User>,
 }
-
 
 /// Represents the state of the rotary encoder.
 #[pin_project(!Unpin)]
@@ -29,7 +27,6 @@ impl<User: Keyboard> Default for RotaryEncoder<User> {
         Self::new()
     }
 }
-
 
 /// # Safety
 /// You should only call that in aomic context, i guess ?
@@ -70,31 +67,12 @@ impl<User: Keyboard> RotaryEncoder<User> {
 
     /// Processes the rotary encoder task and returns the number of rotations since the last call.
     pub fn task(encoder: core::pin::Pin<&mut UnsafeCell<Self>>) -> i8 {
-            atomic(|| {
-        unsafe {
-            let res = (*encoder).as_mut_unchecked().encoder.pulses / User::ROTARY_ENCODER_RESOLUTION;
+        atomic(|| unsafe {
+            let res =
+                (*encoder).as_mut_unchecked().encoder.pulses / User::ROTARY_ENCODER_RESOLUTION;
             (*encoder).as_mut_unchecked().encoder.pulses %= User::ROTARY_ENCODER_RESOLUTION;
 
             res
-
-        }
-            })
-    }
-}
-
-/// A fast task for processing rotary encoder state changes.
-///
-/// # Safety
-/// This function should only be called in an atomic context.
-pub(crate) unsafe fn fast_encoder_task<User: Keyboard>() {
-    const LUT: [i8; 16] = [0, -1, 1, 0, 1, 0, 0, -1, -1, 0, 0, 1, 0, 1, -1, 0];
-    let (pad_a, pad_b) = (
-        User::ROTARY_ENCODER_PIN1.gpio_read_pin(),
-        User::ROTARY_ENCODER_PIN2.gpio_read_pin(),
-    );
-    let new_state = pad_a as u8 | ((pad_b as u8) << 1);
-    unsafe {
-        ROTARY_ENCODER.state = ROTARY_ENCODER.state << 2 | new_state;
-        ROTARY_ENCODER.pulses += LUT[ROTARY_ENCODER.state as usize % 16];
+        })
     }
 }

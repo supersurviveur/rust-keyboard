@@ -26,24 +26,17 @@ where
     }
 }
 
-#[config_constraints]
-impl<User: Keyboard> Default for MasterSharedMemory<User> {
+impl<User: Keyboard> Default for MasterSharedMemory<User>
+where
+    [(); User::ROWS_PER_HAND as usize]:,
+{
     /// Provides a default instance of `MasterSharedMemory` by calling the `new` method.
     fn default() -> Self {
         Self::new()
     }
 }
-
-#[config_constraints]
-impl<User: Keyboard> MasterSharedMemory<User> {
-    pub fn new() -> Self {
-        Self {
-            master_matrix: [0.into(); _],
-        }
-    }
-}
 /// Represents the shared memory for a slave device in the serial communication system.
-#[derive(Debug,Clone,Copy)]
+#[derive(Debug, Clone, Copy)]
 #[pin_project(!Unpin)]
 pub struct SlaveSharedMemory<User: Keyboard>
 where

@@ -3,8 +3,8 @@
 #![feature(abi_avr_interrupt, generic_const_exprs, generic_const_items)]
 #![no_main]
 
-
 use avr_base::pins::{B1, B2, B3, B4, B5, B6, C6, D2, D5, D7, E6, F4, F5, F6, F7, Pin};
+use core::pin;
 use eeprom_magic::eeprom;
 use keyboard_macros::progmem;
 use keyboard_macros::{entry, image_dimension, include_font_plate};
@@ -15,17 +15,13 @@ use qmk::keys::{
     KC_O, KC_P, KC_Q, KC_R, KC_S, KC_T, KC_U, KC_V, KC_W, KC_X, KC_Y, KC_Z, L_ALT, L_CTRL, L_GUI,
     L_SHFT, LAYDW1, LAYUP1, NO_OP, R_ALT, R_CTRL, R_GUI, R_SHFT, SLASH, SMICLN, SPACE, TAB,
 };
-use qmk::{Keyboard, QmkKeyboard, progmem, eeprom};
-use keyboard_macros::progmem;
-use eeprom_magic::eeprom;
-use core::pin;
+use qmk::{Keyboard, QmkKeyboard, eeprom, progmem};
 // include_image!("images/test.png");
 
 #[eeprom]
 static mut TEST: u8 = 42;
 
 type Kb = QmkKeyboard<UserKeyboard>;
-
 
 #[entry(UserKeyboard)]
 fn main(mut kb: pin::Pin<&mut QmkKeyboard<UserKeyboard>>) {
@@ -64,8 +60,9 @@ impl Keyboard for UserKeyboard {
 
     const KEYMAP: progmem::ProgmemRef<Keymap<Self>> = KEYMAP;
 
-    fn rotary_encoder_handler(keyboard: &mut QmkKeyboard<Self>, rotary: i8) {
-        keyboard.user.a += rotary;
+    fn rotary_encoder_handler(keyboard: pin::Pin<&mut QmkKeyboard<Self>>, rotary: i8) {
+        let this = keyboard.project();
+        this.user.a += rotary;
         QmkKeyboard::<Self>::draw_u8(keyboard.user.a as u8, 0, 100);
     }
 
