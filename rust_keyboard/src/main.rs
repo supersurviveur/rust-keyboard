@@ -63,7 +63,7 @@ impl Keyboard for UserKeyboard {
     fn rotary_encoder_handler(keyboard: pin::Pin<&mut QmkKeyboard<Self>>, rotary: i8) {
         let this = keyboard.project();
         this.user.a += rotary;
-        QmkKeyboard::<Self>::draw_u8(keyboard.user.a as u8, 0, 100);
+        QmkKeyboard::<Self>::draw_u8(this.user.a as u8, 0, 100);
     }
 
     type MatrixRowType = u8;
