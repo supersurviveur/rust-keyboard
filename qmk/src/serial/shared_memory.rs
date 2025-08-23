@@ -1,11 +1,13 @@
 // Use the minimum number of constraints here, otherwise cargo take a long time to compile/lint
 
 use keyboard_macros::config_constraints;
+use pin_project::pin_project;
 
 use crate::Keyboard;
 
 
 #[derive(Debug)]
+#[pin_project(!Unpin)]
 pub struct MasterSharedMemory<User: Keyboard>
 where
     [(); User::ROWS_PER_HAND as usize]:,
@@ -40,6 +42,7 @@ impl<User: Keyboard> MasterSharedMemory<User> {
     }
 }
 #[derive(Debug)]
+#[pin_project(!Unpin)]
 pub struct SlaveSharedMemory<User: Keyboard>
 where
     [(); User::ROWS_PER_HAND as usize]:,

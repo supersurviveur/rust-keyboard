@@ -9,6 +9,7 @@ lufa-rs = { path = "../lufa-rs" }
 avr-base = { path = "../avr-base" }
 avr_delay = { git = "https://github.com/avr-rust/delay", branch = "cycacc" }
 num-traits = { version = "0.2.19", default-features = false }
+pin-project = "1"
 
 [build-dependencies]
 eeprom_magic = { path = "../eeprom_magic"}

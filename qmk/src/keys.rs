@@ -1,3 +1,5 @@
+use core::pin;
+
 use keyboard_macros::config_constraints;
 
 use crate::{
@@ -390,7 +392,7 @@ pub struct LayerUp(pub u8);
 
 #[config_constraints]
 impl<User: Keyboard> CustomKey<User> for LayerUp {
-    fn on_pressed(&self, keyboard: &mut crate::QmkKeyboard<User>) {
+    fn on_pressed(&self, keyboard: pin::Pin<&mut crate::QmkKeyboard<User>>) {
         keyboard.layer_up(self.0);
     }
 }
@@ -398,7 +400,7 @@ pub struct LayerDown(pub u8);
 
 #[config_constraints]
 impl<User: Keyboard> CustomKey<User> for LayerDown {
-    fn on_pressed(&self, keyboard: &mut crate::QmkKeyboard<User>) {
+    fn on_pressed(&self, keyboard: pin::Pin<&mut crate::QmkKeyboard<User>>) {
         keyboard.layer_down(self.0);
     }
 }
@@ -407,8 +409,13 @@ pub struct TransparentUp;
 
 #[config_constraints]
 impl<User: Keyboard> CustomKey<User> for TransparentUp {
-    fn complete_on_pressed(&self, keyboard: &mut crate::QmkKeyboard<User>, row: u8, column: u8) {
-        let layer = keyboard.get_layer_up(1);
+    fn complete_on_pressed(
+        &self,
+        mut keyboard: pin::Pin<&mut crate::QmkKeyboard<User>>,
+        row: u8,
+        column: u8,
+    ) {
+        let layer = keyboard.as_mut().get_layer_up(1);
         keyboard
             .get_key(layer, row, column)
             .complete_on_pressed(keyboard, row, column);

@@ -1,6 +1,9 @@
+use core::pin;
+
 use crate::{
     Keyboard, QmkKeyboard,
     atomic::atomic,
+    interrupts::InterruptsHandler,
     is_left,
     timer::{timer_elapsed, timer_read},
 };
@@ -87,7 +90,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
             Self::gpio_atomic_set_pin_input_high(User::COL_PINS[col as usize]);
         }
     }
-    pub fn matrix_scan(&mut self) -> bool {
+    pub fn matrix_scan(mut self: pin::Pin<&mut Self>) -> bool {
         let mut new_matrix = [0.into(); User::ROWS_PER_HAND as usize];
         for row in 0..User::ROWS_PER_HAND {
             self.matrix_read_cols_on_row(&mut new_matrix, row);
@@ -96,25 +99,30 @@ impl<User: Keyboard> QmkKeyboard<User> {
         let changed = if self.raw_matrix == new_matrix {
             false
         } else {
-            self.raw_matrix = new_matrix;
+            let this = self.as_mut().project();
+            *this.raw_matrix = new_matrix;
             true
         };
 
         self.debounce(changed)
     }
-    pub fn matrix_task(&mut self) -> bool {
-        let our_matrix_changed = self.matrix_scan();
-        self.serial_task();
+    pub fn matrix_task(mut self: pin::Pin<&mut Self>) -> bool
+    where
+        User: InterruptsHandler<User>,
+    {
+        let our_matrix_changed = self.as_mut().matrix_scan();
+        self.as_mut().serial_task();
         self.key_task(our_matrix_changed)
     }
-    pub fn key_task(&mut self, our_matrix_changed: bool) -> bool {
+    pub fn key_task(mut self: pin::Pin<&mut Self>, our_matrix_changed: bool) -> bool {
+        let this = self.as_mut().project();
         let changed = our_matrix_changed
             || unsafe {
-                self.previous_matrix[User::OTHER_HAND_OFFSET as usize
+                this.previous_matrix[User::OTHER_HAND_OFFSET as usize
                     ..(User::OTHER_HAND_OFFSET + User::ROWS_PER_HAND) as usize]
                     .as_mut_array::<{ User::ROWS_PER_HAND as usize }>()
                     .unwrap_unchecked()
-                    != self.current_matrix[User::OTHER_HAND_OFFSET as usize
+                    != this.current_matrix[User::OTHER_HAND_OFFSET as usize
                         ..(User::OTHER_HAND_OFFSET + User::ROWS_PER_HAND) as usize]
                         .as_mut_array()
                         .unwrap_unchecked()
@@ -132,15 +140,16 @@ impl<User: Keyboard> QmkKeyboard<User> {
                             if current_press != 0.into() {
                                 Self::draw_u8(column, 0, 0);
                                 Self::draw_u8(row, 0, 13);
-                                self.key_pressed(column, row)
+                                self.as_mut().key_pressed(column, row)
                             } else {
-                                self.key_released(column, row)
+                                self.as_mut().key_released(column, row)
                             }
                         }
                     }
                 }
             }
-            self.previous_matrix = self.current_matrix;
+            let this = self.project();
+            *this.previous_matrix = *this.current_matrix;
         }
         changed
     }
@@ -153,13 +162,14 @@ pub const DEBOUNCE: u32 = 5;
 
 #[config_constraints]
 impl<User: Keyboard> QmkKeyboard<User> {
-    fn debounce(&mut self, changed: bool) -> bool {
-        let this_matrix =
-            TryInto::<&mut [User::MatrixRowType; User::ROWS_PER_HAND as usize]>::try_into(
-                &mut self.current_matrix[User::THIS_HAND_OFFSET as usize
-                    ..(User::THIS_HAND_OFFSET + User::ROWS_PER_HAND) as usize],
-            )
-            .unwrap();
+    fn debounce(self: pin::Pin<&mut Self>, changed: bool) -> bool {
+        let this = self.project();
+        let this_matrix = unsafe {
+            this.current_matrix[User::THIS_HAND_OFFSET as usize
+                ..User::THIS_HAND_OFFSET as usize + User::ROWS_PER_HAND as usize]
+                .as_mut_array()
+                .unwrap_unchecked()
+        };
 
         let mut cooked_changed = false;
 
@@ -167,8 +177,8 @@ impl<User: Keyboard> QmkKeyboard<User> {
             unsafe { DEBOUNCING = true };
             unsafe { DEBOUNCING_TIME = timer_read() };
         } else if unsafe { DEBOUNCING } && unsafe { timer_elapsed(DEBOUNCING_TIME) } >= DEBOUNCE {
-            if *this_matrix != self.raw_matrix {
-                *this_matrix = self.raw_matrix;
+            if *this_matrix != *this.raw_matrix {
+                *this_matrix = *this.raw_matrix;
                 cooked_changed = true;
             }
             unsafe { DEBOUNCING = false };

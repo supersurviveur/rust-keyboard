@@ -1,6 +1,6 @@
 pub mod shared_memory;
 
-use core::{mem::transmute, ptr::null_mut};
+use core::{mem::transmute, pin, ptr::null_mut};
 
 use avr_base::{
     F_CPU,
@@ -12,6 +12,7 @@ use keyboard_macros::config_constraints;
 use crate::{
     Keyboard, QmkKeyboard,
     atomic::atomic,
+    interrupts::InterruptsHandler,
     is_master,
     serial::shared_memory::{MasterSharedMemory, SlaveSharedMemory},
     timer::cycles_read,
@@ -44,44 +45,36 @@ pub enum Transaction {
 
 impl Transaction {
     #[config_constraints]
-    pub fn get_receive_address<User: Keyboard>(&self) -> (*mut u8, u8) {
+    pub fn get_receive_address<User: Keyboard + InterruptsHandler<User>>(&self) -> (*mut u8, u8) {
         match self {
             Transaction::Reserved => (null_mut(), 0),
             Transaction::EndOfCommunication => (null_mut(), 0),
-            Transaction::SyncSlave => unsafe {
-                (
-                    SHARED_MEMORY_SLAVE,
-                    size_of::<SlaveSharedMemory<User>>() as u8,
-                )
-            },
-            Transaction::SyncMaster => unsafe {
-                (
-                    { SHARED_MEMORY_MASTER },
-                    size_of::<MasterSharedMemory<User>>() as u8,
-                )
-            },
+            Transaction::SyncSlave => (
+                User::SHARED_MEMORY_SLAVE.cast(),
+                size_of::<SlaveSharedMemory<User>>() as u8,
+            ),
+            Transaction::SyncMaster => (
+                { User::SHARED_MEMORY_MASTER.cast() },
+                size_of::<MasterSharedMemory<User>>() as u8,
+            ),
             Transaction::User => {
                 todo!()
             }
         }
     }
     #[config_constraints]
-    pub fn get_send_address<User: Keyboard>(&self) -> (*const u8, u8) {
+    pub fn get_send_address<User: Keyboard + InterruptsHandler<User>>(&self) -> (*const u8, u8) {
         match self {
             Transaction::Reserved => (null_mut(), 0),
             Transaction::EndOfCommunication => (null_mut(), 0),
-            Transaction::SyncSlave => unsafe {
-                (
-                    SHARED_MEMORY_SLAVE,
-                    size_of::<SlaveSharedMemory<User>>() as u8,
-                )
-            },
-            Transaction::SyncMaster => unsafe {
-                (
-                    { SHARED_MEMORY_MASTER },
-                    size_of::<MasterSharedMemory<User>>() as u8,
-                )
-            },
+            Transaction::SyncSlave => (
+                User::SHARED_MEMORY_SLAVE.cast(),
+                size_of::<SlaveSharedMemory<User>>() as u8,
+            ),
+            Transaction::SyncMaster => (
+                { User::SHARED_MEMORY_MASTER.cast() },
+                size_of::<MasterSharedMemory<User>>() as u8,
+            ),
             Transaction::User => {
                 todo!()
             }
@@ -97,13 +90,8 @@ const TRANSACTION_BITS_SIZE: usize = MAX_TRANSACTION_NUMBER.ilog2() as usize
         1
     };
 
-/// Shared memory from slave
-pub(crate) static mut SHARED_MEMORY_SLAVE: *mut u8 = null_mut();
-/// Shared memory from master
-pub(crate) static mut SHARED_MEMORY_MASTER: *mut u8 = null_mut();
-
 #[config_constraints]
-impl<User: Keyboard> QmkKeyboard<User> {
+impl<User: Keyboard + InterruptsHandler<User>> QmkKeyboard<User> {
     #[inline(always)]
     fn serial_output() {
         User::SOFT_SERIAL_PIN.gpio_set_pin_output();
@@ -154,9 +142,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
         target.wrapping_add(SERIAL_DELAY_HALF_CYCLES as u8)
     }
 
-    pub(crate) fn serial_init(&mut self) {
-        unsafe { SHARED_MEMORY_MASTER = &raw mut self.master_shared_memory as *mut u8 };
-        unsafe { SHARED_MEMORY_SLAVE = &raw mut self.slave_shared_memory as *mut u8 };
+    pub(crate) fn serial_init(self: pin::Pin<&mut Self>) {
         if is_master() {
             Self::soft_serial_initiator_init();
         } else {
@@ -428,11 +414,12 @@ impl<User: Keyboard> QmkKeyboard<User> {
     }
 
     #[config_constraints]
-    pub fn serial_task(&mut self) {
+    pub fn serial_task(self: pin::Pin<&mut Self>) {
+        let this = self.project();
         if is_master() {
             unsafe {
                 // Copy the matrix in the shared memory
-                self.master_shared_memory.master_matrix = *self.current_matrix
+                this.master_shared_memory.as_mut_unchecked().master_matrix = *this.current_matrix
                     [User::THIS_HAND_OFFSET as usize
                         ..User::THIS_HAND_OFFSET as usize + User::ROWS_PER_HAND as usize]
                     .as_mut_array()
@@ -442,24 +429,27 @@ impl<User: Keyboard> QmkKeyboard<User> {
             // Copy the matrix from the shared memory
             unsafe {
                 // Copy the matrix from the shared memory
-                *self.current_matrix[User::OTHER_HAND_OFFSET as usize
+                *this.current_matrix[User::OTHER_HAND_OFFSET as usize
                     ..User::OTHER_HAND_OFFSET as usize + User::ROWS_PER_HAND as usize]
                     .as_mut_array()
-                    .unwrap_unchecked() = self.slave_shared_memory.slave_matrix;
+                    .unwrap_unchecked() = this.slave_shared_memory.as_mut_unchecked().slave_matrix;
             };
         } else {
             unsafe {
-                // Copy the matrix in the shared memory
-                self.slave_shared_memory.slave_matrix = *self.current_matrix[User::THIS_HAND_OFFSET
-                    as usize
-                    ..User::THIS_HAND_OFFSET as usize + User::ROWS_PER_HAND as usize]
-                    .as_mut_array()
-                    .unwrap_unchecked();
-                // Copy the matrix from the shared memory
-                *self.current_matrix[User::OTHER_HAND_OFFSET as usize
-                    ..User::OTHER_HAND_OFFSET as usize + User::ROWS_PER_HAND as usize]
-                    .as_mut_array()
-                    .unwrap_unchecked() = self.master_shared_memory.master_matrix;
+                atomic(|| {
+                    // Copy the matrix in the shared memory
+                    this.slave_shared_memory.as_mut_unchecked().slave_matrix = *this.current_matrix
+                        [User::THIS_HAND_OFFSET as usize
+                            ..User::THIS_HAND_OFFSET as usize + User::ROWS_PER_HAND as usize]
+                        .as_mut_array()
+                        .unwrap_unchecked();
+                    // Copy the matrix from the shared memory
+                    *this.current_matrix[User::OTHER_HAND_OFFSET as usize
+                        ..User::OTHER_HAND_OFFSET as usize + User::ROWS_PER_HAND as usize]
+                        .as_mut_array()
+                        .unwrap_unchecked() =
+                        this.master_shared_memory.as_mut_unchecked().master_matrix;
+                });
             };
         }
     }

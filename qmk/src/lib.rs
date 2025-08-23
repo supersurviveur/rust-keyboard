@@ -10,6 +10,7 @@
     const_from,
     slice_as_array,
     likely_unlikely,
+    unsafe_cell_access
 )]
 #![allow(incomplete_features)]
 // We are on only one proc, with one thread, so there is no need to worry about static mut ref
@@ -21,18 +22,13 @@ use avr_base::{
 };
 use avr_delay::delay_us;
 use core::{
-    arch::asm,
-    ops::{BitOrAssign, ShlAssign, ShrAssign},
-    panic::PanicInfo,
+    arch::asm, cell::UnsafeCell, ops::{BitOrAssign, ShlAssign, ShrAssign}, panic::PanicInfo
 };
 use num_traits::PrimInt;
 
-use keyboard_macros::{config_constraints, progmem};
-use lufa_rs::{USB_Init, USB_USBTask};
-use num_traits::Unsigned;
-
 use crate::{
     init::disable_watchdog,
+    interrupts::InterruptsHandler,
     keymap::{CustomKey, Keymap},
     primitive::{Array2D, BinPackedArray, IndexByValue},
     rotary_encoder::RotaryEncoder,
@@ -43,6 +39,11 @@ use crate::{
     timer::timer_init,
     usb::events::hid_task,
 };
+use keyboard_macros::{config_constraints, progmem};
+use lufa_rs::{USB_Init, USB_USBTask};
+use num_traits::Unsigned;
+use pin_project::pin_project;
+use core::pin;
 
 pub mod atomic;
 pub mod graphics;
@@ -53,7 +54,8 @@ pub mod keymap;
 pub mod keys;
 pub mod matrix;
 pub mod primitive;
-pub use primitive::{progmem,eeprom};
+pub use primitive::{eeprom, progmem};
+pub mod interrupts;
 pub mod rotary_encoder;
 pub mod serial;
 pub mod timer;
@@ -135,6 +137,7 @@ pub trait Keyboard: Sized + 'static {
 }
 
 #[config_constraints]
+#[pin_project]
 pub struct QmkKeyboard<User: Keyboard> {
     pub user: User,
 
@@ -142,12 +145,15 @@ pub struct QmkKeyboard<User: Keyboard> {
     pub previous_matrix: [User::MatrixRowType; User::MATRIX_ROWS as usize],
     pub current_matrix: [User::MatrixRowType; User::MATRIX_ROWS as usize],
 
-    pub master_shared_memory: MasterSharedMemory<User>,
-    pub slave_shared_memory: SlaveSharedMemory<User>,
+    #[pin]
+    pub master_shared_memory: UnsafeCell<MasterSharedMemory<User>>,
+    #[pin]
+    pub slave_shared_memory: UnsafeCell<SlaveSharedMemory<User>>,
 
     pub layer: u8,
 
-    pub rotary_encoder: RotaryEncoder<User>,
+    #[pin]
+    pub rotary_encoder: UnsafeCell<RotaryEncoder<User>>,
     pub test: u8,
 }
 
@@ -162,10 +168,10 @@ impl<User: Keyboard> QmkKeyboard<User> {
             raw_matrix: [0.into(); _],
             previous_matrix: [0.into(); _],
             current_matrix: [0.into(); _],
-            master_shared_memory: MasterSharedMemory::new(),
-            slave_shared_memory: SlaveSharedMemory::new(),
+            master_shared_memory: MasterSharedMemory::new().into(),
+            slave_shared_memory: SlaveSharedMemory::new().into(),
             layer: 0,
-            rotary_encoder: RotaryEncoder::new(),
+            rotary_encoder: RotaryEncoder::new().into(),
             test: 0,
         }
     }
@@ -191,8 +197,11 @@ impl<User: Keyboard> QmkKeyboard<User> {
             User::RED_LED_PIN.gpio_write_pin_low();
         }
     }
-
-    pub fn init(&mut self) {
+    #[config_constraints]
+    pub fn init(mut self: pin::Pin<&mut Self>)
+    where
+        User: InterruptsHandler<User>,
+    {
         avr_base::pins::B0.gpio_set_pin_output();
         avr_base::pins::B0.gpio_write_pin_high();
         User::RED_LED_PIN.gpio_set_pin_output();
@@ -200,8 +209,8 @@ impl<User: Keyboard> QmkKeyboard<User> {
         disable_watchdog();
         timer_init();
         Self::init_graphics().unwrap();
-        self.serial_init();
-        self.rotary_encoder.init();
+        self.as_mut().serial_init();
+        RotaryEncoder::<User>::init();
         self.matrix_init();
 
         if is_master() {
@@ -217,33 +226,37 @@ impl<User: Keyboard> QmkKeyboard<User> {
         unsafe { asm!("sei") };
     }
 
-    pub fn task(&mut self) {
+    pub fn task(mut self: pin::Pin<&mut Self>) where User: InterruptsHandler<User> {
         if is_master() {
             hid_task();
             unsafe {
                 USB_USBTask();
             }
         }
-        let dir = self.rotary_encoder.task();
-        self.test += dir as u8;
-        Self::draw_u8(self.test, 0, 100);
+        let this = self.as_mut().project();
+        let dir = RotaryEncoder::<User>::task(this.rotary_encoder);
+        // self.rotary_encoder.task();
+        *this.test += dir as u8;
+        Self::draw_u8(*this.test, 0, 100);
         Self::draw_u8(unsafe { ERROR_COUNT }, 0, 50);
         let changed = self.matrix_task();
         Self::render(changed).unwrap();
     }
 
-    pub fn get_layer_up(&mut self, count: u8) -> u8 {
+    pub fn get_layer_up(self: pin::Pin<&mut Self>, count: u8) -> u8 {
         self.layer - count
     }
-    pub fn get_layer_down(&mut self, count: u8) -> u8 {
+    pub fn get_layer_down(self: pin::Pin<&mut Self>, count: u8) -> u8 {
         self.layer + count
     }
-    pub fn layer_up(&mut self, count: u8) {
-        self.layer = self.get_layer_up(count);
+    pub fn layer_up(self: pin::Pin<&mut Self>, count: u8) {
+        let this = self.project();
+        *this.layer += count;
     }
 
-    pub fn layer_down(&mut self, count: u8) {
-        self.layer = self.get_layer_down(count);
+    pub fn layer_down(self: pin::Pin<&mut Self>, count: u8) {
+        let this = self.project();
+        *this.layer -= count;
     }
     pub fn get_key(&self, layer: u8, column: u8, row: u8) -> &'static dyn CustomKey<User> {
         User::KEYMAP
@@ -258,12 +271,12 @@ impl<User: Keyboard> QmkKeyboard<User> {
             .read()
     }
 
-    pub fn key_pressed(&mut self, column: u8, row: u8) {
+    pub fn key_pressed(self: pin::Pin<&mut Self>, column: u8, row: u8) {
         self.get_key(self.layer, column, row)
             .complete_on_pressed(self, row, column);
     }
 
-    pub fn key_released(&mut self, column: u8, row: u8) {
+    pub fn key_released(self: pin::Pin<&mut Self>, column: u8, row: u8) {
         self.get_key(self.layer, column, row)
             .complete_on_released(self, row, column);
     }

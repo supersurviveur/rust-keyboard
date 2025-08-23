@@ -1,3 +1,5 @@
+use core::pin;
+
 use keyboard_macros::config_constraints;
 
 use crate::{
@@ -8,26 +10,26 @@ use crate::{
 #[config_constraints]
 pub trait CustomKey<User: Keyboard>: Send + Sync {
     #[inline(always)]
-    fn complete_on_pressed(&self, keyboard: &mut QmkKeyboard<User>, _row: u8, _column: u8) {
+    fn complete_on_pressed(&self, keyboard: pin::Pin<&mut QmkKeyboard<User>>, _row: u8, _column: u8) {
         self.on_pressed(keyboard);
     }
-    fn on_pressed(&self, _keyboard: &mut QmkKeyboard<User>) {}
+    fn on_pressed(&self, _keyboard: pin::Pin<&mut QmkKeyboard<User>>) {}
     #[inline(always)]
-    fn complete_on_released(&self, keyboard: &mut QmkKeyboard<User>, _row: u8, _column: u8) {
+    fn complete_on_released(&self, keyboard: pin::Pin<&mut QmkKeyboard<User>>, _row: u8, _column: u8) {
         self.on_released(keyboard);
     }
-    fn on_released(&self, _keyboard: &mut QmkKeyboard<User>) {}
+    fn on_released(&self, _keyboard: pin::Pin<&mut QmkKeyboard<User>>) {}
 }
 
 pub struct Key(pub u8);
 
 #[config_constraints]
 impl<User: Keyboard> CustomKey<User> for Key {
-    fn on_pressed(&self, _keyboard: &mut QmkKeyboard<User>) {
+    fn on_pressed(&self, _keyboard: pin::Pin<&mut QmkKeyboard<User>>) {
         add_code(self.0);
     }
 
-    fn on_released(&self, _keyboard: &mut QmkKeyboard<User>) {
+    fn on_released(&self, _keyboard: pin::Pin<&mut QmkKeyboard<User>>) {
         remove_code(self.0);
     }
 }

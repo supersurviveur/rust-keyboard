@@ -3,6 +3,7 @@
 #![feature(abi_avr_interrupt, generic_const_exprs, generic_const_items)]
 #![no_main]
 
+
 use avr_base::pins::{B1, B2, B3, B4, B5, B6, C6, D2, D5, D7, E6, F4, F5, F6, F7, Pin};
 use keyboard_macros::{entry, image_dimension, include_font_plate};
 use qmk::keymap::Keymap;
@@ -20,6 +21,7 @@ use qmk::keys::{
 use qmk::{Keyboard, QmkKeyboard, progmem, eeprom};
 use keyboard_macros::progmem;
 use eeprom_magic::eeprom;
+use core::pin;
 // include_image!("images/test.png");
 
 #[eeprom]
@@ -27,14 +29,15 @@ static mut TEST: u8 = 42;
 
 type Kb = QmkKeyboard<UserKeyboard>;
 
+
 #[entry(UserKeyboard)]
-fn main(kb: &mut QmkKeyboard<UserKeyboard>) {
+fn main(mut kb: pin::Pin<&mut QmkKeyboard<UserKeyboard>>) {
     let mut progmemtest = TEST;
     let old_value = progmemtest.read();
     Kb::draw_u8(old_value, 1, 0);
     progmemtest.write(&old_value.wrapping_add(1));
     loop {
-        kb.task();
+        kb.as_mut().task();
     }
 }
 
