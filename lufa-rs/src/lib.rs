@@ -1,5 +1,5 @@
 //! # lufa-rs
-//! 
+//!
 //! This library provides Rust bindings and macros for interacting with LUFA (Lightweight USB Framework for AVRs).
 
 #![no_std]

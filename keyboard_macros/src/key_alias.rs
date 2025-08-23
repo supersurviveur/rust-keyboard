@@ -1,5 +1,5 @@
 //! # Key Alias Macro Implementation
-//! 
+//!
 //! This file defines a procedural macro for creating aliases for constants or structs.
 //! The macro can be used to define alternative names (aliases) for keys or types, improving code readability and flexibility.
 

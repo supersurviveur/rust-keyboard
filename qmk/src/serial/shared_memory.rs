@@ -1,10 +1,12 @@
 //! This module defines shared memory structures for master and slave devices in the serial communication system.
 use keyboard_macros::config_constraints;
+use pin_project::pin_project;
 
 use crate::Keyboard;
 
 /// Represents the shared memory for a master device in the serial communication system.
 #[derive(Debug, Clone, Copy)]
+#[pin_project(!Unpin)]
 pub struct MasterSharedMemory<User: Keyboard>
 where
     [(); User::ROWS_PER_HAND as usize]:,
@@ -24,16 +26,18 @@ where
     }
 }
 
-#[config_constraints]
-impl<User: Keyboard> Default for MasterSharedMemory<User> {
+impl<User: Keyboard> Default for MasterSharedMemory<User>
+where
+    [(); User::ROWS_PER_HAND as usize]:,
+{
     /// Provides a default instance of `MasterSharedMemory` by calling the `new` method.
     fn default() -> Self {
         Self::new()
     }
 }
-
 /// Represents the shared memory for a slave device in the serial communication system.
 #[derive(Debug, Clone, Copy)]
+#[pin_project(!Unpin)]
 pub struct SlaveSharedMemory<User: Keyboard>
 where
     [(); User::ROWS_PER_HAND as usize]:,

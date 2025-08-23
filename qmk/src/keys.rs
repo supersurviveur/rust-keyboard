@@ -1,6 +1,8 @@
 //! This module defines constants and structures for keyboard keys and custom key behaviors.
 //! It includes predefined key codes and custom key implementations.
 
+use core::pin;
+
 use keyboard_macros::{config_constraints, key_alias};
 
 use crate::{
@@ -282,7 +284,7 @@ pub struct LayerUp(pub u8);
 #[config_constraints]
 impl<User: Keyboard> CustomKey<User> for LayerUp {
     /// Moves the keyboard to the specified layer when the key is pressed.
-    fn on_pressed(&self, keyboard: &mut crate::QmkKeyboard<User>) {
+    fn on_pressed(&self, keyboard: pin::Pin<&mut crate::QmkKeyboard<User>>) {
         keyboard.layer_up(self.0);
     }
 }
@@ -295,7 +297,7 @@ pub struct LayerDown(pub u8);
 #[config_constraints]
 impl<User: Keyboard> CustomKey<User> for LayerDown {
     /// Moves the keyboard to the specified layer when the key is pressed.
-    fn on_pressed(&self, keyboard: &mut crate::QmkKeyboard<User>) {
+    fn on_pressed(&self, keyboard: pin::Pin<&mut crate::QmkKeyboard<User>>) {
         keyboard.layer_down(self.0);
     }
 }
@@ -309,8 +311,13 @@ pub struct TransparentUp;
 #[config_constraints]
 impl<User: Keyboard> CustomKey<User> for TransparentUp {
     /// Delegates the key press to the key in the layer above.
-    fn complete_on_pressed(&self, keyboard: &mut crate::QmkKeyboard<User>, row: u8, column: u8) {
-        let layer = QmkKeyboard::<User>::get_layer_up(keyboard.layer, 1);
+    fn complete_on_pressed(
+        &self,
+        mut keyboard: pin::Pin<&mut crate::QmkKeyboard<User>>,
+        row: u8,
+        column: u8,
+    ) {
+        let layer = keyboard.as_mut().get_layer_up(1);
         keyboard
             .get_key(layer, row, column)
             .complete_on_pressed(keyboard, row, column);
@@ -318,12 +325,12 @@ impl<User: Keyboard> CustomKey<User> for TransparentUp {
     /// Delegates the key release to the key in the layer above.
     fn complete_on_released(
         &self,
-        keyboard: &mut crate::QmkKeyboard<User>,
+        keyboard: pin::Pin<&mut crate::QmkKeyboard<User>>,
         row: u8,
         column: u8,
         key_actual_layer: u8,
     ) {
-        let layer = QmkKeyboard::<User>::get_layer_up(key_actual_layer, 1);
+        let layer = key_actual_layer - 1;
         keyboard
             .get_key(layer, row, column)
             .complete_on_pressed(keyboard, row, column);

@@ -92,9 +92,9 @@ pub const EEARL: Register<0x41> = Register();
 pub const EEDR: Register<0x40> = Register();
 
 /// EECR (EEPROM Control Register) bits
-pub const EEPM1: u8 = 1<<5;
-pub const EEPM0: u8 = 1<<4;
-pub const EERIE: u8 = 1<<3;
-pub const EEMPE: u8 = 1<<2;
-pub const EEPE: u8 = 1<<1;
-pub const EERE: u8 = 1<<0;
+pub const EEPM1: u8 = 1 << 5;
+pub const EEPM0: u8 = 1 << 4;
+pub const EERIE: u8 = 1 << 3;
+pub const EEMPE: u8 = 1 << 2;
+pub const EEPE: u8 = 1 << 1;
+pub const EERE: u8 = 1 << 0;
