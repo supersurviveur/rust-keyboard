@@ -47,7 +47,6 @@ use core::pin;
 
 pub mod atomic;
 pub mod graphics;
-pub mod helper_traits;
 pub mod i2c;
 pub mod init;
 pub mod keymap;
@@ -93,6 +92,7 @@ pub trait Keyboard: Sized + 'static {
     } else {
         Self::RIGHT_ENCODER_PIN2
     };
+    const ROTARY_ENCODER_RESOLUTION: i8 = 1;
 
     const RED_LED_PIN: Pin;
     const SOFT_SERIAL_PIN: Pin;
@@ -110,9 +110,6 @@ pub trait Keyboard: Sized + 'static {
     /// This **MUST** be in progmem !
     #[config_constraints(Self)]
     const KEYMAP: progmem::ProgmemRef<Keymap<Self>>;
-
-    #[config_constraints(Self)]
-    fn test(keyboard: &mut QmkKeyboard<Self>);
 
     const ROWS_PER_HAND: u8 = Self::MATRIX_ROWS / 2;
     const THIS_HAND_OFFSET: u8 = if is_right() { Self::ROWS_PER_HAND } else { 0 };
@@ -134,6 +131,9 @@ pub trait Keyboard: Sized + 'static {
         data: Self::USER_FONTPLATE,
     });
     fn new() -> Self;
+
+    #[config_constraints(Self)]
+    fn rotary_encoder_handler(_keyboard: &mut QmkKeyboard<Self>, _rotation: i8) {}
 }
 
 #[config_constraints]
@@ -151,10 +151,11 @@ pub struct QmkKeyboard<User: Keyboard> {
     pub slave_shared_memory: UnsafeCell<SlaveSharedMemory<User>>,
 
     pub layer: u8,
+    pub keys_actual_layer: [u8; User::MATRIX_ROWS as usize * User::MATRIX_COLUMNS as usize],
 
     #[pin]
     pub rotary_encoder: UnsafeCell<RotaryEncoder<User>>,
-    pub test: u8,
+
 }
 
 #[config_constraints]
@@ -172,7 +173,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
             slave_shared_memory: SlaveSharedMemory::new().into(),
             layer: 0,
             rotary_encoder: RotaryEncoder::new().into(),
-            test: 0,
+            keys_actual_layer: [0; _],
         }
     }
 }
@@ -233,15 +234,15 @@ impl<User: Keyboard> QmkKeyboard<User> {
                 USB_USBTask();
             }
         }
+
         let this = self.as_mut().project();
-        let dir = RotaryEncoder::<User>::task(this.rotary_encoder);
-        // self.rotary_encoder.task();
-        *this.test += dir as u8;
-        Self::draw_u8(*this.test, 0, 100);
+        let rotary = RotaryEncoder::<User>::task(this.rotary_encoder);
+        User::rotary_encoder_handler(self, rotary);
         Self::draw_u8(unsafe { ERROR_COUNT }, 0, 50);
         let changed = self.matrix_task();
         Self::render(changed).unwrap();
     }
+
 
     pub fn get_layer_up(self: pin::Pin<&mut Self>, count: u8) -> u8 {
         self.layer - count
@@ -271,14 +272,22 @@ impl<User: Keyboard> QmkKeyboard<User> {
             .read()
     }
 
-    pub fn key_pressed(self: pin::Pin<&mut Self>, column: u8, row: u8) {
+
+    pub fn key_pressed(mut self: pin::Pin<&mut Self>, column: u8, row: u8) {
+        let this = self.as_mut().project();
+        *this.keys_actual_layer[(row * User::MATRIX_COLUMNS + column) as usize] = *this.layer;
+
         self.get_key(self.layer, column, row)
             .complete_on_pressed(self, row, column);
     }
 
+
     pub fn key_released(self: pin::Pin<&mut Self>, column: u8, row: u8) {
-        self.get_key(self.layer, column, row)
-            .complete_on_released(self, row, column);
+        let key_actual_layer =
+            self.keys_actual_layer[(row * User::MATRIX_COLUMNS + column) as usize];
+
+        self.get_key(key_actual_layer, column, row)
+            .complete_on_released(self, row, column, key_actual_layer);
     }
 }
 

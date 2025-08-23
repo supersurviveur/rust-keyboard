@@ -2,7 +2,6 @@
 //
 // Permit EEPROM access
 
-#[cfg(all(target_arch = "avr", not(doc)))]
 use core::{
     marker::PhantomData,
     mem::{MaybeUninit, size_of},

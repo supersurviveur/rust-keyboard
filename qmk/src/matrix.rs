@@ -1,5 +1,7 @@
-use core::pin;
+//! This module provides functionality for managing the keyboard matrix.
+//! It includes methods for initializing, scanning, and processing the matrix state.
 
+use core::pin;
 use crate::{
     Keyboard, QmkKeyboard,
     atomic::atomic,
@@ -15,17 +17,27 @@ pub const MATRIX_IO_DELAY: u64 = 30;
 
 #[config_constraints]
 impl<User: Keyboard> QmkKeyboard<User> {
+    /// Sets a GPIO pin as output and drives it low atomically.
+    ///
+    /// This is used to select a row in the keyboard matrix.
     pub fn gpio_atomic_set_pin_output_low(pin: Pin) {
         atomic(|| {
             pin.gpio_set_pin_output();
             pin.gpio_write_pin_low();
         })
     }
+    /// Sets a GPIO pin as input with a pull-up resistor atomically.
+    ///
+    /// This is used to unselect a row in the keyboard matrix.
+    ///
     pub fn gpio_atomic_set_pin_input_high(pin: Pin) {
         atomic(|| {
             pin.gpio_set_pin_input_high();
         })
     }
+    /// Selects a specific row in the keyboard matrix.
+    ///
+    /// Returns `true` if the row was successfully selected, or `false` if no row is selected.
     pub fn select_row(row: u8) -> bool {
         let pin = User::ROW_PINS[row as usize];
         if pin != NO_PIN {
@@ -34,6 +46,9 @@ impl<User: Keyboard> QmkKeyboard<User> {
         }
         false
     }
+    /// Unselects a specific row in the keyboard matrix.
+    ///
+    /// Returns `true` if the row was successfully unselected, or `false` if no row is selected.
     pub fn unselect_row(row: u8) -> bool {
         let pin = User::ROW_PINS[row as usize];
         if pin != NO_PIN {
@@ -43,6 +58,9 @@ impl<User: Keyboard> QmkKeyboard<User> {
         false
     }
 
+    /// Reads the state of a specific column pin in the keyboard matrix.
+    ///
+    /// Returns `true` if the pin is high, or `false` if the pin is low.
     pub fn read_matrix_pin(pin: Pin) -> bool {
         if pin != NO_PIN {
             pin.gpio_read_pin()
@@ -51,6 +69,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
         }
     }
 
+    /// Reads the columns of a specific row in the keyboard matrix and updates the matrix state.
     fn matrix_read_cols_on_row(&self, current_matrix: &mut [User::MatrixRowType], current_row: u8) {
         // Start with a clear matrix row
         let mut current_row_value = 0.into();
@@ -82,6 +101,8 @@ impl<User: Keyboard> QmkKeyboard<User> {
         // Update the matrix
         current_matrix[current_row as usize] = current_row_value;
     }
+
+    /// Initializes the keyboard matrix by setting all rows and columns to their default states.
     pub fn matrix_init(&self) {
         for row in 0..User::ROWS_PER_HAND {
             Self::unselect_row(row);
@@ -90,6 +111,10 @@ impl<User: Keyboard> QmkKeyboard<User> {
             Self::gpio_atomic_set_pin_input_high(User::COL_PINS[col as usize]);
         }
     }
+
+    /// Scans the keyboard matrix for changes and updates its state.
+    ///
+    /// Returns `true` if the matrix state has changed, or `false` otherwise.
     pub fn matrix_scan(mut self: pin::Pin<&mut Self>) -> bool {
         let mut new_matrix = [0.into(); User::ROWS_PER_HAND as usize];
         for row in 0..User::ROWS_PER_HAND {
@@ -106,6 +131,10 @@ impl<User: Keyboard> QmkKeyboard<User> {
 
         self.debounce(changed)
     }
+
+    /// Handles the matrix task, including scanning and processing key events.
+    ///
+    /// Returns `true` if any key events were detected, or `false` otherwise.
     pub fn matrix_task(mut self: pin::Pin<&mut Self>) -> bool
     where
         User: InterruptsHandler<User>,
@@ -114,6 +143,8 @@ impl<User: Keyboard> QmkKeyboard<User> {
         self.as_mut().serial_task();
         self.key_task(our_matrix_changed)
     }
+
+    /// Processes key events based on the current and previous matrix states.
     pub fn key_task(mut self: pin::Pin<&mut Self>, our_matrix_changed: bool) -> bool {
         let this = self.as_mut().project();
         let changed = our_matrix_changed
@@ -162,6 +193,7 @@ pub const DEBOUNCE: u32 = 5;
 
 #[config_constraints]
 impl<User: Keyboard> QmkKeyboard<User> {
+    /// Debounces the matrix state to filter out noise and ensure stable key detection.
     fn debounce(self: pin::Pin<&mut Self>, changed: bool) -> bool {
         let this = self.project();
         let this_matrix = unsafe {

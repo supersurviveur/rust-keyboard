@@ -14,7 +14,7 @@
 //! dedicated accessor methods that first load the data into the normal data
 //! memory domain.
 
-#[cfg(all(target_arch = "avr", not(doc)))]
+#[cfg(target_arch = "avr")]
 use core::arch::asm;
 use core::mem::{MaybeUninit, size_of};
 
@@ -57,7 +57,7 @@ pub struct ProgmemPtr<T> {
 }
 
 /// Similar to a ref in usage, but reference progmem instead
-/// unsafe to construct (prefer using the dedicated #[progmem] macro)
+/// unsafe to construct (prefer using the dedicated [keyboard_macros::progmem] macro)
 /// but safe to use
 pub struct ProgmemRef<T> {
     ptr: *const T,
@@ -135,6 +135,7 @@ impl<T> ProgmemPtr<T> {
             remaining: (size_of::<T>()),
         }
     }
+    #[allow(clippy::len_without_is_empty)]
     pub const fn len(self) -> usize {
         size_of::<T>()
     }
@@ -143,7 +144,7 @@ impl<T> ProgmemPtr<T> {
 impl<T> ProgmemRef<T> {
     /// # Safety
     /// The address must be valid (aka, realy point to a T storred in progmem)
-    /// Prefer safe construction trough the use of #[progmem]
+    /// Prefer safe construction trough the use of [keyboard_macros::progmem]
     #[inline(always)]
     pub const unsafe fn new(ptr: *const T) -> Self {
         Self { ptr }
@@ -166,6 +167,7 @@ impl<T> ProgmemRef<T> {
             remaining: (size_of::<T>()),
         }
     }
+    #[allow(clippy::len_without_is_empty)]
     pub const fn len(self) -> usize {
         size_of::<T>()
     }
@@ -194,19 +196,25 @@ impl<T, const N: usize> IndexByValue<usize> for ProgmemRef<[T; N]> {
         }
     }
 }
-impl<T,const N: usize> ProgmemPtr<[T;N]> {
+impl<T, const N: usize> ProgmemPtr<[T; N]> {
     #[inline(always)]
     #[allow(non_snake_case)]
     pub const unsafe fn iter_T(&self) -> ProgmemIterator<T> {
-        ProgmemIterator { ptr: self.cast(), remaining: N }
+        ProgmemIterator {
+            ptr: self.cast(),
+            remaining: N,
+        }
     }
 }
 
-impl<T,const N: usize> ProgmemRef<[T;N]> {
+impl<T, const N: usize> ProgmemRef<[T; N]> {
     #[inline(always)]
     #[allow(non_snake_case)]
     pub const fn iter_T(&self) -> ProgmemIterator<T> {
-        ProgmemIterator { ptr: self.as_ptr().cast(), remaining: N }
+        ProgmemIterator {
+            ptr: self.as_ptr().cast(),
+            remaining: N,
+        }
     }
 }
 

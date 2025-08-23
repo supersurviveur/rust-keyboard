@@ -1,7 +1,11 @@
 [package]
 name = "lufa_rs_macros"
+description = "Proc macros for the lufa-rs crate."
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+keywords = [ "embedded", "usb", "lufa", "bindings" ]
+repository = "https://github.com/supersurviveur/lufa-rs"
 
 [lib]
 proc-macro = true

@@ -1,3 +1,6 @@
+//! This module provides functions for I2C communication.
+//! It includes initialization, data transmission, and error handling utilities.
+
 const I2C_TIMEOUT_INFINITE: u32 = u16::MAX as u32;
 
 use crate::timer::timer_elapsed16;
@@ -40,9 +43,13 @@ const F_SCL: u64 = 400000;
 const F_CPU: u64 = 16000000;
 const TWBR_VAL: u8 = (((F_CPU / F_SCL) as usize - 16) / 2) as u8;
 
+/// Represents an error in I2C communication.
 #[derive(Debug)]
 pub struct I2CError();
 
+/// Initializes the I2C interface with the specified clock frequency.
+///
+/// This function configures the I2C registers for communication.
 pub fn i2c_init() {
     unsafe {
         write_volatile(TWSR, 0);
@@ -50,6 +57,12 @@ pub fn i2c_init() {
     }
 }
 
+/// Sends a START condition on the I2C bus.
+///
+/// # Arguments
+/// * `timeout` - The timeout duration in milliseconds.
+///
+/// Returns `Ok(())` if the START condition was successfully sent, or an `I2CError` otherwise.
 pub fn i2c_start(timeout: u16) -> Result<(), I2CError> {
     unsafe {
         // Envoyer condition START
@@ -66,6 +79,12 @@ pub fn i2c_start(timeout: u16) -> Result<(), I2CError> {
     }
 }
 
+/// Waits for the I2C operation to complete.
+///
+/// # Arguments
+/// * `timeout` - The timeout duration in milliseconds.
+///
+/// Returns `Ok(())` if the operation completed successfully, or an `I2CError` otherwise.
 pub fn i2c_wait(timeout: u16) -> Result<(), I2CError> {
     unsafe {
         let timeout_timer: u32 = timer_read();
@@ -80,6 +99,9 @@ pub fn i2c_wait(timeout: u16) -> Result<(), I2CError> {
     Ok(())
 }
 
+/// Sends a STOP condition on the I2C bus.
+///
+/// This function terminates the current I2C communication.
 #[inline(always)]
 pub fn i2c_stop() {
     unsafe {
@@ -87,6 +109,13 @@ pub fn i2c_stop() {
     }
 }
 
+/// Writes a byte of data to the I2C bus.
+///
+/// # Arguments
+/// * `data` - The byte of data to write.
+/// * `timeout` - The timeout duration in milliseconds.
+///
+/// Returns `Ok(())` if the data was successfully written, or an `I2CError` otherwise.
 pub fn i2c_write(data: u8, timeout: u16) -> Result<(), I2CError> {
     unsafe {
         // load data into data register
@@ -103,6 +132,14 @@ pub fn i2c_write(data: u8, timeout: u16) -> Result<(), I2CError> {
     }
 }
 
+/// Transmits a sequence of bytes to a specific I2C address.
+///
+/// # Arguments
+/// * `address` - The I2C address of the target device.
+/// * `data` - An iterator over the bytes to transmit.
+/// * `timeout` - The timeout duration in milliseconds.
+///
+/// Returns `Ok(())` if the transmission was successful, or an `I2CError` otherwise.
 pub fn i2c_transmit<T: Iterator<Item = u8>>(
     address: u8,
     data: T,

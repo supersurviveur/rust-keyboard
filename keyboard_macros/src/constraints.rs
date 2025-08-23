@@ -1,3 +1,26 @@
+//! # Config Constraints Macro Implementation
+//! 
+//! This module provides the implementation for the `config_constraints` procedural macro.
+//! The macro is used to enforce compile-time constraints on generics in structs, traits, or functions.
+//! It ensures that certain conditions are met based on a configurable prefix (e.g., `User`).
+//! 
+//! ## Usage
+//! The `config_constraints` macro can be applied to:
+//! - Structs
+//! - Traits
+//! - Trait constants
+//! - Trait functions
+//! - Impl blocks
+//! 
+//! ## Example
+//! ```rust
+//! config_constraints!(User => struct MyStruct<T>);
+//! ```
+//! This will add compile-time constraints to `MyStruct` based on the `User` prefix, such as:
+//! - `User::LAYER_COUNT`
+//! - `User::ROWS_PER_HAND`
+//! - `User::MATRIX_ROWS * User::MATRIX_COLUMNS`
+
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::{ToTokens, TokenStreamExt, quote};
@@ -6,18 +29,23 @@ use syn::{
     WhereClause, parse::Parse, parse_macro_input, parse_quote,
 };
 
+/// Represents the arguments for the `config_constraints` macro.
+/// 
+/// The arguments include a `prefix` expression, which defaults to `User` if not provided.
 struct Args {
+    /// The prefix expression used to qualify the constraints.
     prefix: Expr,
 }
 
 impl Parse for Args {
+    /// Parses the arguments for the `config_constraints` macro.
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let prefix = input.parse().unwrap_or(parse_quote!(User));
         Ok(Self { prefix })
     }
 }
 
-// Custom to token methods, otherwise generics aren't produced, see issue syn#782
+/// Custom to token methods, otherwise generics aren't produced, see issue syn#782
 fn const_item_with_generics(item: TraitItemConst, tokens: &mut TokenStream2) {
     tokens.append_all(
         item.attrs
@@ -37,6 +65,7 @@ fn const_item_with_generics(item: TraitItemConst, tokens: &mut TokenStream2) {
     item.semi_token.to_tokens(tokens);
 }
 
+/// Implements the `config_constraints` macro.
 pub fn config_constraints_impl(args: TokenStream, item: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args as Args);
     let prefix = args.prefix;

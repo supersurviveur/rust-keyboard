@@ -3,7 +3,7 @@ use core::{cmp::min, iter::Iterator};
 use crate::i2c::I2CError;
 use crate::{Keyboard, QmkKeyboard, i2c, progmem};
 
-use keyboard_macros::{config_constraints};
+use keyboard_macros::config_constraints;
 const OLED_DISPLAY_HEIGHT: u8 = 32;
 const OLED_DISPLAY_WIDTH: u8 = 128;
 const OLED_MATRIX_SIZE: usize = (OLED_DISPLAY_HEIGHT as usize) * (OLED_DISPLAY_WIDTH as usize) / 8;
@@ -136,7 +136,6 @@ impl<User: Keyboard> QmkKeyboard<User> {
     }
 
     pub fn init_graphics() -> Result<(), I2CError> {
-
         i2c::i2c_init();
         Self::oled_send_iter(DISPLAY_SETUP1.iter_u8())?;
         Self::oled_send_iter(DISPLAY_NORMAL.iter_u8())?;
@@ -316,7 +315,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
         }
     }
 
-    pub fn draw_text<'a, T: Iterator<Item = char>>(text: T, mut offset_x: u8, mut offset_y: u8) {
+    pub fn draw_text<T: Iterator<Item = char>>(text: T, mut offset_x: u8, mut offset_y: u8) {
         for ascii in text {
             if offset_x + User::CHAR_WIDTH >= OLED_DISPLAY_HEIGHT {
                 offset_x = 0;
