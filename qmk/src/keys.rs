@@ -6,8 +6,7 @@ use core::pin;
 use keyboard_macros::{config_constraints, key_alias};
 
 use crate::{
-    Keyboard, QmkKeyboard,
-    keymap::{CustomKey, Key},
+    keymap::{CustomKey, Key}, Keyboard
 };
 
 // TODO handle modifiers
