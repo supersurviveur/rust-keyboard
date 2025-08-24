@@ -7,8 +7,8 @@ use core::{
     mem::{MaybeUninit, size_of},
 };
 
-use crate::primitive::IndexByValue;
 use crate::atomic::atomic;
+use crate::primitive::IndexByValue;
 use avr_base::register::*;
 use core::hint::unlikely;
 

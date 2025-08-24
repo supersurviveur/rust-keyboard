@@ -1,5 +1,5 @@
 //! This module provides the implementation for the `user_config` procedural macro.
-//! 
+//!
 //! The macro ensures that certain types are not manually defined by the user and automatically
 //! adds required type definitions to the implementation block.
 
@@ -8,7 +8,7 @@ use quote::quote;
 use syn::{parse_macro_input, spanned::Spanned};
 
 /// Implements the `user_config` macro.
-/// 
+///
 /// This function processes an implementation block, checks for prohibited type definitions,
 /// and adds the required `KeymapType` definition if it is not already present.
 pub fn user_config_impl(_args: TokenStream, item: TokenStream) -> TokenStream {

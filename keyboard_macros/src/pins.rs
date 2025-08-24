@@ -1,8 +1,8 @@
 //! # Pins Macro Implementation
-//! 
+//!
 //! This file defines a procedural macro for generating constants representing hardware pins.
 //! The macro takes a list of pins as input, where each pin is represented by a port (character) and a number.
-//! 
+//!
 //! ## Example
 //! ```rust
 //! pins!(A0, B1, C2);
@@ -17,10 +17,10 @@
 use proc_macro::TokenStream;
 use quote::ToTokens;
 use quote::{format_ident, quote};
+use syn::Token;
 use syn::parse::Parse;
 use syn::parse_macro_input;
 use syn::punctuated::Punctuated;
-use syn::Token;
 
 pub(crate) fn pins_impl(input: TokenStream) -> proc_macro::TokenStream {
     let pins = parse_macro_input!(input as Pins).0;
