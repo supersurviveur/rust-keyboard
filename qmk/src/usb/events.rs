@@ -258,31 +258,12 @@ pub fn toggle_code(code: u8) {
     }
 }
 
-/// Sends the next HID report for the keyboard and mouse if needed.
-pub fn send_next_report() {
+/// Sends the next mouse HID report if needed.
+pub fn send_next_mouse_report() {
+    if unsafe { USB_DEVICE_STATE } != UsbDeviceStates::DeviceStateConfigured as u8 {
+        return;
+    }
     unsafe {
-        let send_report = if IDLE_COUNT != 0 && IDLE_MS_REMAINING == 0 {
-            IDLE_MS_REMAINING = IDLE_COUNT;
-            true
-        } else {
-            KEYBOARD_REPORT_DATA_UPDATED
-        };
-
-        // Select the keyboard endpoint
-        Endpoint_SelectEndpoint(KEYBOARD_IN_ENDPOINT_ADDR);
-
-        if Endpoint_IsReadWriteAllowed() && send_report {
-            KEYBOARD_REPORT_DATA_UPDATED = false;
-
-            Endpoint_Write_Stream_LE(
-                &KEYBOARD_REPORT_DATA as *const _ as *const c_void,
-                size_of::<UsbKeyboardReportData>() as u16,
-                null_mut(),
-            );
-
-            Endpoint_ClearIN();
-        }
-
         let send_report = if IDLE_COUNT != 0 && IDLE_MS_REMAINING == 0 {
             IDLE_MS_REMAINING = IDLE_COUNT;
             true
@@ -311,10 +292,38 @@ pub fn send_next_report() {
     }
 }
 
-/// Handles the HID task, sending reports if the device is configured.
-pub fn hid_task() {
+/// Sends the next keyboard HID report if needed.
+pub fn send_next_keyboard_report() {
     if unsafe { USB_DEVICE_STATE } != UsbDeviceStates::DeviceStateConfigured as u8 {
         return;
     }
-    send_next_report();
+    unsafe {
+        let send_report = if IDLE_COUNT != 0 && IDLE_MS_REMAINING == 0 {
+            IDLE_MS_REMAINING = IDLE_COUNT;
+            true
+        } else {
+            KEYBOARD_REPORT_DATA_UPDATED
+        };
+
+        // Select the keyboard endpoint
+        Endpoint_SelectEndpoint(KEYBOARD_IN_ENDPOINT_ADDR);
+
+        if Endpoint_IsReadWriteAllowed() && send_report {
+            KEYBOARD_REPORT_DATA_UPDATED = false;
+
+            Endpoint_Write_Stream_LE(
+                &KEYBOARD_REPORT_DATA as *const _ as *const c_void,
+                size_of::<UsbKeyboardReportData>() as u16,
+                null_mut(),
+            );
+
+            Endpoint_ClearIN();
+        }
+    }
+}
+
+/// Handles the HID task, sending reports.
+pub fn hid_task() {
+    send_next_keyboard_report();
+    send_next_mouse_report();
 }

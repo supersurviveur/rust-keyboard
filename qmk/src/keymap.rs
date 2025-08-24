@@ -1,6 +1,9 @@
 //! This module defines the keymap structure and the `CustomKey` trait for handling custom key behaviors.
 //! It provides the foundation for defining and managing keyboard layers and key actions.
 
+use core::time::Duration;
+
+use avr_delay::delay_us;
 use keyboard_macros::config_constraints;
 
 use crate::{
@@ -24,7 +27,13 @@ pub trait CustomKey<User: Keyboard>: Send + Sync {
 
     /// Called when the key is released. By default, it delegates to `on_released`.
     #[inline(always)]
-    fn complete_on_released(&self, keyboard: &mut QmkKeyboard<User>, _row: u8, _column: u8, _key_actual_layer: u8) {
+    fn complete_on_released(
+        &self,
+        keyboard: &mut QmkKeyboard<User>,
+        _row: u8,
+        _column: u8,
+        _key_actual_layer: u8,
+    ) {
         self.on_released(keyboard);
     }
 
@@ -51,9 +60,28 @@ impl<User: Keyboard> CustomKey<User> for Key {
 /// Represents a single layer in the keymap.
 ///
 /// Each layer is a 2D array of custom keys.
-pub type Layer<User: Keyboard> = [&'static dyn CustomKey<User>;User::MATRIX_ROWS as usize * User::MATRIX_COLUMNS as usize];
+pub type Layer<User: Keyboard> =
+    [&'static dyn CustomKey<User>; User::MATRIX_ROWS as usize * User::MATRIX_COLUMNS as usize];
 
 /// Represents the entire keymap, consisting of multiple layers.
 ///
 /// The keymap is a 3D array where each layer contains a 2D array of custom keys.
-pub type Keymap<User: Keyboard> = [Layer<User>;User::LAYER_COUNT];
+pub type Keymap<User: Keyboard> = [Layer<User>; User::LAYER_COUNT];
+
+#[config_constraints]
+impl<User: Keyboard> QmkKeyboard<User> {
+    pub fn send_ascii_char_with_delay<const DELAY: u64>(&mut self, char: u8) {
+        delay_us::<DELAY>();
+    }
+    pub fn send_ascii_char(&mut self, char: u8) {
+        self.send_ascii_char_with_delay::<0>(char);
+    }
+    pub fn send_string_with_delay<T: Iterator<Item = u8>, const DELAY: u64>(&mut self, string: T) {
+        for char in string {
+            self.send_ascii_char_with_delay::<DELAY>(char);
+        }
+    }
+    pub fn send_string<T: Iterator<Item = u8>>(&mut self, string: T) {
+        self.send_string_with_delay::<_, 0>(string);
+    }
+}
