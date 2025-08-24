@@ -53,10 +53,10 @@ impl Keyboard for UserKeyboard {
     const RIGHT_ENCODER_PIN2: Pin = F5;
     const ROTARY_ENCODER_RESOLUTION: i8 = 1;
 
-    const FONT_DIM: (u8, u8, usize) = image_dimension!("images/fontplate.png");
+    const FONT_DIM: (u8, u8, usize) = image_dimension!("../images/fontplate.png");
     const CHAR_WIDTH: u8 = 6;
     const CHAR_HEIGHT: u8 = 13;
-    const USER_FONTPLATE: [u8; Self::FONT_SIZE] = include_font_plate!("images/fontplate.png");
+    const USER_FONTPLATE: [u8; Self::FONT_SIZE] = include_font_plate!("../images/fontplate.png");
 
     const KEYMAP: progmem::ProgmemRef<Keymap<Self>> = KEYMAP;
 

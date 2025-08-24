@@ -1,0 +1,22 @@
+[package]
+name = "rust_keyboard"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+eeprom_magic = { path = "../../eeprom_magic"}
+keyboard_macros = { path = "../../keyboard_macros" }
+qmk = { path = "../../qmk" }
+avr-base = { path = "../../avr-base" }
+lufa-rs = "0.1.0"
+compiler_builtins = "0.1.160"
+avr_delay = { git = "https://github.com/avr-rust/delay", branch = "cycacc" }
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+lto = "fat"
+opt-level = "z"
+codegen-units = 1

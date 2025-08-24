@@ -13,4 +13,4 @@ F_CPU="16000000"
 ARCH="ARCH_AVR8"
 BOARD="BOARD_USBKEY"
 MMCU="atmega32u4"
-LUFA_CONFIG_PATH = { value = "qmk", relative = true }
+LUFA_CONFIG_PATH = { value = ".", relative = true }

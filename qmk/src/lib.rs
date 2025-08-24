@@ -140,7 +140,7 @@ pub trait Keyboard: Sized + 'static {
 }
 
 #[config_constraints]
-#[pin_project(project = QmkKeyboardProjection)]
+#[pin_project(pub project = QmkKeyboardProjection)]
 pub  struct QmkKeyboard<User: Keyboard> {
     pub user: User,
 
