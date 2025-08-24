@@ -8,6 +8,7 @@ use crate::{
     is_left,
     timer::{timer_elapsed, timer_read},
 };
+
 use avr_base::pins::{GPIO_INPUT_PIN_DELAY, NO_PIN, Pin};
 use avr_delay::{delay_cycles, delay_us};
 use core::pin;

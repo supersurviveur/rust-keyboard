@@ -8,7 +8,7 @@ eeprom_magic = { path = "../eeprom_magic"}
 keyboard_macros = { path = "../keyboard_macros" }
 qmk = { path = "../qmk" }
 avr-base = { path = "../avr-base" }
-lufa-rs = { path = "../lufa-rs" }
+lufa-rs = "0.1.0"
 compiler_builtins = "0.1.160"
 avr_delay = { git = "https://github.com/avr-rust/delay", branch = "cycacc" }
     

@@ -41,21 +41,19 @@ pub fn entry_impl(args: TokenStream, item: TokenStream) -> TokenStream {
 
         static mut _THE_KEYBOARD: core::mem::MaybeUninit<qmk::QmkKeyboard<#userkbtype>> = core::mem::MaybeUninit::uninit();
 
-        use qmk::interrupts::InterruptsHandler as _InterruptsHandler;
-
-        impl _InterruptsHandler<#userkbtype> for #userkbtype {
+        impl qmk::interrupts::InterruptsHandler<#userkbtype> for #userkbtype {
             const KEYBOARD_PTR: *mut QmkKeyboard<#userkbtype> = const { unsafe { _THE_KEYBOARD.as_mut_ptr() } };
         }
 
 
         #[unsafe(no_mangle)]
         extern "avr-interrupt" fn __vector_3() {
-            unsafe {#userkbtype::serial_interrupt();}
+            unsafe {<#userkbtype as qmk::interrupts::InterruptsHandler<#userkbtype>>::serial_interrupt();}
         }
 
         #[unsafe(no_mangle)]
         extern "avr-non-blocking-interrupt" fn __vector_21() {
-            unsafe {#userkbtype::timer_interrupt();}
+            unsafe {<#userkbtype as qmk::interrupts::InterruptsHandler<#userkbtype>>::timer_interrupt();}
         }
 
         #[unsafe(no_mangle)]

@@ -10,7 +10,9 @@ use crate::{
 };
 
 #[config_constraints]
-pub trait InterruptsHandler<User: crate::Keyboard>: crate::Keyboard {
+pub trait InterruptsHandler<User: crate::Keyboard + InterruptsHandler<User>>:
+    crate::Keyboard
+{
     const KEYBOARD_PTR: *mut QmkKeyboard<User>;
     const SHARED_MEMORY_SLAVE: *mut SlaveSharedMemory<User> = unsafe {
         Self::KEYBOARD_PTR
@@ -40,10 +42,7 @@ pub trait InterruptsHandler<User: crate::Keyboard>: crate::Keyboard {
     /// # Safety
     /// Should only be called by serial interrupt. #[entry] macro should take care of that
     #[inline(always)]
-    unsafe fn serial_interrupt()
-    where
-        User: InterruptsHandler<User>,
-    {
+    unsafe fn serial_interrupt() {
         QmkKeyboard::<User>::serial_interrupt();
     }
 }

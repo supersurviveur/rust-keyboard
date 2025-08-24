@@ -1,6 +1,0 @@
-target/
-build/
-Cargo.lock
-
-# Editor
-.helix/

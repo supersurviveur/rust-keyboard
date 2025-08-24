@@ -17,15 +17,11 @@ flash:
 both: left
 both: right
 
-build: lufa-rs/lufa/LUFA
+build:
 	cargo build --release
 	mkdir -p build
 	cp ./target/$(TARGET_RS)/release/rust_keyboard.elf build
 
-lufa-rs/lufa/LUFA:
-	@echo You need to init and update the lufa git submodule. Run git submodule update --init lufa-rs/lufa
-	@false
-	
 clean:
 	cargo clean
 

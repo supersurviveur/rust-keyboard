@@ -14,9 +14,10 @@
 //!
 //! ## Example
 //! ```rust
-//! config_constraints!(User => struct MyStruct<T>);
+//! #[config_constraints]
+//! impl<User: Keyboard> Something<User> {}
 //! ```
-//! This will add compile-time constraints to `MyStruct` based on the `User` prefix, such as:
+//! This will add compile-time constraints based on the `User` prefix, such as:
 //! - `User::LAYER_COUNT`
 //! - `User::ROWS_PER_HAND`
 //! - `User::MATRIX_ROWS * User::MATRIX_COLUMNS`
