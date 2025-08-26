@@ -1,7 +1,7 @@
 use core::{cmp::min, iter::Iterator};
 
 use crate::i2c::I2CError;
-use crate::{Keyboard, QmkKeyboard, i2c, progmem};
+use crate::{Keyboard, OmkKeyboard, i2c, progmem};
 
 use keyboard_macros::config_constraints;
 const OLED_DISPLAY_HEIGHT: u8 = 32;
@@ -129,7 +129,7 @@ static DISPLAY_ON_DATA: [u8; 2] = [I2C_CMD, DISPLAY_ON];
 static DISPLAY_OFF_DATA: [u8; 2] = [I2C_CMD, DISPLAY_OFF];
 
 #[config_constraints]
-impl<User: Keyboard> QmkKeyboard<User> {
+impl<User: Keyboard> OmkKeyboard<User> {
     #[inline(always)]
     pub fn oled_send_iter<T: Iterator<Item = u8>>(data: T) -> Result<(), I2CError> {
         i2c::i2c_transmit(OLED_DISPLAY_ADDRESS << 1, data, OLED_I2C_TIMEOUT)
@@ -326,7 +326,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
         }
     }
 
-    pub fn draw_image<const N: usize>(image: QmkImage<N>, offset_x: u8, offset_y: u8) {
+    pub fn draw_image<const N: usize>(image: OmkImage<N>, offset_x: u8, offset_y: u8) {
         let mut view = unsafe {
             FRAMEBUF_BINARRAY.extract_unsized_view_unchecked(
                 offset_x,
@@ -357,13 +357,13 @@ impl<User: Keyboard> QmkKeyboard<User> {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct QmkImage<const N: usize> {
+pub struct OmkImage<const N: usize> {
     pub width: u8,
     pub height: u8,
     pub bytes: [u8; N],
 }
 
-impl<const N: usize> QmkImage<N> {
+impl<const N: usize> OmkImage<N> {
     pub fn get_pixel(&self, x: u8, y: u8) -> Option<bool> {
         if x >= self.width || y >= self.height {
             return None;

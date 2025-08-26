@@ -136,12 +136,12 @@ pub trait Keyboard: Sized + 'static {
     fn new() -> Self;
 
     #[config_constraints(Self)]
-    fn rotary_encoder_handler(_keyboard: pin::Pin<&mut QmkKeyboard<Self>>, _rotation: i8) {}
+    fn rotary_encoder_handler(_keyboard: pin::Pin<&mut OmkKeyboard<Self>>, _rotation: i8) {}
 }
 
 #[config_constraints]
-#[pin_project(pub project = QmkKeyboardProjection)]
-pub  struct QmkKeyboard<User: Keyboard> {
+#[pin_project(pub project = OmkKeyboardProjection)]
+pub  struct OmkKeyboard<User: Keyboard> {
     pub user: User,
 
     pub raw_matrix: [User::MatrixRowType; User::ROWS_PER_HAND as usize],
@@ -161,7 +161,7 @@ pub  struct QmkKeyboard<User: Keyboard> {
 }
 
 #[config_constraints]
-impl<User: Keyboard> QmkKeyboard<User> {
+impl<User: Keyboard> OmkKeyboard<User> {
     /// # Safety
     /// Due to the usage of some externals (pins, configuration), this function must be called
     /// ONCE for the whole program. Generaly, one does so using the entry macro.
@@ -184,7 +184,7 @@ impl<User: Keyboard> QmkKeyboard<User> {
 static PANIC_TEXT: [u8; 9] = *b"PANIC /!\\";
 
 #[config_constraints]
-impl<User: Keyboard> QmkKeyboard<User> {
+impl<User: Keyboard> OmkKeyboard<User> {
     #[inline(always)]
     pub fn panic_handler(_info: &PanicInfo) -> ! {
         User::RED_LED_PIN.gpio_set_pin_output();

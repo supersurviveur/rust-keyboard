@@ -2,7 +2,7 @@
 //! It includes methods for initializing, scanning, and processing the matrix state.
 
 use crate::{
-    Keyboard, QmkKeyboard,
+    Keyboard, OmkKeyboard,
     atomic::atomic,
     interrupts::InterruptsHandler,
     is_left,
@@ -17,7 +17,7 @@ use keyboard_macros::config_constraints;
 pub const MATRIX_IO_DELAY: u64 = 30;
 
 #[config_constraints]
-impl<User: Keyboard> QmkKeyboard<User> {
+impl<User: Keyboard> OmkKeyboard<User> {
     /// Sets a GPIO pin as output and drives it low atomically.
     ///
     /// This is used to select a row in the keyboard matrix.
@@ -193,7 +193,7 @@ static mut DEBOUNCING_TIME: u32 = 0;
 pub const DEBOUNCE: u32 = 5;
 
 #[config_constraints]
-impl<User: Keyboard> QmkKeyboard<User> {
+impl<User: Keyboard> OmkKeyboard<User> {
     /// Debounces the matrix state to filter out noise and ensure stable key detection.
     fn debounce(self: pin::Pin<&mut Self>, changed: bool) -> bool {
         let this = self.project();

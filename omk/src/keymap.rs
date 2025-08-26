@@ -7,7 +7,7 @@ use core::pin;
 use keyboard_macros::config_constraints;
 
 use crate::{
-    Keyboard, QmkKeyboard,
+    Keyboard, OmkKeyboard,
     usb::events::{add_code, remove_code},
 };
 
@@ -20,7 +20,7 @@ pub trait CustomKey<User: Keyboard>: Send + Sync {
     #[inline(always)]
     fn complete_on_pressed(
         &self,
-        keyboard: pin::Pin<&mut QmkKeyboard<User>>,
+        keyboard: pin::Pin<&mut OmkKeyboard<User>>,
         _row: u8,
         _column: u8,
     ) {
@@ -28,13 +28,13 @@ pub trait CustomKey<User: Keyboard>: Send + Sync {
     }
 
     /// Defines the action to perform when the key is pressed.
-    fn on_pressed(&self, _keyboard: pin::Pin<&mut QmkKeyboard<User>>) {}
+    fn on_pressed(&self, _keyboard: pin::Pin<&mut OmkKeyboard<User>>) {}
 
     /// Called when the key is released. By default, it delegates to `on_released`.
     #[inline(always)]
     fn complete_on_released(
         &self,
-        keyboard: pin::Pin<&mut QmkKeyboard<User>>,
+        keyboard: pin::Pin<&mut OmkKeyboard<User>>,
         _row: u8,
         _column: u8,
         _key_actual_layer: u8,
@@ -43,7 +43,7 @@ pub trait CustomKey<User: Keyboard>: Send + Sync {
     }
 
     /// Defines the action to perform when the key is released.
-    fn on_released(&self, _keyboard: pin::Pin<&mut QmkKeyboard<User>>) {}
+    fn on_released(&self, _keyboard: pin::Pin<&mut OmkKeyboard<User>>) {}
 }
 
 /// Represents a basic key with a predefined keycode.
@@ -52,12 +52,12 @@ pub struct Key(pub u8);
 #[config_constraints]
 impl<User: Keyboard> CustomKey<User> for Key {
     /// Adds the keycode to the USB report when the key is pressed.
-    fn on_pressed(&self, _keyboard: pin::Pin<&mut QmkKeyboard<User>>) {
+    fn on_pressed(&self, _keyboard: pin::Pin<&mut OmkKeyboard<User>>) {
         add_code(self.0);
     }
 
     /// Removes the keycode from the USB report when the key is released.
-    fn on_released(&self, _keyboard: pin::Pin<&mut QmkKeyboard<User>>) {
+    fn on_released(&self, _keyboard: pin::Pin<&mut OmkKeyboard<User>>) {
         remove_code(self.0);
     }
 }
@@ -74,7 +74,7 @@ pub type Layer<User: Keyboard> =
 pub type Keymap<User: Keyboard> = [Layer<User>; User::LAYER_COUNT];
 
 #[config_constraints]
-impl<User: Keyboard> QmkKeyboard<User> {
+impl<User: Keyboard> OmkKeyboard<User> {
     pub fn send_ascii_char_with_delay<const DELAY: u64>(self: pin::Pin<&mut Self>, char: u8) {
         delay_us::<DELAY>();
     }

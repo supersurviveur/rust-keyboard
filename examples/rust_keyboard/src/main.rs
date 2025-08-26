@@ -8,23 +8,23 @@ use core::pin;
 use eeprom_magic::eeprom;
 use keyboard_macros::progmem;
 use keyboard_macros::{entry, image_dimension, include_font_plate};
-use qmk::keymap::{CustomKey, Keymap};
-use qmk::keys::{
+use omk::keymap::{CustomKey, Keymap};
+use omk::keys::{
     BCKSPC, COMMA, DELETE, DOT, ENTER, ESCAPE, KC_0, KC_1, KC_2, KC_3, KC_4, KC_5, KC_6, KC_7,
     KC_8, KC_9, KC_A, KC_B, KC_C, KC_D, KC_E, KC_F, KC_G, KC_H, KC_I, KC_J, KC_K, KC_L, KC_M, KC_N,
     KC_O, KC_P, KC_Q, KC_R, KC_S, KC_T, KC_U, KC_V, KC_W, KC_X, KC_Y, KC_Z, L_ALT, L_CTRL, L_GUI,
     L_SHFT, LAYDW1, LAYUP1, NO_OP, R_ALT, R_CTRL, R_GUI, R_SHFT, SLASH, SMICLN, SPACE, TAB,
 };
-use qmk::{Keyboard, QmkKeyboard, eeprom, progmem};
+use omk::{Keyboard, OmkKeyboard, eeprom, progmem};
 // include_image!("images/test.png");
 
 #[eeprom]
 static mut TEST: u8 = 42;
 
-type Kb = QmkKeyboard<UserKeyboard>;
+type Kb = OmkKeyboard<UserKeyboard>;
 
 #[entry(UserKeyboard)]
-fn main(mut kb: pin::Pin<&mut QmkKeyboard<UserKeyboard>>) {
+fn main(mut kb: pin::Pin<&mut OmkKeyboard<UserKeyboard>>) {
     let mut progmemtest = TEST;
     let old_value = progmemtest.read();
     Kb::draw_u8(old_value, 1, 0);
@@ -60,10 +60,10 @@ impl Keyboard for UserKeyboard {
 
     const KEYMAP: progmem::ProgmemRef<Keymap<Self>> = KEYMAP;
 
-    fn rotary_encoder_handler(keyboard: pin::Pin<&mut QmkKeyboard<Self>>, rotary: i8) {
+    fn rotary_encoder_handler(keyboard: pin::Pin<&mut OmkKeyboard<Self>>, rotary: i8) {
         let this = keyboard.project();
         this.user.a += rotary;
-        QmkKeyboard::<Self>::draw_u8(this.user.a as u8, 0, 100);
+        OmkKeyboard::<Self>::draw_u8(this.user.a as u8, 0, 100);
     }
 
     type MatrixRowType = u8;
@@ -79,7 +79,7 @@ struct MacroTest;
 static TEST_TEXT: &str = "Hello World !";
 
 impl CustomKey<UserKeyboard> for MacroTest {
-    fn on_pressed(&self, keyboard: pin::Pin<&mut QmkKeyboard<UserKeyboard>>) {
+    fn on_pressed(&self, keyboard: pin::Pin<&mut OmkKeyboard<UserKeyboard>>) {
         keyboard.send_string(TEST_TEXT.iter_u8());
     }
 }

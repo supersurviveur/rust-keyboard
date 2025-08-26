@@ -283,7 +283,7 @@ pub struct LayerUp(pub u8);
 #[config_constraints]
 impl<User: Keyboard> CustomKey<User> for LayerUp {
     /// Moves the keyboard to the specified layer when the key is pressed.
-    fn on_pressed(&self, keyboard: pin::Pin<&mut crate::QmkKeyboard<User>>) {
+    fn on_pressed(&self, keyboard: pin::Pin<&mut crate::OmkKeyboard<User>>) {
         keyboard.layer_up(self.0);
     }
 }
@@ -296,7 +296,7 @@ pub struct LayerDown(pub u8);
 #[config_constraints]
 impl<User: Keyboard> CustomKey<User> for LayerDown {
     /// Moves the keyboard to the specified layer when the key is pressed.
-    fn on_pressed(&self, keyboard: pin::Pin<&mut crate::QmkKeyboard<User>>) {
+    fn on_pressed(&self, keyboard: pin::Pin<&mut crate::OmkKeyboard<User>>) {
         keyboard.layer_down(self.0);
     }
 }
@@ -312,7 +312,7 @@ impl<User: Keyboard> CustomKey<User> for TransparentUp {
     /// Delegates the key press to the key in the layer above.
     fn complete_on_pressed(
         &self,
-        mut keyboard: pin::Pin<&mut crate::QmkKeyboard<User>>,
+        mut keyboard: pin::Pin<&mut crate::OmkKeyboard<User>>,
         row: u8,
         column: u8,
     ) {
@@ -324,7 +324,7 @@ impl<User: Keyboard> CustomKey<User> for TransparentUp {
     /// Delegates the key release to the key in the layer above.
     fn complete_on_released(
         &self,
-        keyboard: pin::Pin<&mut crate::QmkKeyboard<User>>,
+        keyboard: pin::Pin<&mut crate::OmkKeyboard<User>>,
         row: u8,
         column: u8,
         key_actual_layer: u8,

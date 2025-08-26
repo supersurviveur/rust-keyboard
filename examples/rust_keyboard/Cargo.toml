@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 eeprom_magic = { path = "../../eeprom_magic"}
 keyboard_macros = { path = "../../keyboard_macros" }
-qmk = { path = "../../qmk" }
+omk = { path = "../../omk" }
 avr-base = { path = "../../avr-base" }
 lufa-rs = "0.1.0"
 compiler_builtins = "0.1.160"

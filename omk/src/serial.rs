@@ -13,7 +13,7 @@ use avr_delay::{delay_cycles, delay_us};
 use keyboard_macros::config_constraints;
 
 use crate::{
-    Keyboard, QmkKeyboard,
+    Keyboard, OmkKeyboard,
     atomic::atomic,
     interrupts::InterruptsHandler,
     is_master,
@@ -92,7 +92,7 @@ const TRANSACTION_BITS_SIZE: usize = MAX_TRANSACTION_NUMBER.ilog2() as usize
     };
 
 #[config_constraints]
-impl<User: Keyboard + InterruptsHandler<User>> QmkKeyboard<User> {
+impl<User: Keyboard + InterruptsHandler<User>> OmkKeyboard<User> {
     #[inline(always)]
     fn serial_output() {
         User::SOFT_SERIAL_PIN.gpio_set_pin_output();

@@ -35,31 +35,31 @@ pub fn entry_impl(args: TokenStream, item: TokenStream) -> TokenStream {
     quote! {
         #[panic_handler]
         fn panic(info: &::core::panic::PanicInfo) -> ! {
-            qmk::QmkKeyboard::<#userkbtype>::panic_handler(info)
+            omk::OmkKeyboard::<#userkbtype>::panic_handler(info)
         }
 
 
-        static mut _THE_KEYBOARD: core::mem::MaybeUninit<qmk::QmkKeyboard<#userkbtype>> = core::mem::MaybeUninit::uninit();
+        static mut _THE_KEYBOARD: core::mem::MaybeUninit<omk::OmkKeyboard<#userkbtype>> = core::mem::MaybeUninit::uninit();
 
-        impl qmk::interrupts::InterruptsHandler<#userkbtype> for #userkbtype {
-            const KEYBOARD_PTR: *mut QmkKeyboard<#userkbtype> = const { unsafe { _THE_KEYBOARD.as_mut_ptr() } };
+        impl omk::interrupts::InterruptsHandler<#userkbtype> for #userkbtype {
+            const KEYBOARD_PTR: *mut OmkKeyboard<#userkbtype> = const { unsafe { _THE_KEYBOARD.as_mut_ptr() } };
         }
 
 
         #[unsafe(no_mangle)]
         extern "avr-interrupt" fn __vector_3() {
-            unsafe {<#userkbtype as qmk::interrupts::InterruptsHandler<#userkbtype>>::serial_interrupt();}
+            unsafe {<#userkbtype as omk::interrupts::InterruptsHandler<#userkbtype>>::serial_interrupt();}
         }
 
         #[unsafe(no_mangle)]
         extern "avr-non-blocking-interrupt" fn __vector_21() {
-            unsafe {<#userkbtype as qmk::interrupts::InterruptsHandler<#userkbtype>>::timer_interrupt();}
+            unsafe {<#userkbtype as omk::interrupts::InterruptsHandler<#userkbtype>>::timer_interrupt();}
         }
 
         #[unsafe(no_mangle)]
         extern "C" fn main() {
             unsafe {
-                _THE_KEYBOARD.as_mut_ptr().write(QmkKeyboard::<#userkbtype>::new())
+                _THE_KEYBOARD.as_mut_ptr().write(OmkKeyboard::<#userkbtype>::new())
             }
             let mut kb = {unsafe {core::pin::Pin::static_mut(_THE_KEYBOARD.assume_init_mut())}};
             kb.as_mut().init();

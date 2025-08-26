@@ -31,7 +31,7 @@ pub fn user_config_impl(_args: TokenStream, item: TokenStream) -> TokenStream {
     }
 
     let keymap = quote! {
-        type KeymapType = qmk::keymap::Keymap<Self, { Self::LAYER_COUNT }>;
+        type KeymapType = omk::keymap::Keymap<Self, { Self::LAYER_COUNT }>;
     }
     .into();
     t.items.push(parse_macro_input!(keymap as syn::ImplItem));
