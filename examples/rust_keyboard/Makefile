@@ -6,8 +6,7 @@ left: build
 left: flash
 
 right::
-	IS_KEYBOARD_RIGHT=1 make build
-right:: flash
+	IS_KEYBOARD_RIGHT=1 make
 
 flash:
 	avr-strip ./build/rust_keyboard.elf
