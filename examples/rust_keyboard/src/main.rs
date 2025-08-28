@@ -1,10 +1,16 @@
 #![no_std]
 #![allow(incomplete_features)]
-#![feature(abi_avr_interrupt, generic_const_exprs, generic_const_items)]
+#![feature(
+    abi_avr_interrupt,
+    generic_const_exprs,
+    generic_const_items,
+    const_default,
+    const_trait_impl,
+    sync_unsafe_cell
+)]
 #![no_main]
 
 use avr_base::pins::{B1, B2, B3, B4, B5, B6, C6, D2, D5, D7, E6, F4, F5, F6, F7, Pin};
-use core::pin;
 use eeprom_magic::eeprom;
 use keyboard_macros::progmem;
 use keyboard_macros::{entry, image_dimension, include_font_plate};
@@ -24,13 +30,13 @@ static mut TEST: u8 = 42;
 type Kb = OmkKeyboard<UserKeyboard>;
 
 #[entry(UserKeyboard)]
-fn main(mut kb: pin::Pin<&mut OmkKeyboard<UserKeyboard>>) {
+fn main(kb: &mut OmkKeyboard<UserKeyboard>) {
     let mut progmemtest = TEST;
     let old_value = progmemtest.read();
     Kb::draw_u8(old_value, 1, 0);
     progmemtest.write(&old_value.wrapping_add(1));
     loop {
-        kb.as_mut().task();
+        kb.task();
     }
 }
 
@@ -60,27 +66,27 @@ impl Keyboard for UserKeyboard {
 
     const KEYMAP: progmem::ProgmemRef<Keymap<Self>> = KEYMAP;
 
-    fn rotary_encoder_handler(keyboard: pin::Pin<&mut OmkKeyboard<Self>>, rotary: i8) {
-        let this = keyboard.project();
-        this.user.a += rotary;
-        OmkKeyboard::<Self>::draw_u8(this.user.a as u8, 0, 100);
+    fn rotary_encoder_handler(keyboard: &mut OmkKeyboard<Self>, rotary: i8) {
+        keyboard.user.a += rotary;
+        OmkKeyboard::<Self>::draw_u8(keyboard.user.a as u8, 0, 100);
     }
 
     type MatrixRowType = u8;
+}
 
-    fn new() -> Self {
+impl const Default for UserKeyboard {
+    fn default() -> Self {
         Self { a: 3 }
     }
 }
-
 struct MacroTest;
 
 #[progmem]
 static TEST_TEXT: &str = "Hello World !";
 
 impl CustomKey<UserKeyboard> for MacroTest {
-    fn on_pressed(&self, keyboard: pin::Pin<&mut OmkKeyboard<UserKeyboard>>) {
-        keyboard.send_string(TEST_TEXT.iter_u8());
+    fn on_pressed(&self, keyboard: &mut OmkKeyboard<UserKeyboard>) {
+        // keyboard.send_string(TEST_TEXT.iter_u8());
     }
 }
 
@@ -91,11 +97,11 @@ static KEYMAP: Keymap<UserKeyboard> = [[
     TAB,    KC_Q,   KC_W,   KC_E,   KC_R,   KC_T,   KC_Y,   KC_U,   KC_I,   KC_O,   KC_P,   BCKSPC,
     L_SHFT, KC_A,   KC_S,   KC_D,   KC_F,   KC_G,   KC_H,   KC_J,   KC_K,   KC_L,   SMICLN, ENTER,
     L_SHFT, KC_Z,   KC_X,   KC_C,   KC_V,   KC_B,   KC_N,   KC_M,   COMMA,  DOT,    SLASH,  R_SHFT,
-    L_GUI,  L_ALT,  LAYDW1, SPACE,  L_CTRL, NO_OP,  NO_OP,  R_CTRL, SPACE,  R_ALT,  L_ALT,  R_GUI,
+    L_GUI,  L_ALT,  LAYUP1, SPACE,  L_CTRL, NO_OP,  NO_OP,  R_CTRL, SPACE,  R_ALT,  L_ALT,  R_GUI,
 ],[
     ESCAPE, KC_1,   KC_2,   KC_3,   KC_4,   KC_5,   KC_6,   KC_7,   KC_8,   KC_9,   KC_0,   DELETE,
     TAB,    &MacroTest,   KC_W,   KC_E,   KC_R,   KC_T,   KC_Y,   KC_U,   KC_I,   KC_O,   KC_P,   BCKSPC,
     L_SHFT, KC_A,   KC_S,   KC_D,   KC_F,   KC_G,   KC_H,   KC_J,   KC_K,   KC_L,   SMICLN, ENTER,
     L_SHFT, KC_Z,   KC_X,   KC_C,   KC_V,   KC_B,   KC_N,   KC_M,   COMMA,  DOT,    SLASH,  R_SHFT,
-    L_GUI,  L_ALT,  LAYUP1, SPACE,  L_CTRL, NO_OP,  NO_OP,  R_CTRL, SPACE,  R_ALT,  L_ALT,  R_GUI,
+    L_GUI,  L_ALT,  LAYDW1, SPACE,  L_CTRL, NO_OP,  NO_OP,  R_CTRL, SPACE,  R_ALT,  L_ALT,  R_GUI,
 ]];

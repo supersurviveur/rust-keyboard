@@ -1,21 +1,17 @@
-use core::{cell::UnsafeCell, marker::PhantomData};
+use core::marker::PhantomData;
 
 use keyboard_macros::config_constraints;
-use pin_project::pin_project;
 
-use crate::{Keyboard, atomic::atomic};
+use crate::{Keyboard, OmkKeyboard, atomic::atomic_access};
 
 #[config_constraints]
-#[pin_project]
 /// Represents a rotary encoder with user-defined constraints.
 pub struct RotaryEncoder<User: Keyboard> {
-    #[pin]
     encoder: RotaryState,
     _phantom: PhantomData<User>,
 }
 
 /// Represents the state of the rotary encoder.
-#[pin_project(!Unpin)]
 pub(crate) struct RotaryState {
     state: u8,
     pulses: i8,
@@ -49,7 +45,7 @@ pub(crate) unsafe fn fast_encoder_task<User: Keyboard>(encoder: *mut RotaryEncod
 #[config_constraints]
 impl<User: Keyboard> RotaryEncoder<User> {
     /// Initializes a new instance of the `RotaryEncoder` struct.
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             encoder: RotaryState {
                 state: 0,
@@ -66,13 +62,13 @@ impl<User: Keyboard> RotaryEncoder<User> {
     }
 
     /// Processes the rotary encoder task and returns the number of rotations since the last call.
-    pub fn task(encoder: core::pin::Pin<&mut UnsafeCell<Self>>) -> i8 {
-        atomic(|| unsafe {
-            let res =
-                (*encoder).as_mut_unchecked().encoder.pulses / User::ROTARY_ENCODER_RESOLUTION;
-            (*encoder).as_mut_unchecked().encoder.pulses %= User::ROTARY_ENCODER_RESOLUTION;
-
-            res
-        })
+    pub fn task(kb: &mut OmkKeyboard<User>) -> i8 {
+        unsafe {
+            atomic_access(kb, |_, shared| {
+                let res = shared.rotary_encoder.encoder.pulses / User::ROTARY_ENCODER_RESOLUTION;
+                shared.rotary_encoder.encoder.pulses %= User::ROTARY_ENCODER_RESOLUTION;
+                res
+            })
+        }
     }
 }

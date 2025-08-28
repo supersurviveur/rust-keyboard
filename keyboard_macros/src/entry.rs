@@ -39,10 +39,10 @@ pub fn entry_impl(args: TokenStream, item: TokenStream) -> TokenStream {
         }
 
 
-        static mut _THE_KEYBOARD: core::mem::MaybeUninit<omk::OmkKeyboard<#userkbtype>> = core::mem::MaybeUninit::uninit();
+        static _THE_KEYBOARD: omk::OmkMetaHolder<#userkbtype> = unsafe {omk::OmkMetaHolder::new()};
 
         impl omk::interrupts::InterruptsHandler<#userkbtype> for #userkbtype {
-            const KEYBOARD_PTR: *mut OmkKeyboard<#userkbtype> = const { unsafe { _THE_KEYBOARD.as_mut_ptr() } };
+            const KEYBOARD: &omk::OmkMetaHolder<#userkbtype> = &_THE_KEYBOARD;
         }
 
 
@@ -58,11 +58,8 @@ pub fn entry_impl(args: TokenStream, item: TokenStream) -> TokenStream {
 
         #[unsafe(no_mangle)]
         extern "C" fn main() {
-            unsafe {
-                _THE_KEYBOARD.as_mut_ptr().write(OmkKeyboard::<#userkbtype>::new())
-            }
-            let mut kb = {unsafe {core::pin::Pin::static_mut(_THE_KEYBOARD.assume_init_mut())}};
-            kb.as_mut().init();
+            let mut kb = {unsafe {&mut *_THE_KEYBOARD.keyboard.get()}};
+            kb.init();
             _main_rs(kb);
         }
         #main

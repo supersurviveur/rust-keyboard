@@ -10,7 +10,8 @@
     const_from,
     slice_as_array,
     likely_unlikely,
-    unsafe_cell_access
+    ptr_as_ref_unchecked,
+    const_default
 )]
 #![allow(incomplete_features)]
 // We are on only one proc, with one thread, so there is no need to worry about static mut ref
@@ -23,7 +24,7 @@ use avr_base::{
 use avr_delay::delay_us;
 use core::{
     arch::asm,
-    cell::UnsafeCell,
+    cell::SyncUnsafeCell,
     ops::{BitOrAssign, ShlAssign, ShrAssign},
     panic::PanicInfo,
 };
@@ -42,11 +43,9 @@ use crate::{
     timer::timer_init,
     usb::events::hid_task,
 };
-use core::pin;
 use keyboard_macros::{config_constraints, progmem};
 use lufa_rs::{USB_Init, USB_USBTask};
 use num_traits::Unsigned;
-use pin_project::pin_project;
 
 pub mod atomic;
 pub mod graphics;
@@ -63,7 +62,7 @@ pub mod serial;
 pub mod timer;
 pub mod usb;
 
-pub trait Keyboard: Sized + 'static {
+pub trait Keyboard: Sized + const Default + 'static {
     const LAYER_COUNT: usize;
 
     const MATRIX_ROWS: u8;
@@ -133,49 +132,63 @@ pub trait Keyboard: Sized + 'static {
     > = Array2D::from_existing(BinPackedArray {
         data: Self::USER_FONTPLATE,
     });
-    fn new() -> Self;
 
     #[config_constraints(Self)]
-    fn rotary_encoder_handler(_keyboard: pin::Pin<&mut OmkKeyboard<Self>>, _rotation: i8) {}
+    fn rotary_encoder_handler(_keyboard: &mut OmkKeyboard<Self>, _rotation: i8) {}
+
+    /// A Holder for all suplementary data that you want accessible from the interrupts handlers.
+    /// You need to implement Default on it for initialisation.
+    type InterruptAccessibleMemory: const Default = ();
 }
 
 #[config_constraints]
-#[pin_project(pub project = OmkKeyboardProjection)]
-pub  struct OmkKeyboard<User: Keyboard> {
+pub struct OmkKeyboard<User: Keyboard> {
     pub user: User,
 
     pub raw_matrix: [User::MatrixRowType; User::ROWS_PER_HAND as usize],
     pub previous_matrix: [User::MatrixRowType; User::MATRIX_ROWS as usize],
     pub current_matrix: [User::MatrixRowType; User::MATRIX_ROWS as usize],
 
-    #[pin]
-    pub master_shared_memory: UnsafeCell<MasterSharedMemory<User>>,
-    #[pin]
-    pub slave_shared_memory: UnsafeCell<SlaveSharedMemory<User>>,
-
     pub layer: u8,
     pub keys_actual_layer: [u8; User::MATRIX_ROWS as usize * User::MATRIX_COLUMNS as usize],
-
-    #[pin]
-    pub rotary_encoder: UnsafeCell<RotaryEncoder<User>>,
 }
 
 #[config_constraints]
-impl<User: Keyboard> OmkKeyboard<User> {
+pub struct OmkShared<User: Keyboard> {
+    pub master_memory: MasterSharedMemory<User>,
+    pub slave_memory: SlaveSharedMemory<User>,
+    pub rotary_encoder: RotaryEncoder<User>,
+    pub user: User::InterruptAccessibleMemory,
+}
+
+#[config_constraints]
+pub struct OmkMetaHolder<User: Keyboard> {
+    pub keyboard: SyncUnsafeCell<OmkKeyboard<User>>,
+    pub shared: SyncUnsafeCell<OmkShared<User>>,
+}
+
+#[config_constraints]
+unsafe impl<User: Keyboard> Sync for OmkShared<User> {}
+#[config_constraints]
+impl<User: Keyboard> OmkMetaHolder<User> {
     /// # Safety
-    /// Due to the usage of some externals (pins, configuration), this function must be called
-    /// ONCE for the whole program. Generaly, one does so using the entry macro.
-    pub unsafe fn new() -> Self {
+    /// Should only be called as part of the keyboard_macro::entry, not manually
+    pub const unsafe fn new() -> Self {
         Self {
-            user: User::new(),
-            raw_matrix: [0.into(); _],
-            previous_matrix: [0.into(); _],
-            current_matrix: [0.into(); _],
-            master_shared_memory: MasterSharedMemory::new().into(),
-            slave_shared_memory: SlaveSharedMemory::new().into(),
-            layer: 0,
-            rotary_encoder: RotaryEncoder::new().into(),
-            keys_actual_layer: [0; _],
+            keyboard: SyncUnsafeCell::new(OmkKeyboard {
+                user: User::default(),
+                raw_matrix: [0.into(); _],
+                previous_matrix: [0.into(); _],
+                current_matrix: [0.into(); _],
+                layer: 0,
+                keys_actual_layer: [0; _],
+            }),
+            shared: SyncUnsafeCell::new(OmkShared {
+                master_memory: MasterSharedMemory::new(),
+                slave_memory: SlaveSharedMemory::new(),
+                rotary_encoder: RotaryEncoder::new(),
+                user: User::InterruptAccessibleMemory::default(),
+            }),
         }
     }
 }
@@ -194,14 +207,14 @@ impl<User: Keyboard> OmkKeyboard<User> {
         Self::draw_text(PANIC_TEXT.iter_u8().map(|x| x as char), 0, 0);
         let _ = Self::render(true);
         loop {
-            delay_us::<1000000>();
+            delay_us::<100000>();
             User::RED_LED_PIN.gpio_write_pin_high();
-            delay_us::<14000>();
+            delay_us::<40000>();
             User::RED_LED_PIN.gpio_write_pin_low();
         }
     }
     #[config_constraints]
-    pub fn init(mut self: pin::Pin<&mut Self>)
+    pub fn init(&mut self)
     where
         User: InterruptsHandler<User>,
     {
@@ -212,7 +225,7 @@ impl<User: Keyboard> OmkKeyboard<User> {
         disable_watchdog();
         timer_init();
         Self::init_graphics().unwrap();
-        self.as_mut().serial_init();
+        self.serial_init();
         RotaryEncoder::<User>::init();
         self.matrix_init();
 
@@ -229,7 +242,7 @@ impl<User: Keyboard> OmkKeyboard<User> {
         unsafe { asm!("sei") };
     }
 
-    pub fn task(mut self: pin::Pin<&mut Self>)
+    pub fn task(&mut self)
     where
         User: InterruptsHandler<User>,
     {
@@ -240,28 +253,26 @@ impl<User: Keyboard> OmkKeyboard<User> {
             }
         }
 
-        let this = self.as_mut().project();
-        let rotary = RotaryEncoder::<User>::task(this.rotary_encoder);
-        User::rotary_encoder_handler(self.as_mut(), rotary);
+        let rotary = 
+            RotaryEncoder::<User>::task(self);
+        User::rotary_encoder_handler(self, rotary);
         Self::draw_u8(unsafe { ERROR_COUNT }, 0, 50);
         let changed = self.matrix_task();
         Self::render(changed).unwrap();
     }
 
-    pub fn get_layer_up(self: pin::Pin<&mut Self>, count: u8) -> u8 {
+    pub fn get_layer_up(&mut self, count: u8) -> u8 {
         self.layer - count
     }
-    pub fn get_layer_down(self: pin::Pin<&mut Self>, count: u8) -> u8 {
+    pub fn get_layer_down(&mut self, count: u8) -> u8 {
         self.layer + count
     }
-    pub fn layer_up(self: pin::Pin<&mut Self>, count: u8) {
-        let this = self.project();
-        *this.layer += count;
+    pub fn layer_up(&mut self, count: u8) {
+        self.layer += count;
     }
 
-    pub fn layer_down(self: pin::Pin<&mut Self>, count: u8) {
-        let this = self.project();
-        *this.layer -= count;
+    pub fn layer_down(&mut self, count: u8) {
+        self.layer -= count;
     }
     pub fn get_key(&self, layer: u8, column: u8, row: u8) -> &'static dyn CustomKey<User> {
         User::KEYMAP
@@ -276,15 +287,14 @@ impl<User: Keyboard> OmkKeyboard<User> {
             .read()
     }
 
-    pub fn key_pressed(mut self: pin::Pin<&mut Self>, column: u8, row: u8) {
-        let this = self.as_mut().project();
-        this.keys_actual_layer[(row * User::MATRIX_COLUMNS + column) as usize] = *this.layer;
+    pub fn key_pressed(&mut self, column: u8, row: u8) {
+        self.keys_actual_layer[(row * User::MATRIX_COLUMNS + column) as usize] = self.layer;
 
         self.get_key(self.layer, column, row)
             .complete_on_pressed(self, row, column);
     }
 
-    pub fn key_released(self: pin::Pin<&mut Self>, column: u8, row: u8) {
+    pub fn key_released(&mut self, column: u8, row: u8) {
         let key_actual_layer =
             self.keys_actual_layer[(row * User::MATRIX_COLUMNS + column) as usize];
 

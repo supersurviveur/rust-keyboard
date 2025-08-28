@@ -3,7 +3,7 @@
 
 pub mod shared_memory;
 
-use core::{mem::transmute, pin, ptr::null_mut};
+use core::{mem::transmute, ptr::null_mut};
 
 use avr_base::{
     F_CPU,
@@ -14,7 +14,7 @@ use keyboard_macros::config_constraints;
 
 use crate::{
     Keyboard, OmkKeyboard,
-    atomic::atomic,
+    atomic::atomic_access,
     interrupts::InterruptsHandler,
     is_master,
     serial::shared_memory::{MasterSharedMemory, SlaveSharedMemory},
@@ -78,8 +78,8 @@ impl Transaction {
     /// Returns the send address and length for the transaction.
     #[config_constraints]
     pub fn get_send_address<User: Keyboard + InterruptsHandler<User>>(&self) -> (*const u8, u8) {
-        let (address,size) = self.get_receive_address();
-        (address,size)
+        let (address, size) = self.get_receive_address();
+        (address, size)
     }
 }
 
@@ -146,7 +146,7 @@ impl<User: Keyboard + InterruptsHandler<User>> OmkKeyboard<User> {
     /// Initializes the serial communication.
     ///
     /// This function sets up shared memory and configures the serial pins based on the device role (master or slave).
-    pub(crate) fn serial_init(self: pin::Pin<&mut Self>) {
+    pub(crate) fn serial_init(&mut self) {
         if is_master() {
             Self::soft_serial_initiator_init();
         } else {
@@ -361,43 +361,36 @@ impl<User: Keyboard + InterruptsHandler<User>> OmkKeyboard<User> {
 
     /// Executes the serial task for data synchronization between master and slave devices.
     #[config_constraints]
-    pub fn serial_task(self: pin::Pin<&mut Self>) {
-        let this = self.project();
-        if is_master() {
-            unsafe {
-                // Copy the matrix in the shared memory
-                this.master_shared_memory.as_mut_unchecked().master_matrix = *this.current_matrix
-                    [User::THIS_HAND_OFFSET as usize
-                        ..User::THIS_HAND_OFFSET as usize + User::ROWS_PER_HAND as usize]
-                    .as_mut_array()
-                    .unwrap_unchecked();
-            };
-            Self::master_exec_transactions();
-            // Copy the matrix from the shared memory
-            unsafe {
-                // Copy the matrix from the shared memory
-                *this.current_matrix[User::OTHER_HAND_OFFSET as usize
-                    ..User::OTHER_HAND_OFFSET as usize + User::ROWS_PER_HAND as usize]
-                    .as_mut_array()
-                    .unwrap_unchecked() = this.slave_shared_memory.as_mut_unchecked().slave_matrix;
-            };
-        } else {
-            unsafe {
-                atomic(|| {
+    pub fn serial_task(&mut self) {
+        unsafe {
+            atomic_access(self, |kb, shared| {
+                if is_master() {
                     // Copy the matrix in the shared memory
-                    this.slave_shared_memory.as_mut_unchecked().slave_matrix = *this.current_matrix
-                        [User::THIS_HAND_OFFSET as usize
-                            ..User::THIS_HAND_OFFSET as usize + User::ROWS_PER_HAND as usize]
+                    shared.master_memory.master_matrix = *kb.current_matrix[User::THIS_HAND_OFFSET
+                        as usize
+                        ..User::THIS_HAND_OFFSET as usize + User::ROWS_PER_HAND as usize]
+                        .as_mut_array()
+                        .unwrap_unchecked();
+                    Self::master_exec_transactions();
+                    // Copy the matrix from the shared memory
+                    *kb.current_matrix[User::OTHER_HAND_OFFSET as usize
+                        ..User::OTHER_HAND_OFFSET as usize + User::ROWS_PER_HAND as usize]
+                        .as_mut_array()
+                        .unwrap_unchecked() = shared.slave_memory.slave_matrix;
+                } else {
+                    // Copy the matrix in the shared memory
+                    shared.slave_memory.slave_matrix = *kb.current_matrix[User::THIS_HAND_OFFSET
+                        as usize
+                        ..User::THIS_HAND_OFFSET as usize + User::ROWS_PER_HAND as usize]
                         .as_mut_array()
                         .unwrap_unchecked();
                     // Copy the matrix from the shared memory
-                    *this.current_matrix[User::OTHER_HAND_OFFSET as usize
+                    *kb.current_matrix[User::OTHER_HAND_OFFSET as usize
                         ..User::OTHER_HAND_OFFSET as usize + User::ROWS_PER_HAND as usize]
                         .as_mut_array()
-                        .unwrap_unchecked() =
-                        this.master_shared_memory.as_mut_unchecked().master_matrix;
-                });
-            };
+                        .unwrap_unchecked() = shared.master_memory.master_matrix;
+                }
+            })
         }
     }
 
@@ -426,32 +419,32 @@ impl<User: Keyboard + InterruptsHandler<User>> OmkKeyboard<User> {
         Self::sync_receiver();
     }
 
-    pub fn master_exec_transactions() {
-        atomic(|| {
-            Self::trigger_serial_interrupt();
+    /// # Safety
+    /// Call from atomic context only
+    pub unsafe fn master_exec_transactions() {
+        Self::trigger_serial_interrupt();
 
-            if Self::serial_write_data(Transaction::SyncMaster).is_err() {
-                return;
-            }
-            if Self::serial_write_data(Transaction::EndOfCommunication).is_err() {
-                return;
-            }
+        if Self::serial_write_data(Transaction::SyncMaster).is_err() {
+            return;
+        }
+        if Self::serial_write_data(Transaction::EndOfCommunication).is_err() {
+            return;
+        }
 
-            let mut target = Self::sync_sender();
-            target = Self::serial_sender_to_receiver(target);
-            Self::wait_target(target);
+        let mut target = Self::sync_sender();
+        target = Self::serial_sender_to_receiver(target);
+        Self::wait_target(target);
 
-            if Self::loop_read_until_end_of_communication() {
-                return;
-            }
+        if Self::loop_read_until_end_of_communication() {
+            return;
+        }
 
-            let mut target = Self::sync_receiver();
-            target = unsafe { Self::serial_receiver_to_sender(target) };
-            Self::wait_target(target);
+        let mut target = Self::sync_receiver();
+        target = unsafe { Self::serial_receiver_to_sender(target) };
+        Self::wait_target(target);
 
-            // Always sync to release the slave
-            Self::sync_sender();
-        })
+        // Always sync to release the slave
+        Self::sync_sender();
     }
 
     pub fn loop_read_until_end_of_communication() -> bool {
