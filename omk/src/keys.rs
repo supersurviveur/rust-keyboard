@@ -4,7 +4,7 @@
 use keyboard_macros::{config_constraints, key_alias};
 
 use crate::{
-    keymap::{CustomKey, Key}, Keyboard
+    keymap::{CustomKey, Key}, Keyboard, OmkKeyboard
 };
 
 // TODO handle modifiers
@@ -98,28 +98,49 @@ pub const HOME: &Key = &Key(74);
 pub const PAGE_UP: &Key = &Key(75);
 pub const DELETE: &Key = &Key(76);
 pub const END: &Key = &Key(77);
+#[key_alias(PAGE_DW)]
 pub const PAGE_DOWN: &Key = &Key(78);
-pub const RIGHT_ARROW: &Key = &Key(79);
-pub const LEFT_ARROW: &Key = &Key(80);
-pub const DOWN_ARROW: &Key = &Key(81);
-pub const UP_ARROW: &Key = &Key(82);
+#[key_alias(ARRO_R)]
+pub const ARROW_RIGHT: &Key = &Key(79);
+#[key_alias(ARRO_L)]
+pub const ARROW_LEFT: &Key = &Key(80);
+#[key_alias(ARRO_D)]
+pub const ARROW_DOWN: &Key = &Key(81);
+#[key_alias(ARRO_U)]
+pub const ARROW_UP: &Key = &Key(82);
 #[key_alias(NUMLCK)]
 pub const NUM_LOCK: &Key = &Key(83);
+#[key_alias(KPSLAS)]
 pub const KEYPAD_SLASH: &Key = &Key(84);
+#[key_alias(KPASTR)]
 pub const KEYPAD_ASTERISK: &Key = &Key(85);
+#[key_alias(KP_MIN)]
 pub const KEYPAD_MINUS: &Key = &Key(86);
+#[key_alias(KP_PLU,KP_ADD)]
 pub const KEYPAD_PLUS: &Key = &Key(87);
+#[key_alias(KPENTE)]
 pub const KEYPAD_ENTER: &Key = &Key(88);
+#[key_alias(KP_1)]
 pub const KEYPAD_1: &Key = &Key(89);
+#[key_alias(KP_2)]
 pub const KEYPAD_2: &Key = &Key(90);
+#[key_alias(KP_3)]
 pub const KEYPAD_3: &Key = &Key(91);
+#[key_alias(KP_4)]
 pub const KEYPAD_4: &Key = &Key(92);
+#[key_alias(KP_5)]
 pub const KEYPAD_5: &Key = &Key(93);
+#[key_alias(KP_6)]
 pub const KEYPAD_6: &Key = &Key(94);
+#[key_alias(KP_7)]
 pub const KEYPAD_7: &Key = &Key(95);
+#[key_alias(KP_8)]
 pub const KEYPAD_8: &Key = &Key(96);
+#[key_alias(KP_9)]
 pub const KEYPAD_9: &Key = &Key(97);
+#[key_alias(KP_0)]
 pub const KEYPAD_0: &Key = &Key(98);
+#[key_alias(KP_DOT)]
 pub const KEYPAD_DOT: &Key = &Key(99);
 pub const NON_US_BACKSLASH: &Key = &Key(100);
 pub const APPLICATION: &Key = &Key(101);
@@ -149,8 +170,11 @@ pub const COPY: &Key = &Key(124);
 pub const PASTE: &Key = &Key(125);
 pub const FIND: &Key = &Key(126);
 pub const MUTE: &Key = &Key(127);
+#[key_alias(VOL_UP)]
 pub const VOLUME_UP: &Key = &Key(128);
+#[key_alias(VOL_DO)]
 pub const VOLUME_DOWN: &Key = &Key(129);
+#[key_alias(CAPLOK)]
 pub const LOCKING_CAPS_LOCK: &Key = &Key(130);
 pub const LOCKING_NUM_LOCK: &Key = &Key(131);
 pub const LOCKING_SCROLL_LOCK: &Key = &Key(132);
@@ -281,7 +305,7 @@ pub struct LayerUp(pub u8);
 #[config_constraints]
 impl<User: Keyboard> CustomKey<User> for LayerUp {
     /// Moves the keyboard to the specified layer when the key is pressed.
-    fn on_pressed(&self, keyboard: &mut crate::OmkKeyboard<User>) {
+    fn on_pressed(&self, keyboard: &mut OmkKeyboard<User>) {
         keyboard.layer_up(self.0);
     }
 }
@@ -294,7 +318,7 @@ pub struct LayerDown(pub u8);
 #[config_constraints]
 impl<User: Keyboard> CustomKey<User> for LayerDown {
     /// Moves the keyboard to the specified layer when the key is pressed.
-    fn on_pressed(&self, keyboard: &mut crate::OmkKeyboard<User>) {
+    fn on_pressed(&self, keyboard: &mut OmkKeyboard<User>) {
         keyboard.layer_down(self.0);
     }
 }
@@ -302,18 +326,34 @@ impl<User: Keyboard> CustomKey<User> for LayerDown {
 /// Represents a key that changes the current layer down by 1.
 pub const LAYDW1: &LayerDown = &LayerDown(1);
 
+/// go to designated layer while hold
+pub struct LayerHold(pub u8);
+
+#[config_constraints]
+impl<User: Keyboard> CustomKey<User> for LayerHold {
+    /// Move to specified layer when pressed
+    fn on_pressed(&self, keyboard: &mut OmkKeyboard<User>) {
+        keyboard.layer = self.0;
+    }
+    /// go back to original layer
+    fn complete_on_released(
+        &self,
+        keyboard: &mut OmkKeyboard<User>,
+        _row: u8,
+        _column: u8,
+        key_actual_layer: u8,
+    ) {
+        keyboard.layer = key_actual_layer;
+    }
+}
+
 /// Represents a key that transparently passes the key press to the layer above.
 pub struct TransparentUp;
 
 #[config_constraints]
 impl<User: Keyboard> CustomKey<User> for TransparentUp {
     /// Delegates the key press to the key in the layer above.
-    fn complete_on_pressed(
-        &self,
-        keyboard: &mut crate::OmkKeyboard<User>,
-        row: u8,
-        column: u8,
-    ) {
+    fn complete_on_pressed(&self, keyboard: &mut OmkKeyboard<User>, row: u8, column: u8) {
         let layer = keyboard.get_layer_up(1);
         keyboard
             .get_key(layer, row, column)
@@ -322,7 +362,7 @@ impl<User: Keyboard> CustomKey<User> for TransparentUp {
     /// Delegates the key release to the key in the layer above.
     fn complete_on_released(
         &self,
-        keyboard: &mut crate::OmkKeyboard<User>,
+        keyboard: &mut OmkKeyboard<User>,
         row: u8,
         column: u8,
         key_actual_layer: u8,

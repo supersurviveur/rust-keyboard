@@ -15,12 +15,13 @@ use eeprom_magic::eeprom;
 use keyboard_macros::progmem;
 use keyboard_macros::{entry, image_dimension, include_font_plate};
 use omk::keymap::{CustomKey, Keymap};
-use omk::keys::{
-    BCKSPC, COMMA, DELETE, DOT, ENTER, ESCAPE, KC_0, KC_1, KC_2, KC_3, KC_4, KC_5, KC_6, KC_7,
-    KC_8, KC_9, KC_A, KC_B, KC_C, KC_D, KC_E, KC_F, KC_G, KC_H, KC_I, KC_J, KC_K, KC_L, KC_M, KC_N,
-    KC_O, KC_P, KC_Q, KC_R, KC_S, KC_T, KC_U, KC_V, KC_W, KC_X, KC_Y, KC_Z, L_ALT, L_CTRL, L_GUI,
-    L_SHFT, LAYDW1, LAYUP1, NO_OP, R_ALT, R_CTRL, R_GUI, R_SHFT, SLASH, SMICLN, SPACE, TAB,
-};
+// use omk::keys::{
+//     BCKSPC, COMMA, DELETE, DOT, ENTER, ESCAPE, KC_0, KC_1, KC_2, KC_3, KC_4, KC_5, KC_6, KC_7,
+//     KC_8, KC_9, KC_A, KC_B, KC_C, KC_D, KC_E, KC_F, KC_G, KC_H, KC_I, KC_J, KC_K, KC_L, KC_M, KC_N,
+//     KC_O, KC_P, KC_Q, KC_R, KC_S, KC_T, KC_U, KC_V, KC_W, KC_X, KC_Y, KC_Z, L_ALT, L_CTRL, L_GUI,
+//     L_SHFT, LAYDW1, LAYUP1, NO_OP, R_ALT, R_CTRL, R_GUI, R_SHFT, SLASH, SMICLN, SPACE, TAB,
+//     ARRO_U,ARRO_D,ARRO_R,ARRO_L,PAGE_UP,PAGE_DW,LayerHold
+// };
 use omk::{Keyboard, OmkKeyboard, eeprom, progmem};
 // include_image!("images/test.png");
 
@@ -92,16 +93,18 @@ impl CustomKey<UserKeyboard> for MacroTest {
 
 #[rustfmt::skip]
 #[progmem]
-static KEYMAP: Keymap<UserKeyboard> = [[
+static KEYMAP: Keymap<UserKeyboard> =
+{ use omk::keys::*;
+[[
     ESCAPE, KC_1,   KC_2,   KC_3,   KC_4,   KC_5,   KC_6,   KC_7,   KC_8,   KC_9,   KC_0,   DELETE,
     TAB,    KC_Q,   KC_W,   KC_E,   KC_R,   KC_T,   KC_Y,   KC_U,   KC_I,   KC_O,   KC_P,   BCKSPC,
     L_SHFT, KC_A,   KC_S,   KC_D,   KC_F,   KC_G,   KC_H,   KC_J,   KC_K,   KC_L,   SMICLN, ENTER,
     L_SHFT, KC_Z,   KC_X,   KC_C,   KC_V,   KC_B,   KC_N,   KC_M,   COMMA,  DOT,    SLASH,  R_SHFT,
-    L_GUI,  L_ALT,  LAYUP1, SPACE,  L_CTRL, NO_OP,  NO_OP,  R_CTRL, SPACE,  R_ALT,  L_ALT,  R_GUI,
+    L_GUI,  L_ALT,  &LayerHold(1), SPACE,  L_CTRL, NO_OP,  NO_OP,  R_CTRL, SPACE,  R_ALT,  L_ALT,  R_GUI,
 ],[
     ESCAPE, KC_1,   KC_2,   KC_3,   KC_4,   KC_5,   KC_6,   KC_7,   KC_8,   KC_9,   KC_0,   DELETE,
-    TAB,    &MacroTest,   KC_W,   KC_E,   KC_R,   KC_T,   KC_Y,   KC_U,   KC_I,   KC_O,   KC_P,   BCKSPC,
-    L_SHFT, KC_A,   KC_S,   KC_D,   KC_F,   KC_G,   KC_H,   KC_J,   KC_K,   KC_L,   SMICLN, ENTER,
-    L_SHFT, KC_Z,   KC_X,   KC_C,   KC_V,   KC_B,   KC_N,   KC_M,   COMMA,  DOT,    SLASH,  R_SHFT,
-    L_GUI,  L_ALT,  LAYDW1, SPACE,  L_CTRL, NO_OP,  NO_OP,  R_CTRL, SPACE,  R_ALT,  L_ALT,  R_GUI,
-]];
+    TAB,    TAB,    HOME,   ARRO_U, END,    PAGE_UP,KPSLAS, KP_7,   KP_8,   KP_9,   KC_P,   BCKSPC,
+    L_SHFT, CAPLOK, ARRO_L, ARRO_D, ARRO_R, PAGE_DW,KP_MIN, KP_4,   KP_5,   KP_6,   KP_0,   ENTER,
+    L_SHFT, KC_Z,   VOL_DO, MUTE,   VOL_UP, NO_OP,   KC_N,   KC_M,   COMMA,  DOT,    SLASH,  R_SHFT,
+    L_GUI,  L_ALT,  NO_OP, SPACE,  L_CTRL, NO_OP,  NO_OP,  R_CTRL, SPACE,  R_ALT,  L_ALT,  R_GUI,
+]]};
