@@ -7,7 +7,7 @@
     generic_const_items,
     associated_type_defaults,
     const_trait_impl,
-    const_from,
+    const_convert,
     slice_as_array,
     likely_unlikely,
     ptr_as_ref_unchecked,
