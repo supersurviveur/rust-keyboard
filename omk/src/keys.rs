@@ -1,10 +1,13 @@
 //! This module defines constants and structures for keyboard keys and custom key behaviors.
 //! It includes predefined key codes and custom key implementations.
 
+use core::{hint::unreachable_unchecked};
+use lufa_rs::USB_USBTask;
+
 use keyboard_macros::{config_constraints, key_alias};
 
 use crate::{
-    keymap::{CustomKey, Key}, Keyboard, OmkKeyboard
+    keymap::{CustomKey, Key}, Keyboard, OmkKeyboard, usb::hid_task
 };
 
 // TODO handle modifiers
@@ -371,5 +374,101 @@ impl<User: Keyboard> CustomKey<User> for TransparentUp {
         keyboard
             .get_key(layer, row, column)
             .complete_on_pressed(keyboard, row, column);
+    }
+}
+
+/// Functions to have unicode symbols
+
+fn hexa_to_key(chiffre: u8) -> &'static Key {
+    match chiffre {
+        0 => KP_0,
+        1 => KP_1,
+        2 => KP_2,
+        3 => KP_3,
+        4 => KP_4,
+        5 => KP_5,
+        6 => KP_6,
+        7 => KP_7,
+        8 => KP_8,
+        9 => KP_9,
+        10 => KEYPAD_A,
+        11 => KEYPAD_B,
+        12 => KEYPAD_C,
+        13 => KEYPAD_D,
+        14 => KEYPAD_E,
+        15 => KEYPAD_F,
+        _ => unsafe {
+            unreachable_unchecked()
+        }
+    }
+}
+
+#[config_constraints]
+fn press_in_turn<User:Keyboard>(kpkeys: impl Iterator<Item = &'static Key>, keyboard: &mut OmkKeyboard<User>, row: u8, column: u8, layer: u8) {
+    for key in kpkeys {
+        key.complete_on_pressed(keyboard, row, column);
+        hid_task();
+        unsafe {
+            USB_USBTask();
+        }
+
+        key.complete_on_released(keyboard, row, column, layer);
+        hid_task();
+        unsafe {
+            USB_USBTask();
+        }
+    }
+}
+
+/// convert decimal unicode code to KP keys
+#[config_constraints]
+fn u64_to_kpkeys<User:Keyboard>(code: u32, keyboard: &mut OmkKeyboard<User>, row: u8, column: u8, layer: u8) {
+    press_in_turn(
+        code.to_le_bytes().iter().rev().flat_map(
+        |nugget| {
+            [
+                hexa_to_key(nugget / 16),
+                hexa_to_key(nugget % 16)
+            ]
+        }), 
+        keyboard, row, column, layer
+    )
+}
+
+pub struct UnicodeCharLinux (
+    pub char
+);
+
+#[config_constraints]
+impl<User:Keyboard> CustomKey<User> for UnicodeCharLinux {
+    fn complete_on_pressed(&self,keyboard: &mut OmkKeyboard<User> ,_row:u8,_column:u8) {
+        //L_CTRL.on_pressed(keyboard);
+        //L_SHFT.on_pressed(keyboard);
+        //KC_U.on_pressed(keyboard);
+        //hid_task();
+        //unsafe {
+        //    USB_USBTask();
+        //}
+
+        //KC_U.on_released(keyboard);
+        //L_SHFT.on_released(keyboard);
+        //L_CTRL.on_released(keyboard);
+        //hid_task();
+        //unsafe {
+        //    USB_USBTask();
+        //}
+
+        u64_to_kpkeys(self.0 as u32, keyboard, _row, _column, keyboard.layer);
+
+        //ENTER.on_pressed(keyboard);
+        //hid_task();
+        //unsafe {
+        //    USB_USBTask();
+        //}
+        //ENTER.on_released(keyboard);
+        //hid_task();
+        //unsafe {
+        //    USB_USBTask();
+        //}
     }
 }
