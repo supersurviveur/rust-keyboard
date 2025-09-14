@@ -1,4 +1,5 @@
 {
+  "crt-objects-fallback": "true",
   "arch": "avr",
   "atomic-cas": false,
   "cpu": "atmega32u4",
@@ -10,20 +11,20 @@
   "late-link-args": {
     "gcc": [
       "-lgcc",
-      "-lc",
+      "--entry=_rust_start",
       "-flto"
     ],
     "gnu-lld-cc": [
       "-lgcc",
-      "-lc",
+      "--entry=_rust_start",
       "-flto"
     ]
   },
   "max-atomic-width": 8,
   "linker": "avr-gcc",
-  "linker-flavor": "gcc",
+  "linker-flavor": "gnu-cc",
   "linker-is-gnu": true,
-  "llvm-target": "avr-none-eabi",
+  "llvm-target": "avr-none-none",
   "os": "none",
   "pre-link-args": {
     "gcc": [

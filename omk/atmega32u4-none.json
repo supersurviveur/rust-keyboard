@@ -1,5 +1,5 @@
 {
-  "crt-objects-fallback": "true",
+  "crt-objects-fallback": "false",
   "arch": "avr",
   "atomic-cas": false,
   "cpu": "atmega32u4",
@@ -11,13 +11,11 @@
   "late-link-args": {
     "gcc": [
       "-lgcc",
-      "--entry=_rust_start",
-      "-flto"
+      "--entry=_rust_start"
     ],
     "gnu-lld-cc": [
       "-lgcc",
-      "--entry=_rust_start",
-      "-flto"
+      "--entry=_rust_start"
     ]
   },
   "max-atomic-width": 8,

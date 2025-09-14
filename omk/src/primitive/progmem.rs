@@ -247,3 +247,15 @@ impl<T> Iterator for ProgmemIterator<T> {
 }
 
 impl<T> ExactSizeIterator for ProgmemIterator<T> {}
+
+impl<T> ProgmemIterator<T> {
+    /// # Safety
+    /// Normaly, Iterators are constructed from ProgmemPtr or Ref, not directly.
+    /// If you do, then you must provide a pointer valid for [T;size] in progmem
+    pub unsafe fn new(ptr: *const T,size: usize) -> Self{
+        Self {
+            ptr: ProgmemPtr {ptr},
+            remaining: size
+        }
+    }
+}

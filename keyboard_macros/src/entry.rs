@@ -57,7 +57,8 @@ pub fn entry_impl(args: TokenStream, item: TokenStream) -> TokenStream {
         }
 
         #[unsafe(no_mangle)]
-        extern "C" fn main() {
+        // pub extern "C" fn main() {
+        fn main() {
             let mut kb = {unsafe {&mut *_THE_KEYBOARD.keyboard.get()}};
             kb.init();
             _main_rs(kb);

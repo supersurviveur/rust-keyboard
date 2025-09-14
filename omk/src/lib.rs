@@ -150,7 +150,10 @@ pub struct OmkKeyboard<User: Keyboard> {
     pub current_matrix: [User::MatrixRowType; User::MATRIX_ROWS as usize],
 
     pub layer: u8,
-    pub keys_actual_layer: [u8; User::MATRIX_ROWS as usize * User::MATRIX_COLUMNS as usize],
+    pub keys_actual_layer: [i8; User::MATRIX_ROWS as usize * User::MATRIX_COLUMNS as usize],
+
+    pub press_handler_ovveride:
+        Option<&'static fn(&dyn CustomKey<User>, u8, u8, &mut Self) -> ()>,
 }
 
 #[config_constraints]
@@ -182,6 +185,7 @@ impl<User: Keyboard> OmkMetaHolder<User> {
                 current_matrix: [0.into(); _],
                 layer: 0,
                 keys_actual_layer: [0; _],
+                press_handler_ovveride: None,
             }),
             shared: SyncUnsafeCell::new(OmkShared {
                 master_memory: MasterSharedMemory::new(),
@@ -253,8 +257,7 @@ impl<User: Keyboard> OmkKeyboard<User> {
             }
         }
 
-        let rotary = 
-            RotaryEncoder::<User>::task(self);
+        let rotary = RotaryEncoder::<User>::task(self);
         User::rotary_encoder_handler(self, rotary);
         Self::draw_u8(unsafe { ERROR_COUNT }, 0, 50);
         let changed = self.matrix_task();
@@ -288,18 +291,22 @@ impl<User: Keyboard> OmkKeyboard<User> {
     }
 
     pub fn key_pressed(&mut self, column: u8, row: u8) {
-        self.keys_actual_layer[(row * User::MATRIX_COLUMNS + column) as usize] = self.layer;
+        self.keys_actual_layer[(row * User::MATRIX_COLUMNS + column) as usize] = self.layer as i8;
 
-        self.get_key(self.layer, column, row)
-            .complete_on_pressed(self, row, column);
+        let key = self.get_key(self.layer, column, row);
+        match self.press_handler_ovveride.take() {
+            None => key.complete_on_pressed(self, row, column),
+            Some(fun) => fun(key, row, column, self),
+        }
     }
 
     pub fn key_released(&mut self, column: u8, row: u8) {
         let key_actual_layer =
             self.keys_actual_layer[(row * User::MATRIX_COLUMNS + column) as usize];
-
-        self.get_key(key_actual_layer, column, row)
-            .complete_on_released(self, row, column, key_actual_layer);
+        if key_actual_layer >= 0 {
+            self.get_key(key_actual_layer as u8, column, row)
+                .complete_on_released(self, row, column, key_actual_layer as u8);
+        }
     }
 }
 

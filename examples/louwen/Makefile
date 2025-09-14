@@ -1,4 +1,4 @@
-TARGET_RS := atmega32u4
+TARGET_RS := atmega32u4-none
 
 .PHONY: build
 
