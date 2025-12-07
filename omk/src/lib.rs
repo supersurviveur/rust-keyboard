@@ -8,7 +8,6 @@
     associated_type_defaults,
     const_trait_impl,
     const_convert,
-    slice_as_array,
     likely_unlikely,
     ptr_as_ref_unchecked,
     const_default

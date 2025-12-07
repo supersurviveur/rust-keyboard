@@ -46,7 +46,7 @@ struct UserKeyboard {
 }
 
 impl Keyboard for UserKeyboard {
-    const LAYER_COUNT: usize = 2;
+    const LAYER_COUNT: usize = 1;
     const MATRIX_ROWS: u8 = 10;
     const MATRIX_COLUMNS: u8 = 6;
 
@@ -91,6 +91,7 @@ impl CustomKey<UserKeyboard> for MacroTest {
     }
 }
 
+/*
 #[rustfmt::skip]
 #[progmem]
 static KEYMAP: Keymap<UserKeyboard> =
@@ -99,13 +100,28 @@ static KEYMAP: Keymap<UserKeyboard> =
     ESCAPE, KC_1,   KC_2,   KC_3,   KC_4,   KC_5,   KC_6,   KC_7,   KC_8,   KC_9,   KC_0,   DELETE,
     TAB,    KC_Q,   KC_W,   KC_E,   KC_R,   KC_T,   KC_Y,   KC_U,   KC_I,   KC_O,   KC_P,   BCKSPC,
     L_SHFT, KC_A,   KC_S,   KC_D,   KC_F,   KC_G,   KC_H,   KC_J,   KC_K,   KC_L,   SMICLN, ENTER,
-    L_SHFT, KC_Z,   KC_X,   KC_C,   KC_V,   KC_B,   KC_N,   KC_M,   COMMA,  DOT,    SLASH,  R_SHFT,
+    L_SHFT, KC_Z,   KC_X,   KC_C,   KC_V,   KC_B,   KC_N,   KC_M,   COMMA,  DOT,    SLASH,  R_GUI,
     L_GUI,L_CTRL,&LayerHold(1),SPACE,L_GUI, NO_OP,  NO_OP,  ENTER,  R_SHFT, R_ALT,  BCKSPC, R_CTRL,
     
-],[
+]
+    ,[
     ESCAPE, KC_1,   KC_2,   KC_3,   KC_4,   KC_5,   KC_6,   KC_7,   KC_8,   KC_9,   KC_0,   DELETE,
     TAB,    TAB,    HOME,   ARRO_U, END,    PAGE_UP,KPSLAS, KP_7,   KP_8,   KP_9,   KC_P,   BCKSPC,
     L_SHFT, NUMLCK, ARRO_L, ARRO_D, ARRO_R, PAGE_DW,KP_MIN, KP_4,   KP_5,   KP_6,   KP_0,   ENTER,
-    L_SHFT, KC_Z,   VOL_DO, MUTE,   VOL_UP, NO_OP,   KC_N,  KP_1,   KP_2,   KP_3,   SLASH,  R_SHFT,
+    L_SHFT, KC_Z,   VOL_DO, MUTE,   VOL_UP, NO_OP,   KC_N,  KP_1,   KP_2,   KP_3,   SLASH,  R_GUI,
     L_GUI,  L_CTRL, NO_OP,  SPACE,  L_GUI,  NO_OP,   NO_OP, R_SHFT, ENTER,  R_ALT,  DELETE,  R_CTRL,
+]]};
+*/
+
+
+#[rustfmt::skip]
+#[progmem]
+static KEYMAP: Keymap<UserKeyboard> =
+{ use omk::keys::*;
+[[
+    KC_A, KC_A,   KC_A,   KC_A,   KC_A,   KC_A,   KC_A,   KC_A,   KC_A,   KC_A,   KC_A,   KC_A,
+    KC_A,    KC_A,   KC_A,   KC_A,   KC_A,   KC_A,   KC_A,   KC_A,   KC_A,   KC_A,   KC_A,   KC_A,
+    KC_A, KC_A,   KC_A,   KC_A,   KC_A,   KC_A,   KC_A,   KC_A,   KC_A,   KC_A,   KC_A, KC_A,
+    KC_A, KC_A,   KC_A,   KC_A,   KC_A,   KC_A,   KC_A,   KC_A,   KC_A,  KC_A,    KC_A,  KC_A,
+    KC_A,KC_A,KC_A,KC_A,KC_A, KC_A,  KC_A,  KC_A,  KC_A, KC_A,  KC_A, KC_A,
 ]]};
