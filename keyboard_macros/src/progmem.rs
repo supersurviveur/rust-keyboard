@@ -33,13 +33,15 @@ pub(crate) fn progmem_impl(_args: TokenStream, input: TokenStream) -> proc_macro
     let name = input.ident.clone();
     let ty = (*input.ty).clone();
 
-    let new_name = format_ident!("{name}_PROGMEM");
-    input.ident = new_name.clone();
+    input.ident = format_ident!("progmem_storage");
 
     quote!(
-        #[unsafe(link_section = ".progmem.data")]
-        #input
-        const #name: progmem::ProgmemRef<#ty> = unsafe {progmem::ProgmemRef::<#ty>::new(&raw const #new_name)};
+        const #name: progmem::ProgmemRef<#ty> = unsafe {
+            #[unsafe(link_section = ".progmem.data")]
+            #input
+            
+            progmem::ProgmemRef::<#ty>::new(&raw const progmem_storage)
+        };
     )
     .into()
 }

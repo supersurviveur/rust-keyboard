@@ -2,7 +2,7 @@
 target = "./atmega32u4-none.json"
 
 [target.atmega32u4-none]
-rustflags = [ "-C", "target-feature=+crt-static", "-C", "target-cpu=atmega32u4", "-Zfmt-debug=none" ]
+rustflags = [ "-C", "target-feature=+crt-static", "-C", "target-cpu=atmega32u4", "-Zfmt-debug=none", "--emit=llvm-ir" ]
 #-Zlocation-detail=none
 [unstable]
 build-std = [ "core" ]

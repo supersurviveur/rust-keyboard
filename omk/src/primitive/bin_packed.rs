@@ -1,5 +1,6 @@
 use core::iter::Iterator;
 use core::ops::{Index, IndexMut};
+use crate::progmem::ProgmemRef;
 
 #[derive(Copy, Clone)]
 pub struct BinPackedArray<const N: usize> {
@@ -27,6 +28,8 @@ impl<const N: usize> Default for BinPackedArray<N> {
         Self::new()
     }
 }
+
+impl<T : DataStorage> DataStorage for ProgmemRef<T> {}
 
 impl<const N: usize> BinPackedArray<N> {
     #[inline(always)]
@@ -56,6 +59,16 @@ impl<const N: usize> IndexByValue<u16> for BinPackedArray<N> {
         let data_idx = index / 8;
         let char_idx = index % 8;
         let char = self.data[data_idx as usize];
+        (char & (1 << char_idx)) != 0
+    }
+}
+impl<const N: usize> IndexByValue<u16> for ProgmemRef<BinPackedArray<N>> {
+    type Data = bool;
+    #[inline(always)]
+    fn at(&self, index: u16) -> bool {
+        let data_idx = index / 8;
+        let char_idx = index % 8;
+        let char = self.iter_u8().nth(data_idx as usize).unwrap();
         (char & (1 << char_idx)) != 0
     }
 }
