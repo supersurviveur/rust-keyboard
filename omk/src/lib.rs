@@ -335,12 +335,10 @@ impl<User: Keyboard> OmkKeyboard<User> {
         press: PressHandler<User>,
         unpress: UnPressHandler<User>,
     ) -> Result<(), Oom> {
-        match self.next_press_handler_override.take() {
-            Some((_, i)) => {
-                // replace the existing
-                unsafe { self.release_handler_overrides.access(i).0 = unpress };
-                self.next_press_handler_override = Some((press, i));
-                Ok(())
+        match self.next_press_handler_override {
+            Some(_) => {
+                //return an error
+                Err(Oom())
             }
             None => {
                 let i: u8 = self.release_handler_overrides.add((unpress, 0))?;
