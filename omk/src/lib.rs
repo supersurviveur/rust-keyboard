@@ -143,9 +143,9 @@ pub trait Keyboard: Sized + const Default + 'static {
 }
 
 pub type PressHandler<User> =
-    &'static fn(&dyn CustomKey<User>, u8, u8, &mut OmkKeyboard<User>);
+    &'static fn(key: &dyn CustomKey<User>, row: u8, column: u8, keyborad: &mut OmkKeyboard<User>);
 pub type UnPressHandler<User> =
-    &'static fn(&dyn CustomKey<User>, u8, u8, u8, &mut OmkKeyboard<User>);
+    &'static fn(key: &dyn CustomKey<User>, row: u8, column: u8, layer: u8, keyboard: &mut OmkKeyboard<User>);
 
 #[config_constraints]
 pub struct OmkKeyboard<User: Keyboard> {

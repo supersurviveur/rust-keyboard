@@ -113,5 +113,5 @@ static KEYMAP: Keymap<UserKeyboard> =
     TAB,    TAB,    HOME,   ARRO_U, END,    PAGE_UP,KPSLAS, KP_7,   KP_8,   KP_9,   KC_P,   BCKSPC,
     L_SHFT, NUMLCK, ARRO_L, ARRO_D, ARRO_R, PAGE_DW,KP_MIN, KP_4,   KP_5,   KP_6,   KP_0,   ENTER,
     L_SHFT, KC_Z,   VOL_DO, MUTE,   VOL_UP, NO_OP,   KC_N,  KP_1,   KP_2,   KP_3,   SLASH,  R_GUI,
-    L_GUI,  L_CTRL, NO_OP,  SPACE,  L_GUI,  NO_OP,   NO_OP, R_SHFT, ENTER,  R_ALT,  DELETE,  R_CTRL,
+    L_GUI,  L_CTRL, NO_OP,  SPACE,  L_GUI,  NO_OP,   NO_OP, R_SHFT, ENTER,  L_ALT,  DELETE,  R_CTRL,
 ]]};
