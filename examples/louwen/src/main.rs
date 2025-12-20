@@ -11,10 +11,13 @@
 #![no_main]
 
 use avr_base::pins::{B1, B2, B3, B4, B5, B6, C6, D2, D5, D7, E6, F4, F5, F6, F7, Pin};
+use avr_delay::delay_ms;
 use eeprom_magic::eeprom;
 use keyboard_macros::progmem;
 use keyboard_macros::{entry, image_dimension, include_font_plate};
-use omk::keymap::{CustomKey, Keymap};
+use lufa_rs::USB_USBTask;
+use omk::keymap::{CustomKey, Key, Keymap};
+use omk::keys::{VOLUME_DOWN, VOLUME_UP};
 use omk::progmem::ProgmemRef;
 // use omk::keys::{
 //     BCKSPC, COMMA, DELETE, DOT, ENTER, ESCAPE, KC_0, KC_1, KC_2, KC_3, KC_4, KC_5, KC_6, KC_7,
@@ -47,7 +50,8 @@ struct UserKeyboard {
 }
 
 #[progmem]
-static USER_FONTPLATE: [u8; UserKeyboard::FONT_SIZE] = include_font_plate!("../images/fontplate.png");
+static USER_FONTPLATE: [u8; UserKeyboard::FONT_SIZE] =
+    include_font_plate!("../images/fontplate.png");
 
 impl Keyboard for UserKeyboard {
     const LAYER_COUNT: usize = 2;
@@ -68,13 +72,38 @@ impl Keyboard for UserKeyboard {
     const CHAR_WIDTH: u8 = 6;
     const CHAR_HEIGHT: u8 = 13;
 
-    const USER_FONTPLATE: ProgmemRef<[u8;Self::FONT_SIZE]> = USER_FONTPLATE;
+    const USER_FONTPLATE: ProgmemRef<[u8; Self::FONT_SIZE]> = USER_FONTPLATE;
 
     const KEYMAP: progmem::ProgmemRef<Keymap<Self>> = KEYMAP;
 
     fn rotary_encoder_handler(keyboard: &mut OmkKeyboard<Self>, rotary: i8) {
-        keyboard.user.a += rotary;
-        OmkKeyboard::<Self>::draw_u8(keyboard.user.a as u8, 0, 100);
+        let mut repeat_press = |key: &Key, repeat: u8| {
+            for _ in 0..repeat {
+                key.on_pressed(keyboard);
+                unsafe {
+                    USB_USBTask();
+                }
+                delay_ms::<1>();
+                key.on_released(keyboard);
+                unsafe {
+                    USB_USBTask();
+                }
+                delay_ms::<1>();
+            }
+        };
+        if omk::is_left() {
+            if rotary > 0 {
+                repeat_press(VOLUME_UP, rotary as u8);
+            } else {
+                repeat_press(VOLUME_DOWN, (-rotary) as u8);
+            }
+        } else {
+            if rotary > 0 {
+                repeat_press(VOLUME_UP, rotary as u8);
+            } else {
+                repeat_press(VOLUME_DOWN, (-rotary) as u8);
+            }
+        }
     }
 
     type MatrixRowType = u8;
