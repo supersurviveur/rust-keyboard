@@ -20,26 +20,41 @@
 //! ```
 
 use proc_macro::TokenStream;
-use quote::{format_ident, quote};
-use syn::parse_macro_input;
+use quote::{ToTokens, format_ident, quote, quote_spanned};
+use syn::{ItemConst, parse_macro_input, parse_quote, parse_quote_spanned, spanned::Spanned};
 
 /// Implements the `progmem` macro.
 ///
 /// - Modifies the static variable to place it in the `.progmem.data` section.
 /// - Creates a `ProgmemRef` constant to reference the variable safely.
 pub(crate) fn progmem_impl(_args: TokenStream, input: TokenStream) -> proc_macro::TokenStream {
-    let mut input = parse_macro_input!(input as syn::ItemStatic);
-
-    let name = input.ident.clone();
+    let input = parse_macro_input!(input as syn::ItemStatic);
+    let expr = input.expr.clone();
     let ty = (*input.ty).clone();
 
-    let new_name = format_ident!("{name}_PROGMEM");
-    input.ident = new_name.clone();
+    ItemConst {
+        attrs:input.attrs,
+        vis: input.vis,
+        const_token: syn::token::Const { span: input.static_token.span() },
+        ident:input.ident,
+        generics: syn::Generics { ..Default::default() },
+        colon_token:input.colon_token,
+        ty:parse_quote!(progmem::ProgmemRef::<#ty>),
+        eq_token:input.eq_token,
+        expr: parse_quote_spanned!(
+            expr.span() =>
+            unsafe {
+                #[unsafe(link_section = ".progmem.data")]
+                static PROGMEM_STORAGE:#ty = #expr;
+            
+                progmem::ProgmemRef::<#ty>::new(&raw const PROGMEM_STORAGE)
+            }
 
-    quote!(
-        #[unsafe(link_section = ".progmem.data")]
-        #input
-        const #name: progmem::ProgmemRef<#ty> = unsafe {progmem::ProgmemRef::<#ty>::new(&raw const #new_name)};
-    )
-    .into()
+
+            
+        ),
+        semi_token:input.semi_token,
+        
+    }
+    .into_token_stream().into()
 }

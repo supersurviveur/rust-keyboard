@@ -15,6 +15,7 @@ use eeprom_magic::eeprom;
 use keyboard_macros::progmem;
 use keyboard_macros::{entry, image_dimension, include_font_plate};
 use omk::keymap::{CustomKey, Keymap};
+use omk::progmem::ProgmemRef;
 // use omk::keys::{
 //     BCKSPC, COMMA, DELETE, DOT, ENTER, ESCAPE, KC_0, KC_1, KC_2, KC_3, KC_4, KC_5, KC_6, KC_7,
 //     KC_8, KC_9, KC_A, KC_B, KC_C, KC_D, KC_E, KC_F, KC_G, KC_H, KC_I, KC_J, KC_K, KC_L, KC_M, KC_N,
@@ -45,6 +46,9 @@ struct UserKeyboard {
     a: i8,
 }
 
+#[progmem]
+static USER_FONTPLATE: [u8;UserKeyboard::FONT_SIZE] = include_font_plate!("../images/fontplate.png");
+
 impl Keyboard for UserKeyboard {
     const LAYER_COUNT: usize = 2;
     const MATRIX_ROWS: u8 = 10;
@@ -63,7 +67,8 @@ impl Keyboard for UserKeyboard {
     const FONT_DIM: (u8, u8, usize) = image_dimension!("../images/fontplate.png");
     const CHAR_WIDTH: u8 = 6;
     const CHAR_HEIGHT: u8 = 13;
-    const USER_FONTPLATE: [u8; Self::FONT_SIZE] = include_font_plate!("../images/fontplate.png");
+    
+    const USER_FONTPLATE: ProgmemRef<[u8; Self::FONT_SIZE]> = USER_FONTPLATE;
 
     const KEYMAP: progmem::ProgmemRef<Keymap<Self>> = KEYMAP;
 

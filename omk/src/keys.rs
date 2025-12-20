@@ -7,7 +7,7 @@ use crate::{
     keymap::{CustomKey, Key}, Keyboard, OmkKeyboard
 };
 
-// TODO handle modifiers
+// TODO handle modifiers 
 pub const MODIFIER_LEFTCTRL: &Key = &Key(1);
 pub const MODIFIER_LEFTSHIFT: &Key = &Key(2);
 pub const MODIFIER_LEFTALT: &Key = &Key(4);

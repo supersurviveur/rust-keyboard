@@ -20,3 +20,4 @@ panic = "abort"
 lto = "fat"
 opt-level = "z"
 codegen-units = 1
+debug = true

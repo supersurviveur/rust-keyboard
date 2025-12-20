@@ -10,7 +10,7 @@ const OLED_MATRIX_SIZE: usize = (OLED_DISPLAY_HEIGHT as usize) * (OLED_DISPLAY_W
 const OLED_DISPLAY_ADDRESS: u8 = 60;
 
 use crate::primitive::{
-    Array2D, BinPackedArray, Container2D, IndexByValue, IndexByValueMut, SizedView,
+    Array2D, BinPackedArray, Container2D, Container2DMut, IndexByValue, IndexByValueMut, SizedView,
 };
 use crate::timer::{timer_expired, timer_read};
 
@@ -251,7 +251,7 @@ impl<User: Keyboard> OmkKeyboard<User> {
 
     pub fn write_pixel(col: u8, row: u8, on: bool) {
         unsafe {
-            FRAMEBUF_BINARRAY.set(col as u16, row as u16, on);
+            Container2DMut::set(&mut FRAMEBUF_BINARRAY, col as u16, row as u16, on);
         }
         let chunk = row / OLED_BLOCK_ROWS;
         unsafe { DIRTY |= 1_u16 << chunk };
@@ -272,7 +272,7 @@ impl<User: Keyboard> OmkKeyboard<User> {
         };
         for col in 0..User::CHAR_WIDTH {
             for row in 0..User::CHAR_HEIGHT {
-                buffer_view.set(
+                Container2DMut::set(&mut buffer_view,
                     col as u16,
                     row as u16,
                     User::FONTPLATE.get(char_x + col as u16, char_y + row as u16),

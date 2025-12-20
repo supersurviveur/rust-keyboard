@@ -4,8 +4,7 @@
 use keyboard_macros::config_constraints;
 
 use crate::{
-    Keyboard, OmkKeyboard,
-    usb::events::{add_code, remove_code},
+    Keyboard, OmkKeyboard, progmem::ProgmemRef, usb::events::{add_code, remove_code}
 };
 
 /// A trait for defining custom key behaviors.
@@ -61,7 +60,7 @@ impl<User: Keyboard> CustomKey<User> for Key {
 
 /// Represents a single layer in the keymap.
 ///
-/// Each layer is a 2D array of custom keys.
+/// Each layer is a flat "2D" array of custom keys.
 pub type Layer<User: Keyboard> =
     [&'static dyn CustomKey<User>; User::MATRIX_ROWS as usize * User::MATRIX_COLUMNS as usize];
 

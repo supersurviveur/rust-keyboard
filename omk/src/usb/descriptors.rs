@@ -202,10 +202,10 @@ static CONFIGURATION_DESCRIPTOR: UsbDescriptorConfiguration = UsbDescriptorConfi
 };
 
 const KEYBOARD_HID: ProgmemPtr<UsbHidDescriptorHid> =
-    ProgmemPtr::new(const { &raw const CONFIGURATION_DESCRIPTOR_PROGMEM.hid_keyboard_hid });
+    unsafe {ProgmemPtr::new(const { &raw const (*CONFIGURATION_DESCRIPTOR.as_ptr().address()).hid_keyboard_hid })};
 
 const MOUSE_HID: ProgmemPtr<UsbHidDescriptorHid> =
-    ProgmemPtr::new(const { &raw const CONFIGURATION_DESCRIPTOR_PROGMEM.hid_mouse_hid });
+    unsafe {ProgmemPtr::new(const { &raw const (*CONFIGURATION_DESCRIPTOR.as_ptr().address()).hid_mouse_hid })};
 
 #[unsafe(no_mangle)]
 /// Callback for retrieving USB descriptors.

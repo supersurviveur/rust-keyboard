@@ -52,6 +52,7 @@ pub unsafe fn read_byte(p_addr: *const u8) -> u8 {
 
 /// Similar to a pointer in usage, but point to progmem instead
 /// Safe to construct, unsafe to use
+#[derive(Clone,Copy)]
 pub struct ProgmemPtr<T> {
     ptr: *const T,
 }
@@ -59,6 +60,7 @@ pub struct ProgmemPtr<T> {
 /// Similar to a ref in usage, but reference progmem instead
 /// unsafe to construct (prefer using the dedicated [keyboard_macros::progmem] macro)
 /// but safe to use
+#[derive(Clone,Copy)]
 pub struct ProgmemRef<T> {
     ptr: *const T,
 }
@@ -171,6 +173,11 @@ impl<T> ProgmemRef<T> {
     pub const fn len(self) -> usize {
         size_of::<T>()
     }
+    /// # Safety
+    /// The data pointed must also be interpretable as the new type (in particular this new type must be inferior or equal in size)
+    pub const unsafe fn cast<U>(self) -> ProgmemRef<U> {
+        ProgmemRef { ptr: self.ptr.cast() }
+    }
 }
 
 impl<T, const N: usize> IndexByValue<usize> for ProgmemPtr<[T; N]> {
@@ -196,6 +203,7 @@ impl<T, const N: usize> IndexByValue<usize> for ProgmemRef<[T; N]> {
         }
     }
 }
+
 impl<T, const N: usize> ProgmemPtr<[T; N]> {
     #[inline(always)]
     #[allow(non_snake_case)]

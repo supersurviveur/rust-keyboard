@@ -8,10 +8,11 @@
     associated_type_defaults,
     const_trait_impl,
     const_convert,
-    slice_as_array,
     likely_unlikely,
     ptr_as_ref_unchecked,
-    const_default
+    const_default,
+    const_destruct,
+    const_array
 )]
 #![allow(incomplete_features)]
 // We are on only one proc, with one thread, so there is no need to worry about static mut ref
@@ -29,12 +30,13 @@ use core::{
     panic::PanicInfo,
 };
 use num_traits::PrimInt;
-
+mod limited_storage;
 use crate::{
     init::disable_watchdog,
     interrupts::InterruptsHandler,
     keymap::{CustomKey, Keymap},
-    primitive::{Array2D, BinPackedArray, IndexByValue},
+    limited_storage::LimitedStorage,
+    primitive::{Array2D, BinPackedArray, IndexByValue, progmem::ProgmemRef},
     rotary_encoder::RotaryEncoder,
     serial::{
         ERROR_COUNT,
@@ -44,6 +46,7 @@ use crate::{
     usb::events::hid_task,
 };
 use keyboard_macros::{config_constraints, progmem};
+pub use limited_storage::Oom;
 use lufa_rs::{USB_Init, USB_USBTask};
 use num_traits::Unsigned;
 
@@ -104,7 +107,7 @@ pub trait Keyboard: Sized + const Default + 'static {
     const CHAR_WIDTH: u8;
     const CHAR_HEIGHT: u8;
     #[config_constraints(Self)]
-    const USER_FONTPLATE: [u8; Self::FONT_SIZE];
+    const USER_FONTPLATE: progmem::ProgmemRef<[u8; Self::FONT_SIZE]>;
     const FONT_WIDTH: u8 = Self::FONT_DIM.0;
     const FONT_HEIGHT: u8 = Self::FONT_DIM.1;
     const CHAR_PER_ROWS: u8 = Self::FONT_WIDTH / Self::CHAR_WIDTH;
@@ -128,10 +131,8 @@ pub trait Keyboard: Sized + const Default + 'static {
         { Self::FONT_WIDTH },
         { Self::FONT_HEIGHT },
         u16,
-        BinPackedArray<{ Self::FONT_SIZE }>,
-    > = Array2D::from_existing(BinPackedArray {
-        data: Self::USER_FONTPLATE,
-    });
+        ProgmemRef<BinPackedArray<{ Self::FONT_SIZE }>>,
+    > = Array2D::<_,_,_,ProgmemRef<_>>::from_existing(unsafe {Self::USER_FONTPLATE.cast()} );
 
     #[config_constraints(Self)]
     fn rotary_encoder_handler(_keyboard: &mut OmkKeyboard<Self>, _rotation: i8) {}
@@ -140,6 +141,11 @@ pub trait Keyboard: Sized + const Default + 'static {
     /// You need to implement Default on it for initialisation.
     type InterruptAccessibleMemory: const Default = ();
 }
+
+pub type PressHandler<User> =
+    &'static fn(key: &dyn CustomKey<User>, row: u8, column: u8, keyborad: &mut OmkKeyboard<User>);
+pub type UnPressHandler<User> =
+    &'static fn(key: &dyn CustomKey<User>, row: u8, column: u8, layer: u8, keyboard: &mut OmkKeyboard<User>);
 
 #[config_constraints]
 pub struct OmkKeyboard<User: Keyboard> {
@@ -152,8 +158,8 @@ pub struct OmkKeyboard<User: Keyboard> {
     pub layer: u8,
     pub keys_actual_layer: [i8; User::MATRIX_ROWS as usize * User::MATRIX_COLUMNS as usize],
 
-    pub press_handler_ovveride:
-        Option<&'static fn(&dyn CustomKey<User>, u8, u8, &mut Self) -> ()>,
+    next_press_handler_override: Option<(PressHandler<User>, u8)>,
+    release_handler_overrides: LimitedStorage<10, (UnPressHandler<User>, u8)>,
 }
 
 #[config_constraints]
@@ -185,7 +191,8 @@ impl<User: Keyboard> OmkMetaHolder<User> {
                 current_matrix: [0.into(); _],
                 layer: 0,
                 keys_actual_layer: [0; _],
-                press_handler_ovveride: None,
+                next_press_handler_override: None,
+                release_handler_overrides: LimitedStorage::new(),
             }),
             shared: SyncUnsafeCell::new(OmkShared {
                 master_memory: MasterSharedMemory::new(),
@@ -294,9 +301,15 @@ impl<User: Keyboard> OmkKeyboard<User> {
         self.keys_actual_layer[(row * User::MATRIX_COLUMNS + column) as usize] = self.layer as i8;
 
         let key = self.get_key(self.layer, column, row);
-        match self.press_handler_ovveride.take() {
+        match self.next_press_handler_override.take() {
             None => key.complete_on_pressed(self, row, column),
-            Some(fun) => fun(key, row, column, self),
+            Some((fun, i)) => {
+                self.keys_actual_layer[(row * User::MATRIX_COLUMNS + column) as usize] = -(i as i8);
+                unsafe {
+                    self.release_handler_overrides.access(i).1 = self.layer;
+                }
+                fun(key, row, column, self);
+            }
         }
     }
 
@@ -306,6 +319,32 @@ impl<User: Keyboard> OmkKeyboard<User> {
         if key_actual_layer >= 0 {
             self.get_key(key_actual_layer as u8, column, row)
                 .complete_on_released(self, row, column, key_actual_layer as u8);
+        } else {
+            let (fun, layer) = unsafe {
+                self.release_handler_overrides
+                    .pop((-key_actual_layer) as u8)
+            };
+            let key = self.get_key(layer, column, row);
+            fun(key, row, column, layer, self)
+        }
+    }
+    /// Try to register a new press / release handler pair, if there is available space for the release.
+    /// Erase an eventual previous press handler ovveride.
+    pub fn register_custom_handle(
+        &mut self,
+        press: PressHandler<User>,
+        unpress: UnPressHandler<User>,
+    ) -> Result<(), Oom> {
+        match self.next_press_handler_override {
+            Some(_) => {
+                //return an error
+                Err(Oom())
+            }
+            None => {
+                let i: u8 = self.release_handler_overrides.add((unpress, 0))?;
+                self.next_press_handler_override = Some((press, i));
+                Ok(())
+            }
         }
     }
 }

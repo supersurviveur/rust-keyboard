@@ -14,9 +14,14 @@ avr_delay = { git = "https://github.com/avr-rust/delay", branch = "cycacc" }
 
 [profile.dev]
 panic = "abort"
+opt-level = "z"
+lto = "fat"
+codegen-units = 1
+debug = true
 
 [profile.release]
 panic = "abort"
 lto = "fat"
 opt-level = "z"
 codegen-units = 1
+debug = true
