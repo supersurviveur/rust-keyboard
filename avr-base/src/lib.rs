@@ -55,12 +55,13 @@ pub extern "C" fn _rust_start() -> ! {
     }
 }
 
-pub fn reset_to_bootloader() -> () {
+pub fn reset_to_bootloader() -> ! {
     unsafe {
         let magic_ptr = 0x0800 as *mut u16;
         *magic_ptr = 0x7777;
         asm!("cli");
         WDTCSR.write(WDCE);
         WDTCSR.write(WDE);
+        loop {}
     }
 }

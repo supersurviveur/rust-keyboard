@@ -259,18 +259,19 @@ impl<User: Keyboard> OmkKeyboard<User> {
     where
         User: InterruptsHandler<User>,
     {
-        if is_master() {
-            hid_task();
-            unsafe {
-                USB_USBTask();
-            }
-        }
 
         let rotary = RotaryEncoder::<User>::task(self);
         User::rotary_encoder_handler(self, rotary);
         Self::draw_u8(unsafe { ERROR_COUNT }, 0, 50);
         let changed = self.matrix_task();
         let _ = Self::render(changed);
+
+        if is_master() {
+            hid_task();
+            unsafe {
+                USB_USBTask();
+            }
+        }
     }
 
     pub fn get_layer_up(&mut self, count: u8) -> u8 {
