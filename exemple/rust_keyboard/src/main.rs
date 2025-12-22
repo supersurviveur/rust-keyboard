@@ -14,7 +14,7 @@ use avr_base::pins::{B1, B2, B3, B4, B5, B6, C6, D2, D5, D7, E6, F4, F5, F6, F7,
 use eeprom_magic::eeprom;
 use keyboard_macros::progmem;
 use keyboard_macros::{entry, image_dimension, include_font_plate};
-use omk::keymap::{CustomKey, Keymap};
+use omk::keymap::Keymap;
 use omk::progmem::ProgmemRef;
 // use omk::keys::{
 //     BCKSPC, COMMA, DELETE, DOT, ENTER, ESCAPE, KC_0, KC_1, KC_2, KC_3, KC_4, KC_5, KC_6, KC_7,
@@ -33,7 +33,7 @@ type Kb = OmkKeyboard<UserKeyboard>;
 
 #[entry(UserKeyboard)]
 fn main(kb: &mut OmkKeyboard<UserKeyboard>) {
-    let mut progmemtest = unsafe { TEST };
+    let mut progmemtest = TEST;
     let old_value = progmemtest.read();
     Kb::draw_u8(old_value, 1, 0);
     progmemtest.write(&old_value.wrapping_add(1));
@@ -86,16 +86,6 @@ impl Keyboard for UserKeyboard {
 impl const Default for UserKeyboard {
     fn default() -> Self {
         Self { a: 3 }
-    }
-}
-struct MacroTest;
-
-#[progmem]
-static TEST_TEXT: &str = "Hello World !";
-
-impl CustomKey<UserKeyboard> for MacroTest {
-    fn on_pressed(&self, keyboard: &mut OmkKeyboard<UserKeyboard>) {
-        // keyboard.send_string(TEST_TEXT.iter_u8());
     }
 }
 

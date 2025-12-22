@@ -210,9 +210,6 @@ impl<User: Keyboard> OmkMetaHolder<User> {
     }
 }
 
-#[progmem]
-static PANIC_TEXT: [u8; 9] = *b"PANIC /!\\";
-
 #[config_constraints]
 impl<User: Keyboard> OmkKeyboard<User> {
     #[inline(always)]

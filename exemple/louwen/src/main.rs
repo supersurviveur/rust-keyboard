@@ -11,12 +11,11 @@
 #![no_main]
 
 use avr_base::pins::{B1, B2, B3, B4, B5, B6, C6, D2, D5, D7, E6, F4, F5, F6, F7, Pin};
-use avr_delay::delay_ms;
 use eeprom_magic::eeprom;
 use keyboard_macros::progmem;
 use keyboard_macros::{entry, image_dimension, include_font_plate};
 use omk::keymap::{CustomKey, Key, Keymap};
-use omk::keys::{KC_A, KC_B, VOLUME_DOWN, VOLUME_UP};
+use omk::keys::{VOLUME_DOWN, VOLUME_UP};
 use omk::progmem::ProgmemRef;
 use omk::usb::hid_task;
 use omk::{Keyboard, OmkKeyboard, eeprom, progmem};

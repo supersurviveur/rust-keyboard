@@ -1,8 +1,6 @@
 //! This module defines constants and structures for keyboard keys and custom key behaviors.
 //! It includes predefined key codes and custom key implementations.
 
-use core::marker::PhantomData;
-
 use keyboard_macros::{config_constraints, key_alias};
 
 use crate::{
@@ -417,10 +415,10 @@ unsafe impl<User: Keyboard, TapdanceInfo> Send for Tapdance<>
 #[config_constraints]
 impl<User: Keyboard, T: TapDanceInfo<User>> CustomKey<User> for Tapdance<User,T> {
     fn on_pressed(&self, _keyboard: &mut OmkKeyboard<User>) {
-        
+
     }
     fn on_released(&self, _keyboard: &mut OmkKeyboard<User>){
-        
+
     }
 }
 
