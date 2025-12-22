@@ -60,7 +60,10 @@ pub const TCCR0A: Register<0x44> = Register();
 /// Watch Dog Timer Control Register
 pub const WDTCSR: Register<0x60> = Register();
 
-// Registers values
+pub const MCUSR: Register<0x54> = Register();
+
+
+// # Registers values
 
 /// Waveform Generation Mode
 pub const WGM01: u8 = 1 << 1;
@@ -98,3 +101,18 @@ pub const EERIE: u8 = 1 << 3;
 pub const EEMPE: u8 = 1 << 2;
 pub const EEPE: u8 = 1 << 1;
 pub const EERE: u8 = 1 << 0;
+
+
+// MCU Status Register – MCUSR bits
+/// USBRF: USB Reset Flag
+pub const USBRF: u8 = 1<<5;
+/// JTRF: JTAG Reset Flag
+pub const JTRF: u8 = 1<<4;
+/// WDRF: Watchdog Reset Flag
+pub const WDRF: u8 = 1<<3;
+/// BORF: Brown-out Reset Flag
+pub const BORF: u8 = 1<<2;
+/// EXTRF: External Reset Flag
+pub const EXTRF: u8 = 1<<1;
+/// PORF: Power-on Reset Flag
+pub const PORF: u8 = 1<<0;

@@ -132,10 +132,16 @@ static DISPLAY_OFF_DATA: [u8; 2] = [I2C_CMD, DISPLAY_OFF];
 impl<User: Keyboard> OmkKeyboard<User> {
     #[inline(always)]
     pub fn oled_send_iter<T: Iterator<Item = u8>>(data: T) -> Result<(), I2CError> {
+        if !User::HAVE_SCREEN {
+            return Ok(());
+        }
         i2c::i2c_transmit(OLED_DISPLAY_ADDRESS << 1, data, OLED_I2C_TIMEOUT)
     }
 
     pub fn init_graphics() -> Result<(), I2CError> {
+        if !User::HAVE_SCREEN {
+            return Ok(());
+        }
         i2c::i2c_init();
         Self::oled_send_iter(DISPLAY_SETUP1.iter_u8())?;
         Self::oled_send_iter(DISPLAY_NORMAL.iter_u8())?;
@@ -148,6 +154,9 @@ impl<User: Keyboard> OmkKeyboard<User> {
     }
 
     pub fn oled_on() -> Result<(), I2CError> {
+        if !User::HAVE_SCREEN {
+            return Ok(());
+        }
         if !unsafe { INITIALIZED } {
             Self::init_graphics()?;
             unsafe { OLED_ACTIVE = false };
@@ -160,6 +169,9 @@ impl<User: Keyboard> OmkKeyboard<User> {
         Ok(())
     }
     pub fn oled_off() -> Result<(), I2CError> {
+        if !User::HAVE_SCREEN {
+            return Ok(());
+        }
         if !unsafe { INITIALIZED } {
             return Ok(());
         }
@@ -173,6 +185,9 @@ impl<User: Keyboard> OmkKeyboard<User> {
     //row: 1 to 128
     //col: 1 to 4
     fn oled_goto(row: u8, col_x8: u8) -> Result<(), I2CError> {
+        if !User::HAVE_SCREEN {
+            return Ok(());
+        }
         let commands = [
             I2C_CMD,
             PAGE_SELECT | col_x8,
@@ -190,6 +205,9 @@ impl<User: Keyboard> OmkKeyboard<User> {
         starting_row: u8,
         data: T,
     ) -> Result<(), I2CError> {
+        if !User::HAVE_SCREEN {
+            return Ok(());
+        }
         Self::oled_goto(starting_row, 0)?;
 
         Self::oled_send_iter(
@@ -203,6 +221,9 @@ impl<User: Keyboard> OmkKeyboard<User> {
 
     #[inline(always)]
     pub fn render(activity_has_occured: bool) -> Result<(), I2CError> {
+        if !User::HAVE_SCREEN {
+            return Ok(());
+        }
         if !unsafe { INITIALIZED } {
             //nothing to do as screen is not started
             return Ok(());
@@ -245,11 +266,17 @@ impl<User: Keyboard> OmkKeyboard<User> {
 
     #[inline(always)]
     pub fn clear() {
+        if !User::HAVE_SCREEN {
+            return;
+        }
         unsafe { FRAMEBUF_BINARRAY.backend_mut().data = [0; OLED_MATRIX_SIZE] };
         unsafe { DIRTY = ALL_DIRTY };
     }
 
     pub fn write_pixel(col: u8, row: u8, on: bool) {
+        if !User::HAVE_SCREEN {
+            return;
+        }
         unsafe {
             Container2DMut::set(&mut FRAMEBUF_BINARRAY, col as u16, row as u16, on);
         }
@@ -258,6 +285,9 @@ impl<User: Keyboard> OmkKeyboard<User> {
     }
 
     pub fn draw_char(ascii: char, offset_x: u8, offset_y: u8) {
+        if !User::HAVE_SCREEN {
+            return;
+        }
         let char_code = ascii as u8 - b' ';
 
         let char_col = char_code % User::CHAR_PER_ROWS;
@@ -272,7 +302,8 @@ impl<User: Keyboard> OmkKeyboard<User> {
         };
         for col in 0..User::CHAR_WIDTH {
             for row in 0..User::CHAR_HEIGHT {
-                Container2DMut::set(&mut buffer_view,
+                Container2DMut::set(
+                    &mut buffer_view,
                     col as u16,
                     row as u16,
                     User::FONTPLATE.get(char_x + col as u16, char_y + row as u16),
@@ -286,6 +317,9 @@ impl<User: Keyboard> OmkKeyboard<User> {
     }
 
     pub fn draw_u8(mut n: u8, offset_x: u8, offset_y: u8) {
+        if !User::HAVE_SCREEN {
+            return;
+        }
         let mut len = 0;
         let mut n2 = n;
         loop {
@@ -306,6 +340,9 @@ impl<User: Keyboard> OmkKeyboard<User> {
     }
 
     pub fn clear_char(offset_x: u8, offset_y: u8) {
+        if !User::HAVE_SCREEN {
+            return;
+        }
         for cx in 0..User::CHAR_WIDTH {
             let x = offset_x + cx;
             for cy in 0..User::CHAR_HEIGHT {
@@ -316,6 +353,9 @@ impl<User: Keyboard> OmkKeyboard<User> {
     }
 
     pub fn draw_text<T: Iterator<Item = char>>(text: T, mut offset_x: u8, mut offset_y: u8) {
+        if !User::HAVE_SCREEN {
+            return;
+        }
         for ascii in text {
             if offset_x + User::CHAR_WIDTH >= OLED_DISPLAY_HEIGHT {
                 offset_x = 0;
@@ -327,6 +367,9 @@ impl<User: Keyboard> OmkKeyboard<User> {
     }
 
     pub fn draw_image<const N: usize>(image: OmkImage<N>, offset_x: u8, offset_y: u8) {
+        if !User::HAVE_SCREEN {
+            return;
+        }
         let mut view = unsafe {
             FRAMEBUF_BINARRAY.extract_unsized_view_unchecked(
                 offset_x,

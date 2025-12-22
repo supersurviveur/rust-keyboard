@@ -1,4 +1,4 @@
-#![feature(asm_experimental_arch,linkage)]
+#![feature(asm_experimental_arch, linkage)]
 #![no_std]
 
 pub const F_CPU: u64 = 16_000_000;
@@ -6,11 +6,10 @@ pub const F_CPU: u64 = 16_000_000;
 pub mod pins;
 pub mod register;
 
-
-
-
 #[cfg(target_arch = "avr")]
 use core::arch::asm;
+
+use crate::register::{WDCE, WDE, WDTCSR};
 
 /// AVR startup routine. The equivalent of libc _start.
 /// This code sets up:
@@ -35,7 +34,7 @@ pub extern "C" fn _rust_start() -> ! {
             "out 0x3E, r29", // SPH
             "out 0x3D, r28", // SPL
         );
-        
+
         unsafe extern "C" {
             unsafe fn __do_clear_bss();
             unsafe fn __do_copy_data();
@@ -53,5 +52,15 @@ pub extern "C" fn _rust_start() -> ! {
             unsafe fn main() -> !;
         }
         main();
+    }
+}
+
+pub fn reset_to_bootloader() -> () {
+    unsafe {
+        let magic_ptr = 0x0800 as *mut u16;
+        *magic_ptr = 0x7777;
+        asm!("cli");
+        WDTCSR.write(WDCE);
+        WDTCSR.write(WDE);
     }
 }

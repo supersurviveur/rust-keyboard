@@ -4,7 +4,7 @@
 use keyboard_macros::config_constraints;
 
 use crate::{
-    Keyboard, OmkKeyboard, progmem::ProgmemRef, usb::events::{add_code, remove_code}
+    Keyboard, OmkKeyboard, usb::events::{add_code, remove_code}
 };
 
 /// A trait for defining custom key behaviors.

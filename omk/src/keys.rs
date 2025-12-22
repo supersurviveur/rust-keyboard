@@ -1,13 +1,16 @@
 //! This module defines constants and structures for keyboard keys and custom key behaviors.
 //! It includes predefined key codes and custom key implementations.
 
+use core::marker::PhantomData;
+
 use keyboard_macros::{config_constraints, key_alias};
 
 use crate::{
-    keymap::{CustomKey, Key}, Keyboard, OmkKeyboard
+    Keyboard, OmkKeyboard,
+    keymap::{CustomKey, Key},
 };
 
-// TODO handle modifiers 
+// TODO handle modifiers
 pub const MODIFIER_LEFTCTRL: &Key = &Key(1);
 pub const MODIFIER_LEFTSHIFT: &Key = &Key(2);
 pub const MODIFIER_LEFTALT: &Key = &Key(4);
@@ -116,7 +119,7 @@ pub const KEYPAD_SLASH: &Key = &Key(84);
 pub const KEYPAD_ASTERISK: &Key = &Key(85);
 #[key_alias(KP_MIN)]
 pub const KEYPAD_MINUS: &Key = &Key(86);
-#[key_alias(KP_PLU,KP_ADD)]
+#[key_alias(KP_PLU, KP_ADD)]
 pub const KEYPAD_PLUS: &Key = &Key(87);
 #[key_alias(KPENTE)]
 pub const KEYPAD_ENTER: &Key = &Key(88);
@@ -290,14 +293,32 @@ pub const MEDIA_LOCK: &Key = &Key(249);
 pub const MEDIA_RELOAD: &Key = &Key(250);
 pub const MEDIA_CALCULATOR: &Key = &Key(251);
 
+// *********************************
+// Special keys
+
+/// A constant representing a no-operation key.
+pub const NO_OP: &NoOpKey = &NoOpKey;
+
+/// Represents a key that changes the current layer up by 1.
+pub const LAYUP1: &LayerUp = &LayerUp(1);
+
+/// Represents a key that changes the current layer down by 1.
+pub const LAYDW1: &LayerDown = &LayerDown(1);
+
+/// Copy the key below itself
+pub const TRANSPARENT_UP: &TransparentUp = &TransparentUp;
+
+/// Reset the keyboard on press
+pub const RESET: &Reset = &Reset;
+
+// ******************************
+// And their impl
+
 /// Represents a no-operation key that does nothing when pressed.
 pub struct NoOpKey;
 
 #[config_constraints]
 impl<User: Keyboard> CustomKey<User> for NoOpKey {}
-
-/// A constant representing a no-operation key.
-pub const NO_OP: &NoOpKey = &NoOpKey;
 
 /// Represents a key that changes the current layer up by a specified amount.
 pub struct LayerUp(pub u8);
@@ -309,8 +330,6 @@ impl<User: Keyboard> CustomKey<User> for LayerUp {
         keyboard.layer_up(self.0);
     }
 }
-/// Represents a key that changes the current layer up by 1.
-pub const LAYUP1: &LayerUp = &LayerUp(1);
 
 /// Represents a key that changes the current layer down by a specified amount.
 pub struct LayerDown(pub u8);
@@ -322,9 +341,6 @@ impl<User: Keyboard> CustomKey<User> for LayerDown {
         keyboard.layer_down(self.0);
     }
 }
-
-/// Represents a key that changes the current layer down by 1.
-pub const LAYDW1: &LayerDown = &LayerDown(1);
 
 /// go to designated layer while hold
 pub struct LayerHold(pub u8);
@@ -373,3 +389,43 @@ impl<User: Keyboard> CustomKey<User> for TransparentUp {
             .complete_on_pressed(keyboard, row, column);
     }
 }
+
+pub struct Reset;
+
+#[config_constraints]
+impl<User: Keyboard> CustomKey<User> for Reset {
+    fn on_pressed(&self, _keyboard: &mut OmkKeyboard<User>) {
+        avr_base::reset_to_bootloader();
+    }
+}
+
+/* pub trait TapDanceInfo<User: Keyboard>{
+    const DELAY: usize = 200;
+    const SINGLE: Option<&'static dyn CustomKey<User>>;
+    const LONG: Option<&'static dyn CustomKey<User>>;
+    const DOUBLE: Option<&'static dyn CustomKey<User>>;
+    const DOUBLE_PRESS: Option<&'static dyn CustomKey<User>>;
+}
+
+pub struct Tapdance<User: Keyboard, T: TapDanceInfo<User>>{
+    _phantom: PhantomData<T>,
+    _phantom2: PhantomData<User>,
+}
+unsafe impl<User: Keyboard, TapdanceInfo> Send for Tapdance<>
+
+
+#[config_constraints]
+impl<User: Keyboard, T: TapDanceInfo<User>> CustomKey<User> for Tapdance<User,T> {
+    fn on_pressed(&self, _keyboard: &mut OmkKeyboard<User>) {
+        
+    }
+    fn on_released(&self, _keyboard: &mut OmkKeyboard<User>){
+        
+    }
+}
+
+impl<User: Keyboard> Default for TapDance<User> {
+    fn default() -> Self {
+        Self { delay: 200, single: None, long: None, double: None, double_press: None }
+    }
+} */

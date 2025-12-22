@@ -33,7 +33,7 @@ type Kb = OmkKeyboard<UserKeyboard>;
 
 #[entry(UserKeyboard)]
 fn main(kb: &mut OmkKeyboard<UserKeyboard>) {
-    let mut progmemtest = TEST;
+    let mut progmemtest = unsafe { TEST };
     let old_value = progmemtest.read();
     Kb::draw_u8(old_value, 1, 0);
     progmemtest.write(&old_value.wrapping_add(1));
@@ -47,9 +47,12 @@ struct UserKeyboard {
 }
 
 #[progmem]
-static USER_FONTPLATE: [u8;UserKeyboard::FONT_SIZE] = include_font_plate!("../images/fontplate.png");
+static USER_FONTPLATE: [u8; UserKeyboard::FONT_SIZE] =
+    include_font_plate!("../images/fontplate.png");
 
 impl Keyboard for UserKeyboard {
+    // Change that if you have no screen
+    const HAVE_SCREEN: bool = true;
     const LAYER_COUNT: usize = 2;
     const MATRIX_ROWS: u8 = 10;
     const MATRIX_COLUMNS: u8 = 6;
@@ -67,7 +70,7 @@ impl Keyboard for UserKeyboard {
     const FONT_DIM: (u8, u8, usize) = image_dimension!("../images/fontplate.png");
     const CHAR_WIDTH: u8 = 6;
     const CHAR_HEIGHT: u8 = 13;
-    
+
     const USER_FONTPLATE: ProgmemRef<[u8; Self::FONT_SIZE]> = USER_FONTPLATE;
 
     const KEYMAP: progmem::ProgmemRef<Keymap<Self>> = KEYMAP;
@@ -107,7 +110,7 @@ static KEYMAP: Keymap<UserKeyboard> =
     L_SHFT, KC_Z,   KC_X,   KC_C,   KC_V,   KC_B,   KC_N,   KC_M,   COMMA,  DOT,    SLASH,  R_SHFT,
     L_GUI,  L_ALT,  &LayerHold(1), SPACE,  L_CTRL, NO_OP,  NO_OP,  R_CTRL, SPACE,  R_ALT,  L_ALT,  R_GUI,
 ],[
-    ESCAPE, KC_1,   KC_2,   KC_3,   KC_4,   KC_5,   KC_6,   KC_7,   KC_8,   KC_9,   KC_0,   DELETE,
+    ESCAPE, KC_1,   KC_2,   KC_3,   KC_4,   KC_5,   KC_6,   KC_7,   KC_8,   KC_9,   KC_0,   RESET,
     TAB,    TAB,    HOME,   ARRO_U, END,    PAGE_UP,KPSLAS, KP_7,   KP_8,   KP_9,   KC_P,   BCKSPC,
     L_SHFT, CAPLOK, ARRO_L, ARRO_D, ARRO_R, PAGE_DW,KP_MIN, KP_4,   KP_5,   KP_6,   KP_0,   ENTER,
     L_SHFT, KC_Z,   VOL_DO, MUTE,   VOL_UP, NO_OP,   KC_N,   KC_M,   COMMA,  DOT,    SLASH,  R_SHFT,

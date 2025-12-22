@@ -67,6 +67,7 @@ pub mod usb;
 
 pub trait Keyboard: Sized + const Default + 'static {
     const LAYER_COUNT: usize;
+    const HAVE_SCREEN: bool;
 
     const MATRIX_ROWS: u8;
     const MATRIX_COLUMNS: u8;
@@ -132,7 +133,7 @@ pub trait Keyboard: Sized + const Default + 'static {
         { Self::FONT_HEIGHT },
         u16,
         ProgmemRef<BinPackedArray<{ Self::FONT_SIZE }>>,
-    > = Array2D::<_,_,_,ProgmemRef<_>>::from_existing(unsafe {Self::USER_FONTPLATE.cast()} );
+    > = Array2D::<_, _, _, ProgmemRef<_>>::from_existing(unsafe { Self::USER_FONTPLATE.cast() });
 
     #[config_constraints(Self)]
     fn rotary_encoder_handler(_keyboard: &mut OmkKeyboard<Self>, _rotation: i8) {}
@@ -144,8 +145,13 @@ pub trait Keyboard: Sized + const Default + 'static {
 
 pub type PressHandler<User> =
     &'static fn(key: &dyn CustomKey<User>, row: u8, column: u8, keyborad: &mut OmkKeyboard<User>);
-pub type UnPressHandler<User> =
-    &'static fn(key: &dyn CustomKey<User>, row: u8, column: u8, layer: u8, keyboard: &mut OmkKeyboard<User>);
+pub type UnPressHandler<User> = &'static fn(
+    key: &dyn CustomKey<User>,
+    row: u8,
+    column: u8,
+    layer: u8,
+    keyboard: &mut OmkKeyboard<User>,
+);
 
 #[config_constraints]
 pub struct OmkKeyboard<User: Keyboard> {
@@ -213,10 +219,10 @@ impl<User: Keyboard> OmkKeyboard<User> {
     pub fn panic_handler(_info: &PanicInfo) -> ! {
         User::RED_LED_PIN.gpio_set_pin_output();
         User::RED_LED_PIN.gpio_write_pin_low();
-        let _ = Self::oled_on();
-        Self::clear();
-        Self::draw_text(PANIC_TEXT.iter_u8().map(|x| x as char), 0, 0);
-        let _ = Self::render(true);
+        // let _ = Self::oled_on();
+        // Self::clear();
+        // Self::draw_text(PANIC_TEXT.iter_u8().map(|x| x as char), 0, 0);
+        // let _ = Self::render(true);
         loop {
             delay_us::<100000>();
             User::RED_LED_PIN.gpio_write_pin_high();
@@ -235,7 +241,7 @@ impl<User: Keyboard> OmkKeyboard<User> {
         User::RED_LED_PIN.gpio_write_pin_high();
         disable_watchdog();
         timer_init();
-        Self::init_graphics().unwrap();
+        let _ = Self::init_graphics();
         self.serial_init();
         RotaryEncoder::<User>::init();
         self.matrix_init();
@@ -252,7 +258,6 @@ impl<User: Keyboard> OmkKeyboard<User> {
         // Enable interrupts
         unsafe { asm!("sei") };
     }
-
     pub fn task(&mut self)
     where
         User: InterruptsHandler<User>,
@@ -268,7 +273,7 @@ impl<User: Keyboard> OmkKeyboard<User> {
         User::rotary_encoder_handler(self, rotary);
         Self::draw_u8(unsafe { ERROR_COUNT }, 0, 50);
         let changed = self.matrix_task();
-        Self::render(changed).unwrap();
+        let _ = Self::render(changed);
     }
 
     pub fn get_layer_up(&mut self, count: u8) -> u8 {

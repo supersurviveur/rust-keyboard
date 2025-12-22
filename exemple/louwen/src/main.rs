@@ -15,17 +15,10 @@ use avr_delay::delay_ms;
 use eeprom_magic::eeprom;
 use keyboard_macros::progmem;
 use keyboard_macros::{entry, image_dimension, include_font_plate};
-use lufa_rs::USB_USBTask;
 use omk::keymap::{CustomKey, Key, Keymap};
-use omk::keys::{VOLUME_DOWN, VOLUME_UP};
+use omk::keys::{KC_A, KC_B, VOLUME_DOWN, VOLUME_UP};
 use omk::progmem::ProgmemRef;
-// use omk::keys::{
-//     BCKSPC, COMMA, DELETE, DOT, ENTER, ESCAPE, KC_0, KC_1, KC_2, KC_3, KC_4, KC_5, KC_6, KC_7,
-//     KC_8, KC_9, KC_A, KC_B, KC_C, KC_D, KC_E, KC_F, KC_G, KC_H, KC_I, KC_J, KC_K, KC_L, KC_M, KC_N,
-//     KC_O, KC_P, KC_Q, KC_R, KC_S, KC_T, KC_U, KC_V, KC_W, KC_X, KC_Y, KC_Z, L_ALT, L_CTRL, L_GUI,
-//     L_SHFT, LAYDW1, LAYUP1, NO_OP, R_ALT, R_CTRL, R_GUI, R_SHFT, SLASH, SMICLN, SPACE, TAB,
-//     ARRO_U,ARRO_D,ARRO_R,ARRO_L,PAGE_UP,PAGE_DW,LayerHold
-// };
+use omk::usb::hid_task;
 use omk::{Keyboard, OmkKeyboard, eeprom, progmem};
 // include_image!("images/test.png");
 
@@ -40,13 +33,14 @@ fn main(kb: &mut OmkKeyboard<UserKeyboard>) {
     let old_value = progmemtest.read();
     Kb::draw_u8(old_value, 1, 0);
     progmemtest.write(&old_value.wrapping_add(1));
+
     loop {
         kb.task();
     }
 }
 
 struct UserKeyboard {
-    a: i8,
+    // a: i8,
 }
 
 #[progmem]
@@ -54,6 +48,7 @@ static USER_FONTPLATE: [u8; UserKeyboard::FONT_SIZE] =
     include_font_plate!("../images/fontplate.png");
 
 impl Keyboard for UserKeyboard {
+    const HAVE_SCREEN: bool = true;
     const LAYER_COUNT: usize = 2;
     const MATRIX_ROWS: u8 = 10;
     const MATRIX_COLUMNS: u8 = 6;
@@ -80,15 +75,11 @@ impl Keyboard for UserKeyboard {
         let mut repeat_press = |key: &Key, repeat: u8| {
             for _ in 0..repeat {
                 key.on_pressed(keyboard);
-                unsafe {
-                    USB_USBTask();
-                }
-                delay_ms::<1>();
+                hid_task();
+                // delay_ms::<1>();
                 key.on_released(keyboard);
-                unsafe {
-                    USB_USBTask();
-                }
-                delay_ms::<1>();
+                hid_task();
+                // delay_ms::<1>();
             }
         };
         if omk::is_left() {
@@ -111,17 +102,7 @@ impl Keyboard for UserKeyboard {
 
 impl const Default for UserKeyboard {
     fn default() -> Self {
-        Self { a: 3 }
-    }
-}
-struct MacroTest;
-
-#[progmem]
-static TEST_TEXT: &str = "Hello World !";
-
-impl CustomKey<UserKeyboard> for MacroTest {
-    fn on_pressed(&self, keyboard: &mut OmkKeyboard<UserKeyboard>) {
-        // keyboard.send_string(TEST_TEXT.iter_u8());
+        Self {}
     }
 }
 
@@ -134,13 +115,13 @@ static KEYMAP: Keymap<UserKeyboard> =
     TAB,    KC_Q,   KC_W,   KC_E,   KC_R,   KC_T,   KC_Y,   KC_U,   KC_I,   KC_O,   KC_P,   BCKSPC,
     L_SHFT, KC_A,   KC_S,   KC_D,   KC_F,   KC_G,   KC_H,   KC_J,   KC_K,   KC_L,   SMICLN, ENTER,
     L_SHFT, KC_Z,   KC_X,   KC_C,   KC_V,   KC_B,   KC_N,   KC_M,   COMMA,  DOT,    SLASH,  R_GUI,
-    L_GUI,L_CTRL,&LayerHold(1),SPACE,L_GUI, NO_OP,  NO_OP,  ENTER,  R_SHFT, R_ALT,  BCKSPC, R_CTRL,
+    L_GUI,L_CTRL,&LayerHold(1),SPACE,L_GUI, KC_A,   KC_A,  ENTER,  R_SHFT, R_ALT,  BCKSPC, R_CTRL,
     
 ]
     ,[
-    ESCAPE, KC_1,   KC_2,   KC_3,   KC_4,   KC_5,   KC_6,   KC_7,   KC_8,   KC_9,   KC_0,   DELETE,
+    ESCAPE, KC_1,   KC_2,   KC_3,   KC_4,   KC_5,   KC_6,   KC_7,   KC_8,   KC_9,   KC_0,   RESET,
     TAB,    TAB,    HOME,   ARRO_U, END,    PAGE_UP,KPSLAS, KP_7,   KP_8,   KP_9,   KC_P,   BCKSPC,
     L_SHFT, NUMLCK, ARRO_L, ARRO_D, ARRO_R, PAGE_DW,KP_MIN, KP_4,   KP_5,   KP_6,   KP_0,   ENTER,
     L_SHFT, KC_Z,   VOL_DO, MUTE,   VOL_UP, NO_OP,   KC_N,  KP_1,   KP_2,   KP_3,   SLASH,  R_GUI,
-    L_GUI,  L_CTRL, NO_OP,  SPACE,  L_GUI,  NO_OP,   NO_OP, R_SHFT, ENTER,  L_ALT,  DELETE,  R_CTRL,
+    L_GUI,  L_CTRL, NO_OP,  SPACE,  L_GUI,  KC_A ,   KC_A, R_SHFT, ENTER,  L_ALT,  DELETE,  R_CTRL,
 ]]};
