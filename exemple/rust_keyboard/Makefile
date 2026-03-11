@@ -17,7 +17,7 @@ both: left
 both: right
 
 build:
-	cargo build --release
+	cargo build --release -Zjson-target-spec
 	mkdir -p build
 	cp ./target/$(TARGET_RS)/release/rust_keyboard.elf build
 
