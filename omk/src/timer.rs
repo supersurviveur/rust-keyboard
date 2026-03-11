@@ -92,3 +92,4 @@ pub fn timer_elapsed16(last: u32) -> u16 {
 pub fn timer_expired(future: u32) -> bool {
     future < timer_read()
 }
+

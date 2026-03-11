@@ -1,11 +1,14 @@
 //! This module defines constants and structures for keyboard keys and custom key behaviors.
 //! It includes predefined key codes and custom key implementations.
 
+use core::{cell::{SyncUnsafeCell, UnsafeCell}, marker::PhantomData};
+
 use keyboard_macros::{config_constraints, key_alias};
 
 use crate::{
-    Keyboard, OmkKeyboard,
+    Keyboard, OmkKeyboard, UnPressHandler,
     keymap::{CustomKey, Key},
+    timer::{self, timer_read},
 };
 
 // TODO handle modifiers
@@ -397,34 +400,51 @@ impl<User: Keyboard> CustomKey<User> for Reset {
     }
 }
 
-/* pub trait TapDanceInfo<User: Keyboard>{
-    const DELAY: usize = 200;
-    const SINGLE: Option<&'static dyn CustomKey<User>>;
-    const LONG: Option<&'static dyn CustomKey<User>>;
-    const DOUBLE: Option<&'static dyn CustomKey<User>>;
-    const DOUBLE_PRESS: Option<&'static dyn CustomKey<User>>;
+//assume hold and tap_hold are modifier, aka press-releasing them does nothing
+pub struct TapDance<K1, K2, K3, K4> {
+    pub delay: usize,
+    pub tap: K1,
+    pub hold: K2,
+    pub double_tap: K3,
+    pub tap_hold: K4,
+    last_interaction: SyncUnsafeCell<u32>,
 }
 
-pub struct Tapdance<User: Keyboard, T: TapDanceInfo<User>>{
-    _phantom: PhantomData<T>,
-    _phantom2: PhantomData<User>,
+impl<K1, K2, K3, K4> TapDance<K1, K2, K3, K4> {
+    pub const fn new(delay: usize, tap: K1, hold: K2, double_tap: K3, tap_hold: K4) -> Self {
+        Self {
+            delay,
+            tap,
+            hold,
+            double_tap,
+            tap_hold,
+            last_interaction: 0.into(),
+        }
+    }
 }
-unsafe impl<User: Keyboard, TapdanceInfo> Send for Tapdance<>
-
 
 #[config_constraints]
-impl<User: Keyboard, T: TapDanceInfo<User>> CustomKey<User> for Tapdance<User,T> {
-    fn on_pressed(&self, _keyboard: &mut OmkKeyboard<User>) {
-
+impl<
+    User: Keyboard,
+    K1: CustomKey<User>,
+    K2: CustomKey<User>,
+    K3: CustomKey<User>,
+    K4: CustomKey<User>,
+> CustomKey<User> for TapDance<K1, K2, K3, K4>
+{
+    #[inline(always)]
+    fn complete_on_pressed(&self, keyboard: &mut OmkKeyboard<User>, row: u8, column: u8) {
+        self.hold.complete_on_pressed(keyboard, row, column);
     }
-    fn on_released(&self, _keyboard: &mut OmkKeyboard<User>){
 
+    fn complete_on_released(
+        &self,
+        keyboard: &mut OmkKeyboard<User>,
+        row: u8,
+        column: u8,
+        key_actual_layer: u8,
+    ) {
+        self.hold
+            .complete_on_released(keyboard, row, column, key_actual_layer);
     }
 }
-
-impl<User: Keyboard> Default for TapDance<User> {
-    fn default() -> Self {
-        Self { delay: 200, single: None, long: None, double: None, double_press: None }
-    }
-} */
-

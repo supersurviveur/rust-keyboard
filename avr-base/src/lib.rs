@@ -41,12 +41,7 @@ pub extern "C" fn _rust_start() -> ! {
         }
         __do_copy_data();
         __do_clear_bss();
-
-        // // Clear .bss section by zeroing it
-        // unsafe extern "C" {
-        //     unsafe fn __do_clear_bss();
-        // }
-
+        panic!();
         // Call main()
         unsafe extern "Rust" {
             unsafe fn main() -> !;

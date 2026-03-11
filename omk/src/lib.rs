@@ -144,14 +144,9 @@ pub trait Keyboard: Sized + const Default + 'static {
 }
 
 pub type PressHandler<User> =
-    &'static fn(key: &dyn CustomKey<User>, row: u8, column: u8, keyborad: &mut OmkKeyboard<User>);
-pub type UnPressHandler<User> = &'static fn(
-    key: &dyn CustomKey<User>,
-    row: u8,
-    column: u8,
-    layer: u8,
-    keyboard: &mut OmkKeyboard<User>,
-);
+    fn(key: &dyn CustomKey<User>, row: u8, column: u8, keyborad: &mut OmkKeyboard<User>);
+pub type UnPressHandler<User> =
+    fn(key: &dyn CustomKey<User>, row: u8, column: u8, layer: u8, keyboard: &mut OmkKeyboard<User>);
 
 #[config_constraints]
 pub struct OmkKeyboard<User: Keyboard> {
@@ -259,7 +254,6 @@ impl<User: Keyboard> OmkKeyboard<User> {
     where
         User: InterruptsHandler<User>,
     {
-
         let rotary = RotaryEncoder::<User>::task(self);
         User::rotary_encoder_handler(self, rotary);
         Self::draw_u8(unsafe { ERROR_COUNT }, 0, 50);
