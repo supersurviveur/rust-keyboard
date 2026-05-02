@@ -1,0 +1,13 @@
+[package]
+name = "keyboard-macros"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+image = { version = "0.25", default-features = false, features = ["png"] }
+quote = "1"
+syn = { version = "2", features = [ "full" ] }
+proc-macro2 = "1"

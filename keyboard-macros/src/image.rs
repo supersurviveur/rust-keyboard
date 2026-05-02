@@ -3,13 +3,7 @@ use std::fs;
 use image::{ImageBuffer, Luma};
 use proc_macro::{Span, TokenStream};
 use quote::quote;
-use regex::Regex;
 use syn::{parse::Parse, parse_macro_input};
-
-fn remove_non_alphanumeric(input: &str) -> String {
-    let re = Regex::new(r"[^a-zA-Z0-9_]+").unwrap();
-    re.replace_all(input, "").to_string()
-}
 
 fn to_format(img: ImageBuffer<Luma<u8>, Vec<u8>>, width: usize, height: usize) -> Vec<u8> {
     let mut output = Vec::new();
@@ -52,7 +46,7 @@ fn path_to_image(path: &str) -> (Vec<u8>, String, usize, usize) {
         .next_back()
         .expect("failed to get last part of path");
     let split: Vec<_> = path.split('.').collect();
-    let name = remove_non_alphanumeric(&split[0..split.len() - 1].join(".")).to_uppercase();
+    let name = split[0..split.len() - 1].join(".").to_uppercase();
 
     (bytes, name, width, height)
 }
@@ -131,7 +125,7 @@ pub fn include_animation_impl(input: TokenStream) -> TokenStream {
     };
 
     let name_ident = syn::Ident::new(
-        &remove_non_alphanumeric(parsed_args.path.split("/").last().expect("invalid path"))
+        &parsed_args.path.split("/").last().expect("invalid path")
             .to_uppercase(),
         Span::call_site().into(),
     );

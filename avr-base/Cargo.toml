@@ -4,4 +4,4 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-keyboard_macros = { path = "../keyboard_macros" }
+keyboard-macros = { path = "../keyboard-macros" }

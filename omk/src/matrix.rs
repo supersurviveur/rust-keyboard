@@ -157,7 +157,6 @@ impl<User: Keyboard> OmkKeyboard<User> {
                         .unwrap_unchecked()
             };
         if changed {
-            Self::draw_char('c', 0, 26);
             for row in 0..User::MATRIX_ROWS {
                 if self.previous_matrix[row as usize] != self.current_matrix[row as usize] {
                     for column in 0..User::MATRIX_COLUMNS {
@@ -167,8 +166,6 @@ impl<User: Keyboard> OmkKeyboard<User> {
                             != current_press
                         {
                             if current_press != 0.into() {
-                                Self::draw_u8(column, 0, 0);
-                                Self::draw_u8(row, 0, 13);
                                 self.key_pressed(column, row)
                             } else {
                                 self.key_released(column, row)

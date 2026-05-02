@@ -2,14 +2,12 @@
 #![feature(
     asm_experimental_arch,
     sync_unsafe_cell,
-    abi_avr_interrupt,
     generic_const_exprs,
     generic_const_items,
     associated_type_defaults,
     const_trait_impl,
     const_convert,
     likely_unlikely,
-    ptr_as_ref_unchecked,
     const_default,
     const_destruct,
     const_array
@@ -26,10 +24,9 @@ use avr_delay::delay_us;
 use core::{
     arch::asm,
     cell::SyncUnsafeCell,
-    ops::{BitOrAssign, ShlAssign, ShrAssign},
+    ops::{BitAnd, BitOrAssign, ShlAssign, ShrAssign},
     panic::PanicInfo,
 };
-use num_traits::PrimInt;
 mod limited_storage;
 use crate::{
     init::disable_watchdog,
@@ -38,17 +35,13 @@ use crate::{
     limited_storage::LimitedStorage,
     primitive::{Array2D, BinPackedArray, IndexByValue, progmem::ProgmemRef},
     rotary_encoder::RotaryEncoder,
-    serial::{
-        ERROR_COUNT,
-        shared_memory::{MasterSharedMemory, SlaveSharedMemory},
-    },
+    serial::shared_memory::{MasterSharedMemory, SlaveSharedMemory},
     timer::timer_init,
     usb::events::hid_task,
 };
 use keyboard_macros::{config_constraints, progmem};
 pub use limited_storage::Oom;
 use lufa_rs::{USB_Init, USB_USBTask};
-use num_traits::Unsigned;
 
 pub mod atomic;
 pub mod graphics;
@@ -72,8 +65,8 @@ pub trait Keyboard: Sized + const Default + 'static {
     const MATRIX_ROWS: u8;
     const MATRIX_COLUMNS: u8;
     /// Smallest type containing at least MATRIX_ROWS bits
-    type MatrixRowType: Unsigned
-        + PrimInt
+    type MatrixRowType: PartialEq
+        + BitAnd<Output = Self::MatrixRowType>
         + BitOrAssign
         + ShlAssign<u8>
         + ShrAssign<u8>
@@ -163,8 +156,10 @@ pub struct OmkKeyboard<User: Keyboard> {
     release_handler_overrides: LimitedStorage<10, (UnPressHandler<User>, u8)>,
 }
 
-#[config_constraints]
-pub struct OmkShared<User: Keyboard> {
+pub struct OmkShared<User: Keyboard>
+where
+    [(); User::ROWS_PER_HAND as usize]:,
+{
     pub master_memory: MasterSharedMemory<User>,
     pub slave_memory: SlaveSharedMemory<User>,
     pub rotary_encoder: RotaryEncoder<User>,
@@ -256,7 +251,6 @@ impl<User: Keyboard> OmkKeyboard<User> {
     {
         let rotary = RotaryEncoder::<User>::task(self);
         User::rotary_encoder_handler(self, rotary);
-        Self::draw_u8(unsafe { ERROR_COUNT }, 0, 50);
         let changed = self.matrix_task();
         let _ = Self::render(changed);
 

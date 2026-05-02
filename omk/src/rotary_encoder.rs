@@ -4,7 +4,6 @@ use keyboard_macros::config_constraints;
 
 use crate::{Keyboard, OmkKeyboard, atomic::atomic_access};
 
-#[config_constraints]
 /// Represents a rotary encoder with user-defined constraints.
 pub struct RotaryEncoder<User: Keyboard> {
     encoder: RotaryState,

@@ -51,7 +51,7 @@ fn const_item_with_generics(item: TraitItemConst, tokens: &mut TokenStream2) {
     tokens.append_all(
         item.attrs
             .iter()
-            .filter(|attr| attr.style == AttrStyle::Outer),
+            .filter(|attr| matches!(attr.style, AttrStyle::Outer)),
     );
     item.const_token.to_tokens(tokens);
     item.ident.to_tokens(tokens);

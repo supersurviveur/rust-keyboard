@@ -4,7 +4,8 @@
 use keyboard_macros::config_constraints;
 
 use crate::{
-    Keyboard, OmkKeyboard, usb::events::{add_code, remove_code}
+    Keyboard, OmkKeyboard,
+    usb::events::{add_code, remove_code},
 };
 
 /// A trait for defining custom key behaviors.
@@ -14,12 +15,7 @@ use crate::{
 pub trait CustomKey<User: Keyboard>: Send + Sync {
     /// Called when the key is pressed. By default, it delegates to `on_pressed`.
     #[inline(always)]
-    fn complete_on_pressed(
-        &self,
-        keyboard: &mut OmkKeyboard<User>,
-        _row: u8,
-        _column: u8,
-    ) {
+    fn complete_on_pressed(&self, keyboard: &mut OmkKeyboard<User>, _row: u8, _column: u8) {
         self.on_pressed(keyboard);
     }
 

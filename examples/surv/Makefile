@@ -9,9 +9,9 @@ right::
 	IS_KEYBOARD_RIGHT=1 make
 
 flash:
-	avr-strip ./build/rust_keyboard.elf
+	avr-strip ./build/rust-keyboard.elf
 	DEVICE=$$(./autoflash.sh); \
-	avrdude -p m32u4 -c avr109 -P $$DEVICE -U flash:w:./build/rust_keyboard.elf -U eeprom:w:./build/rust_keyboard.elf
+	avrdude -p m32u4 -c avr109 -P $$DEVICE -U flash:w:./build/rust-keyboard.elf -U eeprom:w:./build/rust-keyboard.elf
 
 both: left
 both: right
@@ -19,7 +19,7 @@ both: right
 build:
 	cargo build --release -Zjson-target-spec
 	mkdir -p build
-	cp ./target/$(TARGET_RS)/release/rust_keyboard.elf build
+	cp ./target/$(TARGET_RS)/release/rust-keyboard.elf build
 
 clean:
 	cargo clean
