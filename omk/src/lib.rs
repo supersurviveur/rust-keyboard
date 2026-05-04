@@ -20,7 +20,7 @@ use avr_base::{
     pins::Pin,
     register::{USBCON, USBE},
 };
-use avr_delay::delay_us;
+use avr_delay::{delay_ms, delay_us};
 use core::{
     arch::asm,
     cell::SyncUnsafeCell,
@@ -129,7 +129,7 @@ pub trait Keyboard: Sized + const Default + 'static {
     > = Array2D::<_, _, _, ProgmemRef<_>>::from_existing(unsafe { Self::USER_FONTPLATE.cast() });
 
     #[config_constraints(Self)]
-    fn rotary_encoder_handler(_keyboard: &mut OmkKeyboard<Self>, _rotation: i8) {}
+    fn rotary_encoder_handler(_keyboard: &mut OmkKeyboard<Self>, _rotation: (i8, i8)) {}
 
     /// A Holder for all suplementary data that you want accessible from the interrupts handlers.
     /// You need to implement Default on it for initialisation.
@@ -254,6 +254,13 @@ impl<User: Keyboard> OmkKeyboard<User> {
         let changed = self.matrix_task();
         let _ = Self::render(changed);
 
+        self.usb_task();
+    }
+
+    pub fn usb_task(&mut self)
+    where
+        User: InterruptsHandler<User>,
+    {
         if is_master() {
             hid_task();
             unsafe {
@@ -337,6 +344,30 @@ impl<User: Keyboard> OmkKeyboard<User> {
                 Ok(())
             }
         }
+    }
+
+    pub fn send_key_press(&mut self, key: &dyn CustomKey<User>)
+    where
+        User: InterruptsHandler<User>,
+    {
+        key.on_pressed(self);
+        self.usb_task();
+        delay_ms::<10>();
+    }
+    pub fn send_key_release(&mut self, key: &dyn CustomKey<User>)
+    where
+        User: InterruptsHandler<User>,
+    {
+        key.on_released(self);
+        self.usb_task();
+        delay_ms::<10>();
+    }
+    pub fn send_key(&mut self, key: &dyn CustomKey<User>)
+    where
+        User: InterruptsHandler<User>,
+    {
+        self.send_key_press(key);
+        self.send_key_release(key);
     }
 }
 

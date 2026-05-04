@@ -16,7 +16,12 @@ use keyboard_macros::progmem;
 use keyboard_macros::{entry, image_dimension, include_font_plate};
 use omk::keymap::Keymap;
 use omk::progmem::ProgmemRef;
+use omk::usb::set_vertical_wheel_delta;
 use omk::{Keyboard, OmkKeyboard, is_left, progmem};
+
+use crate::private::PRIV_K1;
+
+mod private;
 
 type Kb = OmkKeyboard<UserKeyboard>;
 
@@ -60,9 +65,12 @@ impl Keyboard for UserKeyboard {
 
     const KEYMAP: progmem::ProgmemRef<Keymap<Self>> = KEYMAP;
 
-    fn rotary_encoder_handler(keyboard: &mut OmkKeyboard<Self>, rotary: i8) {
+    fn rotary_encoder_handler(keyboard: &mut OmkKeyboard<Self>, rotary: (i8, i8)) {
         if is_left() {
-            keyboard.user.a += rotary;
+            keyboard.user.a += rotary.1;
+            // set_vertical_wheel_delta(1);
+        } else {
+            keyboard.user.a += rotary.1;
         }
         OmkKeyboard::<Self>::draw_u8(keyboard.user.a as u8, 0, 100);
     }
@@ -88,7 +96,7 @@ static KEYMAP: Keymap<UserKeyboard> = {
         L_GUI,  L_ALT,  &LayerHold(1), SPACE,  L_CTRL, NO_OP,  NO_OP,  R_CTRL, SPACE,  R_ALT,  L_ALT,  R_GUI,
     ],[
         KC_F12, KC_F1,  KC_F2,  KC_F3,  KC_F4,  KC_F5,  KC_F6,  KC_F7,  KC_F8,  KC_F9,  KC_F10, KC_F11,
-        TAB,    TAB,    HOME,   ARRO_U, END,    PAGE_UP,KPSLAS, KP_7,   KP_8,   KP_9,   KC_P,   BCKSPC,
+        TAB,    TAB,    HOME,   ARRO_U, END,    PAGE_UP,PRIV_K1, KP_7,   KP_8,   KP_9,   KC_P,   BCKSPC,
         L_SHFT, CAPLOK, ARRO_L, ARRO_D, ARRO_R, PAGE_DW,KP_MIN, KP_4,   KP_5,   KP_6,   KP_0,   ENTER,
         L_SHFT, KC_Z,   VOL_DO, MUTE,   VOL_UP, NO_OP,  KC_N,   KC_M,   COMMA,  DOT,    SLASH,  R_SHFT,
         L_GUI,  L_ALT,  NO_OP,  SPACE,  L_CTRL, NO_OP,  NO_OP,  R_CTRL, SPACE,  R_ALT,  L_ALT,  R_GUI,

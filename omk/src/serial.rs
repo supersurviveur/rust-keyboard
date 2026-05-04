@@ -13,12 +13,7 @@ use avr_delay::{delay_cycles, delay_us};
 use keyboard_macros::config_constraints;
 
 use crate::{
-    Keyboard, OmkKeyboard,
-    atomic::atomic_access,
-    interrupts::InterruptsHandler,
-    is_master,
-    serial::shared_memory::{MasterSharedMemory, SlaveSharedMemory},
-    timer::cycles_read,
+    Keyboard, OmkKeyboard, atomic::atomic_access, interrupts::InterruptsHandler, is_master, serial::shared_memory::{MasterSharedMemory, SlaveSharedMemory}, timer::cycles_read
 };
 
 const SERIAL_DELAY: u64 = 3; // in microseconds
