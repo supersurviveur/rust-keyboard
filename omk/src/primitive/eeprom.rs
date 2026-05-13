@@ -13,16 +13,12 @@ use avr_base::register::*;
 use core::hint::unlikely;
 
 /// Akin a *const T, but in eeprom
+#[derive(Clone, Copy)]
 pub struct EepromPtr<T> {
     ptr: *const T,
 }
-/// Akin a &T, but in eeprom
-impl<T> Clone for EepromPtr<T> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
 /// Akin a *mut T, but in eeprom
+#[derive(Clone, Copy)]
 pub struct EepromPtrMut<T> {
     ptr: *mut T,
 }
@@ -31,8 +27,9 @@ pub struct EepromRefMut<'a, T> {
     ptr: *mut T,
     _phantom: PhantomData<&'a mut T>,
 }
-impl<T> Copy for EepromPtr<T> {}
 
+/// Akin a &T, but in eeprom
+#[derive(Clone, Copy)]
 pub struct EepromRef<'a, T> {
     ptr: *const T,
     _phantom: PhantomData<&'a T>,
@@ -79,15 +76,6 @@ impl<T> EepromPtr<T> {
     }
 }
 
-impl<'a, T> Clone for EepromRef<'a, T> {
-    #[inline(always)]
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-impl<T> Copy for EepromRef<'_, T> {}
-
 impl<'a, T> EepromRef<'a, T> {
     /// # Safety
     /// Must point to a T in progmem
@@ -125,14 +113,6 @@ impl<'a, T> EepromRef<'a, T> {
         }
     }
 }
-
-impl<T> Clone for EepromPtrMut<T> {
-    #[inline(always)]
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-impl<T> Copy for EepromPtrMut<T> {}
 
 impl<T> EepromPtrMut<T> {
     #[inline(always)]
