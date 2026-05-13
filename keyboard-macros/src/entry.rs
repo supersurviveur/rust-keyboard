@@ -60,7 +60,6 @@ pub fn entry_impl(args: TokenStream, item: TokenStream) -> TokenStream {
         // Necessary to boot since avr-libc >= 2.3.0
         #[unsafe(link_section = ".init9")]
         pub extern "C" fn main() {
-        // fn main() {
             let mut kb = {unsafe {&mut *_THE_KEYBOARD.keyboard.get()}};
             kb.init();
             _main_rs(kb);

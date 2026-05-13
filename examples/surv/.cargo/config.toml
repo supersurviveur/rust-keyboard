@@ -1,11 +1,12 @@
 [build]
 target = "./atmega32u4-none.json"
 
+[unstable]
+json-target-spec = true
+build-std = [ "core" ]
+
 [target.atmega32u4-none]
 rustflags = [ "-C", "target-feature=+crt-static", "-C", "target-cpu=atmega32u4", "-Zfmt-debug=none" ]
-#-Zlocation-detail=none
-[unstable]
-build-std = [ "core" ]
 
 [env]
 AVR_CPU_FREQUENCY_HZ="16000000"

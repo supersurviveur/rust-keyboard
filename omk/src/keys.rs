@@ -1,14 +1,13 @@
 //! This module defines constants and structures for keyboard keys and custom key behaviors.
 //! It includes predefined key codes and custom key implementations.
 
-use core::{cell::{SyncUnsafeCell, UnsafeCell}, marker::PhantomData};
+use core::cell::SyncUnsafeCell;
 
 use keyboard_macros::{config_constraints, key_alias};
 
 use crate::{
-    Keyboard, OmkKeyboard, UnPressHandler,
+    Keyboard, OmkKeyboard,
     keymap::{CustomKey, Key},
-    timer::{self, timer_read},
 };
 
 // TODO handle modifiers
@@ -407,6 +406,7 @@ pub struct TapDance<K1, K2, K3, K4> {
     pub hold: K2,
     pub double_tap: K3,
     pub tap_hold: K4,
+    #[allow(unused)]
     last_interaction: SyncUnsafeCell<u32>,
 }
 

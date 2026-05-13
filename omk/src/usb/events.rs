@@ -258,6 +258,14 @@ pub fn toggle_code(code: u8) {
     }
 }
 
+/// Set the current delta value of the vertical wheel.
+pub fn set_vertical_wheel_delta(value: i8) {
+    if unsafe { MOUSE_REPORT_DATA.v } != value {
+        unsafe { MOUSE_REPORT_DATA.v = value };
+        unsafe { MOUSE_REPORT_DATA_UPDATED = true };
+    }
+}
+
 /// Sends the next mouse HID report if needed.
 pub fn send_next_mouse_report() {
     if unsafe { USB_DEVICE_STATE } != UsbDeviceStates::DeviceStateConfigured as u8 {
