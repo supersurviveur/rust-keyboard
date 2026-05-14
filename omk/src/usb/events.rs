@@ -128,10 +128,15 @@ pub extern "C" fn EVENT_USB_Device_ControlRequest() {
                 {
                     Endpoint_ClearSETUP();
 
-                    while !Endpoint_IsOUTReceived() {
+                    let mut timeout = 10000;
+                    while !Endpoint_IsOUTReceived() && timeout > 0 {
                         if USB_DEVICE_STATE == UsbDeviceStates::DeviceStateUnattached as u8 {
                             return;
                         }
+                        timeout -= 1;
+                    }
+                    if !Endpoint_IsOUTReceived() {
+                        return;
                     }
 
                     Endpoint_ClearOUT();
@@ -187,13 +192,7 @@ static mut KEYBOARD_REPORT_DATA: UsbKeyboardReportData = UsbKeyboardReportData {
     key_code: [0; 6],
     reserved: 0,
 };
-static mut MOUSE_REPORT_DATA: UsbMouseReportData = UsbMouseReportData {
-    button: 0,
-    x: 0,
-    y: 0,
-    v: 0,
-    h: 0,
-};
+static mut MOUSE_REPORT_DATA: UsbMouseReportData = UsbMouseReportData::default();
 
 static mut KEYBOARD_REPORT_DATA_UPDATED: bool = false;
 static mut MOUSE_REPORT_DATA_UPDATED: bool = false;
@@ -287,8 +286,6 @@ pub fn send_next_mouse_report() {
         Endpoint_SelectEndpoint(MOUSE_IN_ENDPOINT_ADDR);
 
         if Endpoint_IsReadWriteAllowed() && send_report {
-            KEYBOARD_REPORT_DATA_UPDATED = false;
-
             Endpoint_Write_Stream_LE(
                 &MOUSE_REPORT_DATA as *const _ as *const c_void,
                 size_of::<UsbMouseReportData>() as u16,
@@ -296,6 +293,9 @@ pub fn send_next_mouse_report() {
             );
 
             Endpoint_ClearIN();
+
+            MOUSE_REPORT_DATA_UPDATED = false;
+            MOUSE_REPORT_DATA = UsbMouseReportData::default();
         }
     }
 }

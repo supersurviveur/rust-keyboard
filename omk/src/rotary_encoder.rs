@@ -2,7 +2,7 @@ use core::marker::PhantomData;
 
 use keyboard_macros::config_constraints;
 
-use crate::{Keyboard, OmkKeyboard, atomic::atomic_access, is_left, is_master};
+use crate::{Keyboard, OmkKeyboard, atomic::atomic_access, is_master};
 
 /// Represents a rotary encoder with user-defined constraints.
 pub struct RotaryEncoder<User: Keyboard> {
@@ -79,7 +79,8 @@ impl<User: Keyboard> RotaryEncoder<User> {
             atomic_access(kb, |_, shared| {
                 if is_master() {
                     // Save the encoder pulses on the shared memory before erasing it
-                    shared.master_memory.master_rotary_encoder_pulses = shared.rotary_encoder.encoder.pulses;
+                    shared.master_memory.master_rotary_encoder_pulses =
+                        shared.rotary_encoder.encoder.pulses;
                     let this =
                         shared.rotary_encoder.encoder.pulses / User::ROTARY_ENCODER_RESOLUTION;
                     shared.rotary_encoder.encoder.pulses %= User::ROTARY_ENCODER_RESOLUTION;
@@ -90,7 +91,8 @@ impl<User: Keyboard> RotaryEncoder<User> {
                     (this, other)
                 } else {
                     // Save the encoder pulses on the shared memory before erasing it
-                    shared.slave_memory.slave_rotary_encoder_pulses = shared.rotary_encoder.encoder.pulses;
+                    shared.slave_memory.slave_rotary_encoder_pulses =
+                        shared.rotary_encoder.encoder.pulses;
                     let this =
                         shared.rotary_encoder.encoder.pulses / User::ROTARY_ENCODER_RESOLUTION;
                     shared.rotary_encoder.encoder.pulses %= User::ROTARY_ENCODER_RESOLUTION;

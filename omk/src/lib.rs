@@ -10,7 +10,8 @@
     likely_unlikely,
     const_default,
     const_destruct,
-    const_array
+    const_array,
+    derive_const
 )]
 #![allow(incomplete_features)]
 // We are on only one proc, with one thread, so there is no need to worry about static mut ref
@@ -206,10 +207,10 @@ impl<User: Keyboard> OmkKeyboard<User> {
     pub fn panic_handler(_info: &PanicInfo) -> ! {
         User::RED_LED_PIN.gpio_set_pin_output();
         User::RED_LED_PIN.gpio_write_pin_low();
-        // let _ = Self::oled_on();
-        // Self::clear();
-        // Self::draw_text(PANIC_TEXT.iter_u8().map(|x| x as char), 0, 0);
-        // let _ = Self::render(true);
+        let _ = Self::oled_on();
+        Self::clear();
+        Self::draw_text("/!\\ PANIC".chars(), 0, 0);
+        let _ = Self::render(true);
         loop {
             delay_us::<100000>();
             User::RED_LED_PIN.gpio_write_pin_high();
@@ -251,7 +252,8 @@ impl<User: Keyboard> OmkKeyboard<User> {
     {
         let rotary = RotaryEncoder::<User>::task(self);
         User::rotary_encoder_handler(self, rotary);
-        let changed = self.matrix_task();
+        let mut changed = rotary.0 != 0 || rotary.1 != 0;
+        changed |= self.matrix_task();
         let _ = Self::render(changed);
 
         self.usb_task();

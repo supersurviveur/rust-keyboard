@@ -64,7 +64,8 @@ pub enum StringDescriptors {
 
 #[doc = " \\brief Standard HID Boot Protocol Mouse Report.\n\n  Type define for a standard Boot Protocol Mouse report"]
 #[repr(C, packed)]
-#[derive(Debug, Default, Copy, Clone, PartialOrd, Ord, PartialEq, Eq)]
+#[derive_const(Default)]
+#[derive(Debug, Copy, Clone, PartialOrd, Ord, PartialEq, Eq)]
 pub struct UsbMouseReportData {
     #[doc = "< Button mask for currently pressed buttons in the mouse."]
     pub button: u8,
@@ -94,7 +95,7 @@ static DEVICE_DESCRIPTOR: UsbDescriptorDevice = UsbDescriptorDevice {
         r#type: UsbDescriptorTypes::Device as u8,
         size: size_of::<UsbDescriptorDevice>() as u8,
     },
-    usb_specification: version_bcd(3, 0, 0),
+    usb_specification: version_bcd(2, 0, 0),
     class: UsbDescriptorClassSubclassProtocol::UsbCscpNoDeviceClass as u8,
     sub_class: UsbDescriptorClassSubclassProtocol::UsbCscpNoDeviceSubclass as u8,
     protocol: UsbDescriptorClassSubclassProtocol::UsbCscpNoDeviceProtocol as u8,
@@ -201,11 +202,17 @@ static CONFIGURATION_DESCRIPTOR: UsbDescriptorConfiguration = UsbDescriptorConfi
     },
 };
 
-const KEYBOARD_HID: ProgmemPtr<UsbHidDescriptorHid> =
-    unsafe {ProgmemPtr::new(const { &raw const (*CONFIGURATION_DESCRIPTOR.as_ptr().address()).hid_keyboard_hid })};
+const KEYBOARD_HID: ProgmemPtr<UsbHidDescriptorHid> = unsafe {
+    ProgmemPtr::new(
+        const { &raw const (*CONFIGURATION_DESCRIPTOR.as_ptr().address()).hid_keyboard_hid },
+    )
+};
 
-const MOUSE_HID: ProgmemPtr<UsbHidDescriptorHid> =
-    unsafe {ProgmemPtr::new(const { &raw const (*CONFIGURATION_DESCRIPTOR.as_ptr().address()).hid_mouse_hid })};
+const MOUSE_HID: ProgmemPtr<UsbHidDescriptorHid> = unsafe {
+    ProgmemPtr::new(
+        const { &raw const (*CONFIGURATION_DESCRIPTOR.as_ptr().address()).hid_mouse_hid },
+    )
+};
 
 #[unsafe(no_mangle)]
 /// Callback for retrieving USB descriptors.
