@@ -1,4 +1,6 @@
 //! This module defines shared memory structures for master and slave devices in the serial communication system.
+use core::num::Wrapping;
+
 use keyboard_macros::config_constraints;
 
 use crate::Keyboard;
@@ -10,7 +12,7 @@ where
     [(); User::ROWS_PER_HAND as usize]:,
 {
     pub(crate) master_matrix: [User::MatrixRowType; User::ROWS_PER_HAND as usize],
-    pub(crate) master_rotary_encoder_pulses: i8,
+    pub(crate) master_rotary_encoder_pulses: Wrapping<i8>,
 }
 
 impl<User: Keyboard> MasterSharedMemory<User>
@@ -21,7 +23,7 @@ where
     pub const fn new() -> Self {
         Self {
             master_matrix: [0.into(); _],
-            master_rotary_encoder_pulses: 0,
+            master_rotary_encoder_pulses: Wrapping(0),
         }
     }
 }
@@ -42,7 +44,7 @@ where
     [(); User::ROWS_PER_HAND as usize]:,
 {
     pub(crate) slave_matrix: [User::MatrixRowType; User::ROWS_PER_HAND as usize],
-    pub(crate) slave_rotary_encoder_pulses: i8,
+    pub(crate) slave_rotary_encoder_pulses: Wrapping<i8>,
 }
 
 impl<User: Keyboard> SlaveSharedMemory<User>
@@ -53,7 +55,7 @@ where
     pub const fn new() -> Self {
         Self {
             slave_matrix: [0.into(); _],
-            slave_rotary_encoder_pulses: 0,
+            slave_rotary_encoder_pulses: Wrapping(0),
         }
     }
 }

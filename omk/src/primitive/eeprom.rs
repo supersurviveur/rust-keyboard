@@ -13,27 +13,29 @@ use avr_base::register::*;
 use core::hint::unlikely;
 
 /// Akin a *const T, but in eeprom
-#[derive(Clone, Copy)]
 pub struct EepromPtr<T> {
     ptr: *const T,
 }
+impl<T> Copy for EepromPtr<T> {}
+
 /// Akin a *mut T, but in eeprom
-#[derive(Clone, Copy)]
 pub struct EepromPtrMut<T> {
     ptr: *mut T,
 }
-/// Akibn a &mut T, but in eeprom
+impl<T> Copy for EepromPtrMut<T> {}
+
+/// Akin a &mut T, but in eeprom
 pub struct EepromRefMut<'a, T> {
     ptr: *mut T,
     _phantom: PhantomData<&'a mut T>,
 }
 
 /// Akin a &T, but in eeprom
-#[derive(Clone, Copy)]
 pub struct EepromRef<'a, T> {
     ptr: *const T,
     _phantom: PhantomData<&'a T>,
 }
+impl<'a, T> Copy for EepromRef<'a, T> {}
 
 impl<T> EepromPtr<T> {
     #[inline(always)]
@@ -342,5 +344,20 @@ impl<'a, T, const N: usize> IndexByValue<usize> for EepromRefMut<'a, [T; N]> {
             ptr: self.ptr.cast::<T>().wrapping_add(index),
             _phantom: PhantomData,
         }
+    }
+}
+impl<T> Clone for EepromPtr<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+impl<T> Clone for EepromPtrMut<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+impl<'a, T> Clone for EepromRef<'a, T> {
+    fn clone(&self) -> Self {
+        *self
     }
 }

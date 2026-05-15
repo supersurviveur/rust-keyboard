@@ -62,7 +62,7 @@ impl Keyboard for UserKeyboard {
 
     const KEYMAP: progmem::ProgmemRef<Keymap<Self>> = KEYMAP;
 
-    fn rotary_encoder_handler(keyboard: &mut OmkKeyboard<Self>, rotary: i8) {
+    fn rotary_encoder_handler(keyboard: &mut OmkKeyboard<Self>, arg: (i8, i8)) {
         let mut repeat_press = |key: &Key, repeat: u8| {
             for _ in 0..repeat {
                 key.on_pressed(keyboard);
@@ -74,12 +74,7 @@ impl Keyboard for UserKeyboard {
             }
         };
         if omk::is_left() {
-            if rotary > 0 {
-                repeat_press(VOLUME_UP, rotary as u8);
-            } else {
-                repeat_press(VOLUME_DOWN, (-rotary) as u8);
-            }
-        } else {
+            let (rotary, _) = arg;
             if rotary > 0 {
                 repeat_press(VOLUME_UP, rotary as u8);
             } else {
