@@ -26,13 +26,14 @@ impl<T> Clone for EepromPtr<T> {
 pub struct EepromPtrMut<T> {
     ptr: *mut T,
 }
-/// Akibn a &mut T, but in eeprom
+/// Akin a &mut T, but in eeprom
 pub struct EepromRefMut<'a, T> {
     ptr: *mut T,
     _phantom: PhantomData<&'a mut T>,
 }
 impl<T> Copy for EepromPtr<T> {}
 
+/// Akin a &T, but in eeprom
 pub struct EepromRef<'a, T> {
     ptr: *const T,
     _phantom: PhantomData<&'a T>,

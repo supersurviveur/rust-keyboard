@@ -1,7 +1,8 @@
-use core::marker::PhantomData;
+use core::{marker::PhantomData, num::Wrapping};
 
 use keyboard_macros::config_constraints;
 
+use crate::InterruptsHandler;
 use crate::{Keyboard, OmkKeyboard, atomic::atomic_access, is_master};
 
 /// Represents a rotary encoder with user-defined constraints.
@@ -24,7 +25,8 @@ impl<User: Keyboard> Copy for RotaryEncoder<User> {}
 #[derive(Clone, Copy)]
 pub(crate) struct RotaryState {
     state: u8,
-    pulses: i8,
+    pulses: Wrapping<i8>,
+    prev_other_pulses: Wrapping<i8>,
 }
 
 #[config_constraints]
@@ -39,7 +41,9 @@ impl<User: Keyboard> Default for RotaryEncoder<User> {
 /// And, the pointer must point correctly.
 #[inline(always)]
 #[config_constraints]
-pub(crate) unsafe fn fast_encoder_task<User: Keyboard>(encoder: *mut RotaryEncoder<User>) {
+pub(crate) unsafe fn fast_encoder_task<User: Keyboard + InterruptsHandler<User>>(
+    encoder: *mut RotaryEncoder<User>,
+) {
     const LUT: [i8; 16] = [0, -1, 1, 0, 1, 0, 0, -1, -1, 0, 0, 1, 0, 1, -1, 0];
     let (pad_a, pad_b) = (
         User::ROTARY_ENCODER_PIN1.gpio_read_pin(),
@@ -48,7 +52,15 @@ pub(crate) unsafe fn fast_encoder_task<User: Keyboard>(encoder: *mut RotaryEncod
     let new_state = pad_a as u8 | ((pad_b as u8) << 1);
     unsafe {
         (*encoder).encoder.state = (*encoder).encoder.state << 2 | new_state;
-        (*encoder).encoder.pulses += LUT[(*encoder).encoder.state as usize % 16];
+        let add = LUT[(*encoder).encoder.state as usize % 16];
+        (*encoder).encoder.pulses += add;
+        if is_master() {
+            (*<User as InterruptsHandler<User>>::SHARED_MEMORY_MASTER)
+                .master_rotary_encoder_pulses += add;
+        } else {
+            (*<User as InterruptsHandler<User>>::SHARED_MEMORY_SLAVE)
+                .slave_rotary_encoder_pulses += add;
+        }
     }
 }
 
@@ -58,7 +70,8 @@ impl<User: Keyboard> RotaryEncoder<User> {
         Self {
             encoder: RotaryState {
                 state: 0,
-                pulses: 0,
+                pulses: Wrapping(0),
+                prev_other_pulses: Wrapping(0),
             },
             _phantom: PhantomData,
         }
@@ -77,30 +90,23 @@ impl<User: Keyboard> RotaryEncoder<User> {
     pub fn task(kb: &mut OmkKeyboard<User>) -> (i8, i8) {
         unsafe {
             atomic_access(kb, |_, shared| {
+                let encoder = &mut shared.rotary_encoder.encoder;
                 if is_master() {
-                    // Save the encoder pulses on the shared memory before erasing it
-                    shared.master_memory.master_rotary_encoder_pulses =
-                        shared.rotary_encoder.encoder.pulses;
-                    let this =
-                        shared.rotary_encoder.encoder.pulses / User::ROTARY_ENCODER_RESOLUTION;
-                    shared.rotary_encoder.encoder.pulses %= User::ROTARY_ENCODER_RESOLUTION;
-                    let other = shared.slave_memory.slave_rotary_encoder_pulses
-                        / User::ROTARY_ENCODER_RESOLUTION;
-                    shared.slave_memory.slave_rotary_encoder_pulses %=
-                        User::ROTARY_ENCODER_RESOLUTION;
+                    let this = encoder.pulses.0 / User::ROTARY_ENCODER_RESOLUTION;
+                    encoder.pulses %= User::ROTARY_ENCODER_RESOLUTION;
+                    let other_new = shared.slave_memory.slave_rotary_encoder_pulses;
+                    let other =
+                        (other_new - encoder.prev_other_pulses).0 / User::ROTARY_ENCODER_RESOLUTION;
+                    encoder.prev_other_pulses = other_new;
                     (this, other)
                 } else {
-                    // Save the encoder pulses on the shared memory before erasing it
-                    shared.slave_memory.slave_rotary_encoder_pulses =
-                        shared.rotary_encoder.encoder.pulses;
-                    let this =
-                        shared.rotary_encoder.encoder.pulses / User::ROTARY_ENCODER_RESOLUTION;
-                    shared.rotary_encoder.encoder.pulses %= User::ROTARY_ENCODER_RESOLUTION;
-                    let other = shared.master_memory.master_rotary_encoder_pulses
-                        / User::ROTARY_ENCODER_RESOLUTION;
-                    shared.master_memory.master_rotary_encoder_pulses %=
-                        User::ROTARY_ENCODER_RESOLUTION;
-                    (this, other)
+                    let this = encoder.pulses.0 / User::ROTARY_ENCODER_RESOLUTION;
+                    encoder.pulses %= User::ROTARY_ENCODER_RESOLUTION;
+                    let other_new = shared.master_memory.master_rotary_encoder_pulses;
+                    let other =
+                        (other_new - encoder.prev_other_pulses).0 / User::ROTARY_ENCODER_RESOLUTION;
+                    encoder.prev_other_pulses = other_new;
+                    (other, this)
                 }
             })
         }
