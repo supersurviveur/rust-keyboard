@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["avr-base", "omk", "keyboard-macros", "eeprom-magic", "examples/louwen"]
+members = ["avr-base", "omk", "keyboard-macros", "eeprom-magic", "examples/louwen", "examples/surv"]
 
 
 [profile.dev]

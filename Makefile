@@ -10,16 +10,16 @@ right::
 
 flash:
 	avr-strip ./build/rust-keyboard.elf
-	DEVICE=$$(./autoflash.sh); \
+	DEVICE=$$(./examples/common/autoflash.sh); \
 	avrdude -p m32u4 -c avr109 -P $$DEVICE -U flash:w:./build/rust-keyboard.elf -U eeprom:w:./build/rust-keyboard.elf
 
 both: left
 both: right
 
 build:
-	cargo build --release -Zjson-target-spec
+	cargo build --release -p keyboard-$(USER) -Zjson-target-spec
 	mkdir -p build
-	cp ../../target/$(TARGET_RS)/release/keyboard-$(USER).elf build/rust-keyboard.elf
+	cp ./target/$(TARGET_RS)/release/keyboard-$(USER).elf build/rust-keyboard.elf
 
 clean:
 	cargo clean
