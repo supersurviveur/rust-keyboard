@@ -25,6 +25,7 @@ use avr_delay::{delay_ms, delay_us};
 use core::{
     arch::asm,
     cell::SyncUnsafeCell,
+    marker::PhantomData,
     ops::{BitAnd, BitOrAssign, ShlAssign, ShrAssign},
     panic::PanicInfo,
 };
@@ -38,7 +39,7 @@ use crate::{
     rotary_encoder::RotaryEncoder,
     serial::shared_memory::{MasterSharedMemory, SlaveSharedMemory},
     timer::timer_init,
-    usb::events::hid_task,
+    usb::{events::hid_task, get_mouse_delta, set_mouse_delta},
 };
 use keyboard_macros::{config_constraints, progmem};
 pub use limited_storage::Oom;
@@ -121,6 +122,10 @@ pub trait Keyboard: Sized + const Default + 'static {
     }
     .into();
 
+    const MOUSE_BASE_SPEED: u8 = 1;
+    const MOUSE_MAX_SPEED: u8 = 12;
+    const MOUSE_ACCELERATION: f32 = 1.;
+
     #[config_constraints(Self)]
     const FONTPLATE: Array2D<
         { Self::FONT_WIDTH },
@@ -152,9 +157,34 @@ pub struct OmkKeyboard<User: Keyboard> {
 
     pub layer: u8,
     pub keys_actual_layer: [i8; User::MATRIX_ROWS as usize * User::MATRIX_COLUMNS as usize],
+    pub mouse_state: OmkMouse<User>,
 
     next_press_handler_override: Option<(PressHandler<User>, u8)>,
     release_handler_overrides: LimitedStorage<10, (UnPressHandler<User>, u8)>,
+}
+
+pub struct OmkMouse<User> {
+    pub up: bool,
+    pub down: bool,
+    pub left: bool,
+    pub right: bool,
+    buttons_held_duration: u8,
+    current_speed: u8,
+    _phantom: PhantomData<User>,
+}
+
+impl<User: Keyboard> const Default for OmkMouse<User> {
+    fn default() -> Self {
+        Self {
+            up: false,
+            down: false,
+            left: false,
+            right: false,
+            buttons_held_duration: 0,
+            current_speed: User::MOUSE_BASE_SPEED,
+            _phantom: PhantomData,
+        }
+    }
 }
 
 pub struct OmkShared<User: Keyboard>
@@ -188,6 +218,7 @@ impl<User: Keyboard> OmkMetaHolder<User> {
                 current_matrix: [0.into(); _],
                 layer: 0,
                 keys_actual_layer: [0; _],
+                mouse_state: OmkMouse::default(),
                 next_press_handler_override: None,
                 release_handler_overrides: LimitedStorage::new(),
             }),
@@ -254,6 +285,7 @@ impl<User: Keyboard> OmkKeyboard<User> {
         User::rotary_encoder_handler(self, rotary);
         let mut changed = rotary.0 != 0 || rotary.1 != 0;
         changed |= self.matrix_task();
+        self.mouse_task();
         let _ = Self::render(changed);
 
         self.usb_task();
@@ -268,6 +300,42 @@ impl<User: Keyboard> OmkKeyboard<User> {
             unsafe {
                 USB_USBTask();
             }
+        }
+    }
+    pub fn mouse_task(&mut self) {
+        if self.mouse_state.up
+            || self.mouse_state.down
+            || self.mouse_state.left
+            || self.mouse_state.right
+        {
+            let (mut x, mut y) = get_mouse_delta();
+            self.mouse_state.buttons_held_duration += 1;
+
+            self.mouse_state.current_speed = User::MOUSE_BASE_SPEED
+                + libm::roundf(
+                    self.mouse_state.buttons_held_duration as f32 * User::MOUSE_ACCELERATION / 20.,
+                ) as u8;
+
+            if self.mouse_state.current_speed > User::MOUSE_MAX_SPEED {
+                self.mouse_state.current_speed = User::MOUSE_MAX_SPEED;
+            }
+
+            if self.mouse_state.up {
+                y -= self.mouse_state.current_speed as i8;
+            }
+            if self.mouse_state.down {
+                y += self.mouse_state.current_speed as i8;
+            }
+            if self.mouse_state.left {
+                x -= self.mouse_state.current_speed as i8;
+            }
+            if self.mouse_state.right {
+                x += self.mouse_state.current_speed as i8;
+            }
+            set_mouse_delta(x, y);
+        } else {
+            self.mouse_state.buttons_held_duration = 0;
+            self.mouse_state.current_speed = User::MOUSE_BASE_SPEED;
         }
     }
 

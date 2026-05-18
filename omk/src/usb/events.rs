@@ -265,6 +265,51 @@ pub fn set_vertical_wheel_delta(value: i8) {
     }
 }
 
+/// Set the current delta value of the movement of the mouse.
+pub fn set_mouse_delta(x: i8, y: i8) {
+    if unsafe { MOUSE_REPORT_DATA.x } != x || unsafe { MOUSE_REPORT_DATA.y } != y {
+        unsafe { MOUSE_REPORT_DATA.x = x };
+        unsafe { MOUSE_REPORT_DATA.y = y };
+        unsafe { MOUSE_REPORT_DATA_UPDATED = true };
+    }
+}
+
+/// Set the current delta value of the vertical movement of the mouse.
+pub fn get_mouse_delta() -> (i8, i8) {
+    unsafe { (MOUSE_REPORT_DATA.x, MOUSE_REPORT_DATA.y) }
+}
+
+// Mouse clicks
+pub fn mouse_left_click_press() {
+    unsafe { MOUSE_REPORT_DATA.button |= 0b1 };
+    unsafe { MOUSE_REPORT_DATA_UPDATED = true };
+}
+
+pub fn mouse_left_click_release() {
+    unsafe { MOUSE_REPORT_DATA.button &= !0b1 };
+    unsafe { MOUSE_REPORT_DATA_UPDATED = true };
+}
+
+pub fn mouse_right_click_press() {
+    unsafe { MOUSE_REPORT_DATA.button |= 0b10 };
+    unsafe { MOUSE_REPORT_DATA_UPDATED = true };
+}
+
+pub fn mouse_right_click_release() {
+    unsafe { MOUSE_REPORT_DATA.button &= !0b10 };
+    unsafe { MOUSE_REPORT_DATA_UPDATED = true };
+}
+
+pub fn mouse_wheel_click_press() {
+    unsafe { MOUSE_REPORT_DATA.button |= 0b100 };
+    unsafe { MOUSE_REPORT_DATA_UPDATED = true };
+}
+
+pub fn mouse_wheel_click_release() {
+    unsafe { MOUSE_REPORT_DATA.button &= !0b100 };
+    unsafe { MOUSE_REPORT_DATA_UPDATED = true };
+}
+
 /// Sends the next mouse HID report if needed.
 pub fn send_next_mouse_report() {
     if unsafe { USB_DEVICE_STATE } != UsbDeviceStates::DeviceStateConfigured as u8 {
@@ -295,7 +340,11 @@ pub fn send_next_mouse_report() {
             Endpoint_ClearIN();
 
             MOUSE_REPORT_DATA_UPDATED = false;
-            MOUSE_REPORT_DATA = UsbMouseReportData::default();
+            // Reset scroll and movement values
+            MOUSE_REPORT_DATA.v = 0;
+            MOUSE_REPORT_DATA.h = 0;
+            MOUSE_REPORT_DATA.x = 0;
+            MOUSE_REPORT_DATA.y = 0;
         }
     }
 }

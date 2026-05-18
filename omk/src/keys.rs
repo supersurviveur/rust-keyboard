@@ -8,6 +8,9 @@ use keyboard_macros::{config_constraints, key_alias};
 use crate::{
     Keyboard, OmkKeyboard,
     keymap::{CustomKey, Key},
+    usb::{
+        mouse_left_click_press, mouse_left_click_release, mouse_right_click_press, mouse_right_click_release, mouse_wheel_click_press, mouse_wheel_click_release
+    },
 };
 
 // TODO handle modifiers
@@ -446,5 +449,62 @@ impl<
     ) {
         self.hold
             .complete_on_released(keyboard, row, column, key_actual_layer);
+    }
+}
+
+macro_rules! mouse_movement {
+    ($struct:ident, $field:ident) => {
+        pub struct $struct;
+
+        #[config_constraints]
+        impl<User: Keyboard> CustomKey<User> for $struct {
+            fn on_pressed(&self, keyboard: &mut OmkKeyboard<User>) {
+                keyboard.mouse_state.$field = true;
+            }
+            fn on_released(&self, keyboard: &mut OmkKeyboard<User>) {
+                keyboard.mouse_state.$field = false;
+            }
+        }
+    };
+}
+
+mouse_movement! { MouseUp, up }
+mouse_movement! { MouseDown, down }
+mouse_movement! { MouseLeft, left }
+mouse_movement! { MouseRight, right }
+
+pub struct MouseLeftClick;
+
+#[config_constraints]
+impl<User: Keyboard> CustomKey<User> for MouseLeftClick {
+    fn on_pressed(&self, _: &mut OmkKeyboard<User>) {
+        mouse_left_click_press();
+    }
+    fn on_released(&self, _: &mut OmkKeyboard<User>) {
+        mouse_left_click_release();
+    }
+}
+
+pub struct MouseRightClick;
+
+#[config_constraints]
+impl<User: Keyboard> CustomKey<User> for MouseRightClick {
+    fn on_pressed(&self, _: &mut OmkKeyboard<User>) {
+        mouse_right_click_press();
+    }
+    fn on_released(&self, _: &mut OmkKeyboard<User>) {
+        mouse_right_click_release();
+    }
+}
+
+pub struct MouseWheelClick;
+
+#[config_constraints]
+impl<User: Keyboard> CustomKey<User> for MouseWheelClick {
+    fn on_pressed(&self, _: &mut OmkKeyboard<User>) {
+        mouse_wheel_click_press();
+    }
+    fn on_released(&self, _: &mut OmkKeyboard<User>) {
+        mouse_wheel_click_release();
     }
 }
