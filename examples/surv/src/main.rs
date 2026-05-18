@@ -38,7 +38,7 @@ struct UserKeyboard {
 
 #[progmem]
 static USER_FONTPLATE: [u8; UserKeyboard::FONT_SIZE] =
-    include_font_plate!("../images/fontplate.png");
+    include_font_plate!("examples/images/fontplate.png");
 
 impl Keyboard for UserKeyboard {
     // Change that if you have no screen
@@ -57,7 +57,7 @@ impl Keyboard for UserKeyboard {
     const RIGHT_ENCODER_PIN2: Pin = F5;
     const ROTARY_ENCODER_RESOLUTION: i8 = 4;
 
-    const FONT_DIM: (u8, u8, usize) = image_dimension!("../images/fontplate.png");
+    const FONT_DIM: (u8, u8, usize) = image_dimension!("examples/images/fontplate.png");
     const CHAR_WIDTH: u8 = 6;
     const CHAR_HEIGHT: u8 = 13;
 
