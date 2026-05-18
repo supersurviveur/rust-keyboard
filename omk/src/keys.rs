@@ -9,7 +9,8 @@ use crate::{
     Keyboard, OmkKeyboard,
     keymap::{CustomKey, Key},
     usb::{
-        mouse_left_click_press, mouse_left_click_release, mouse_right_click_press, mouse_right_click_release, mouse_wheel_click_press, mouse_wheel_click_release
+        mouse_left_click_press, mouse_left_click_release, mouse_right_click_press,
+        mouse_right_click_release, mouse_wheel_click_press, mouse_wheel_click_release,
     },
 };
 
@@ -508,3 +509,8 @@ impl<User: Keyboard> CustomKey<User> for MouseWheelClick {
         mouse_wheel_click_release();
     }
 }
+
+pub struct DummyKey;
+
+#[config_constraints]
+impl<User: Keyboard> CustomKey<User> for DummyKey {}

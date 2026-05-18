@@ -19,9 +19,17 @@ use omk::progmem::ProgmemRef;
 use omk::usb::set_vertical_wheel_delta;
 use omk::{Keyboard, OmkKeyboard, is_left, progmem};
 
-use crate::private::PRIV_K1;
-
+#[cfg(surv_private)]
 mod private;
+
+#[cfg(not(surv_private))]
+mod private {
+    use omk::keys::DummyKey;
+
+    pub const PRIV_K1: &DummyKey = &DummyKey;
+}
+
+use crate::private::PRIV_K1;
 
 type Kb = OmkKeyboard<UserKeyboard>;
 
