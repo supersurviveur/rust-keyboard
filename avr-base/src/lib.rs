@@ -18,6 +18,9 @@ pub fn reset_to_bootloader() -> ! {
         asm!("cli");
         WDTCSR.write(WDCE);
         WDTCSR.write(WDE);
+
+        //Wasting cycles until reset is the intended behavior
+        #[allow(clippy::empty_loop)]
         loop {}
     }
 }

@@ -8,8 +8,8 @@ use lufa_rs::{
     Endpoint_ClearStatusStage, Endpoint_ConfigureEndpoint, Endpoint_IsOUTReceived,
     Endpoint_IsReadWriteAllowed, Endpoint_SelectEndpoint, Endpoint_Write_8,
     Endpoint_Write_Control_Stream_LE, Endpoint_Write_Stream_LE, HidClassRequests,
-    REQDIR_DEVICETOHOST, REQDIR_HOSTTODEVICE, REQREC_INTERFACE, REQTYPE_CLASS, USB_CONTROL_REQUEST,
-    USB_DEVICE_STATE, USB_Device_EnableSOFEvents, UsbDeviceStates, UsbKeyboardReportData,
+    REQDIR_DEVICETOHOST, REQREC_INTERFACE, REQTYPE_CLASS, USB_CONTROL_REQUEST, USB_DEVICE_STATE,
+    USB_Device_EnableSOFEvents, UsbDeviceStates, UsbKeyboardReportData,
 };
 
 use crate::usb::{
@@ -93,11 +93,11 @@ pub extern "C" fn EVENT_USB_Device_StartOfFrame() {
 #[unsafe(no_mangle)]
 pub extern "C" fn EVENT_USB_Device_ControlRequest() {
     unsafe {
-        match USB_CONTROL_REQUEST.b_request {
-            code if code == HidClassRequests::HidReqGetReport as u8 => {
-                if USB_CONTROL_REQUEST.bm_request_type
-                    == (REQDIR_DEVICETOHOST | REQTYPE_CLASS | REQREC_INTERFACE) as u8
-                {
+        if USB_CONTROL_REQUEST.bm_request_type
+            == (REQDIR_DEVICETOHOST | REQTYPE_CLASS | REQREC_INTERFACE) as u8
+        {
+            match USB_CONTROL_REQUEST.b_request {
+                code if code == HidClassRequests::HidReqGetReport as u8 => {
                     Endpoint_ClearSETUP();
 
                     match USB_CONTROL_REQUEST.w_index {
@@ -121,11 +121,7 @@ pub extern "C" fn EVENT_USB_Device_ControlRequest() {
                     }
                     Endpoint_ClearOUT();
                 }
-            }
-            code if code == HidClassRequests::HidReqSetReport as u8 => {
-                if USB_CONTROL_REQUEST.bm_request_type
-                    == (REQDIR_HOSTTODEVICE | REQTYPE_CLASS | REQREC_INTERFACE) as u8
-                {
+                code if code == HidClassRequests::HidReqSetReport as u8 => {
                     Endpoint_ClearSETUP();
 
                     let mut timeout = 10000;
@@ -142,47 +138,31 @@ pub extern "C" fn EVENT_USB_Device_ControlRequest() {
                     Endpoint_ClearOUT();
                     Endpoint_ClearStatusStage();
                 }
-            }
-            code if code == HidClassRequests::HidReqGetProtocol as u8 => {
-                if USB_CONTROL_REQUEST.bm_request_type
-                    == (REQDIR_DEVICETOHOST | REQTYPE_CLASS | REQREC_INTERFACE) as u8
-                {
+                code if code == HidClassRequests::HidReqGetProtocol as u8 => {
                     Endpoint_ClearSETUP();
                     Endpoint_Write_8(USING_REPORT_PROTOCOL as u8);
                     Endpoint_ClearIN();
                     Endpoint_ClearStatusStage();
                 }
-            }
-            code if code == HidClassRequests::HidReqSetProtocol as u8 => {
-                if USB_CONTROL_REQUEST.bm_request_type
-                    == (REQDIR_HOSTTODEVICE | REQTYPE_CLASS | REQREC_INTERFACE) as u8
-                {
+                code if code == HidClassRequests::HidReqSetProtocol as u8 => {
                     Endpoint_ClearSETUP();
                     Endpoint_ClearStatusStage();
                     USING_REPORT_PROTOCOL = USB_CONTROL_REQUEST.w_value != 0;
                 }
-            }
 
-            code if code == HidClassRequests::HidReqSetIdle as u8 => {
-                if USB_CONTROL_REQUEST.bm_request_type
-                    == (REQDIR_HOSTTODEVICE | REQTYPE_CLASS | REQREC_INTERFACE) as u8
-                {
+                code if code == HidClassRequests::HidReqSetIdle as u8 => {
                     Endpoint_ClearSETUP();
                     Endpoint_ClearStatusStage();
                     IDLE_COUNT = (USB_CONTROL_REQUEST.w_value & 0xFF00) >> 6;
                 }
-            }
-            code if code == HidClassRequests::HidReqGetIdle as u8 => {
-                if USB_CONTROL_REQUEST.bm_request_type
-                    == (REQDIR_DEVICETOHOST | REQTYPE_CLASS | REQREC_INTERFACE) as u8
-                {
+                code if code == HidClassRequests::HidReqGetIdle as u8 => {
                     Endpoint_ClearSETUP();
                     Endpoint_Write_8((IDLE_COUNT >> 2) as u8);
                     Endpoint_ClearIN();
                     Endpoint_ClearStatusStage();
                 }
+                _ => {}
             }
-            _ => {}
         }
     }
 }

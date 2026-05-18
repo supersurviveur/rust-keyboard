@@ -1,0 +1,18 @@
+[workspace]
+resolver = "3"
+members = ["avr-base", "omk", "keyboard-macros", "eeprom-magic", "examples/louwen"]
+
+
+[profile.dev]
+panic = "abort"
+opt-level = "z"
+lto = "fat"
+codegen-units = 1
+debug = true
+
+[profile.release]
+panic = "abort"
+lto = "fat"
+opt-level = "z"
+codegen-units = 1
+debug = true

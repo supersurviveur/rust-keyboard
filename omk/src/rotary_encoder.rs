@@ -13,10 +13,7 @@ pub struct RotaryEncoder<User: Keyboard> {
 
 impl<User: Keyboard> Clone for RotaryEncoder<User> {
     fn clone(&self) -> Self {
-        Self {
-            encoder: self.encoder.clone(),
-            _phantom: self._phantom.clone(),
-        }
+        *self
     }
 }
 impl<User: Keyboard> Copy for RotaryEncoder<User> {}

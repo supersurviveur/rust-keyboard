@@ -11,14 +11,13 @@
 #![no_main]
 
 use avr_base::pins::{B1, B2, B3, B4, B5, B6, C6, D2, D5, D7, E6, F4, F5, F6, F7, Pin};
-use eeprom_magic::eeprom;
 use keyboard_macros::progmem;
 use keyboard_macros::{entry, image_dimension, include_font_plate};
 use omk::keymap::{CustomKey, Key, Keymap};
 use omk::keys::{VOLUME_DOWN, VOLUME_UP};
 use omk::progmem::ProgmemRef;
 use omk::usb::hid_task;
-use omk::{Keyboard, OmkKeyboard, eeprom, progmem};
+use omk::{Keyboard, OmkKeyboard, progmem};
 // include_image!("images/test.png");
 
 type Kb = OmkKeyboard<UserKeyboard>;
@@ -36,7 +35,7 @@ struct UserKeyboard {
 
 #[progmem]
 static USER_FONTPLATE: [u8; UserKeyboard::FONT_SIZE] =
-    include_font_plate!("../images/fontplate.png");
+    include_font_plate!("examples/images/fontplate.png");
 
 impl Keyboard for UserKeyboard {
     const HAVE_SCREEN: bool = true;
@@ -54,7 +53,7 @@ impl Keyboard for UserKeyboard {
     const RIGHT_ENCODER_PIN2: Pin = F5;
     const ROTARY_ENCODER_RESOLUTION: i8 = 1;
 
-    const FONT_DIM: (u8, u8, usize) = image_dimension!("../images/fontplate.png");
+    const FONT_DIM: (u8, u8, usize) = image_dimension!("examples/images/fontplate.png");
     const CHAR_WIDTH: u8 = 6;
     const CHAR_HEIGHT: u8 = 13;
 

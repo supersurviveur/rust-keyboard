@@ -20,6 +20,8 @@ use core::mem::{MaybeUninit, size_of};
 
 use crate::primitive::IndexByValue;
 
+///# Safety
+/// p_addr must point to a valid progmem address, and by inferior to 64k
 pub unsafe fn read_byte(p_addr: *const u8) -> u8 {
     // Only addresses below the 64 KiB limit are supported!
     // Apparently this is of no concern for architectures with true
@@ -52,7 +54,7 @@ pub unsafe fn read_byte(p_addr: *const u8) -> u8 {
 
 /// Similar to a pointer in usage, but point to progmem instead
 /// Safe to construct, unsafe to use
-#[derive(Clone,Copy)]
+#[derive(Clone, Copy)]
 pub struct ProgmemPtr<T> {
     ptr: *const T,
 }
@@ -60,7 +62,7 @@ pub struct ProgmemPtr<T> {
 /// Similar to a ref in usage, but reference progmem instead
 /// unsafe to construct (prefer using the dedicated [keyboard_macros::progmem] macro)
 /// but safe to use
-#[derive(Clone,Copy)]
+#[derive(Clone, Copy)]
 pub struct ProgmemRef<T> {
     ptr: *const T,
 }
@@ -110,6 +112,11 @@ impl<T> ProgmemPtr<T> {
         }
         res
     }
+    ///# Safety
+    /// self must point to a T correctly.
+    /// After this call, self will be incremented by sizeof<T>,
+    /// and thus will still point to a T correctly only if it was originally part of
+    /// a not yet ended [T;N]
     #[inline(always)]
     pub unsafe fn read_incr(&mut self) -> T {
         let mut res = MaybeUninit::<T>::uninit();
@@ -130,6 +137,9 @@ impl<T> ProgmemPtr<T> {
             ptr: self.ptr.cast(),
         }
     }
+    ///# Safety
+    /// Must point correctly to at least sizeof<T> known bytes
+    /// Easiest way to garantee that is to point correctly to a T
     #[inline(always)]
     pub const unsafe fn iter_u8(self) -> ProgmemIterator<u8> {
         ProgmemIterator {
@@ -176,7 +186,9 @@ impl<T> ProgmemRef<T> {
     /// # Safety
     /// The data pointed must also be interpretable as the new type (in particular this new type must be inferior or equal in size)
     pub const unsafe fn cast<U>(self) -> ProgmemRef<U> {
-        ProgmemRef { ptr: self.ptr.cast() }
+        ProgmemRef {
+            ptr: self.ptr.cast(),
+        }
     }
 }
 
@@ -205,6 +217,8 @@ impl<T, const N: usize> IndexByValue<usize> for ProgmemRef<[T; N]> {
 }
 
 impl<T, const N: usize> ProgmemPtr<[T; N]> {
+    ///# Safety
+    /// self must point correctly to a [T;N2] with N2 >= N
     #[inline(always)]
     #[allow(non_snake_case)]
     pub const unsafe fn iter_T(&self) -> ProgmemIterator<T> {
@@ -260,10 +274,10 @@ impl<T> ProgmemIterator<T> {
     /// # Safety
     /// Normaly, Iterators are constructed from ProgmemPtr or Ref, not directly.
     /// If you do, then you must provide a pointer valid for [T;size] in progmem
-    pub unsafe fn new(ptr: *const T,size: usize) -> Self{
+    pub unsafe fn new(ptr: *const T, size: usize) -> Self {
         Self {
-            ptr: ProgmemPtr {ptr},
-            remaining: size
+            ptr: ProgmemPtr { ptr },
+            remaining: size,
         }
     }
 }
