@@ -97,7 +97,11 @@ impl<User: Keyboard> RotaryEncoder<User> {
                     let other_new = shared.slave_memory.slave_rotary_encoder_pulses;
                     let other =
                         (other_new - encoder.prev_other_pulses).0 / User::ROTARY_ENCODER_RESOLUTION;
-                    encoder.prev_other_pulses = other_new;
+                    encoder.prev_other_pulses = other_new
+                        - Wrapping(
+                            (other_new - encoder.prev_other_pulses).0
+                                % User::ROTARY_ENCODER_RESOLUTION,
+                        );
                     (this, other)
                 } else {
                     let this = encoder.pulses.0 / User::ROTARY_ENCODER_RESOLUTION;
@@ -105,7 +109,11 @@ impl<User: Keyboard> RotaryEncoder<User> {
                     let other_new = shared.master_memory.master_rotary_encoder_pulses;
                     let other =
                         (other_new - encoder.prev_other_pulses).0 / User::ROTARY_ENCODER_RESOLUTION;
-                    encoder.prev_other_pulses = other_new;
+                    encoder.prev_other_pulses = other_new
+                        - Wrapping(
+                            (other_new - encoder.prev_other_pulses).0
+                                % User::ROTARY_ENCODER_RESOLUTION,
+                        );
                     (other, this)
                 }
             })

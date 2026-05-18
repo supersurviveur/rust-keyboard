@@ -55,7 +55,7 @@ impl Keyboard for UserKeyboard {
     const LEFT_ENCODER_PIN2: Pin = F4;
     const RIGHT_ENCODER_PIN1: Pin = F4;
     const RIGHT_ENCODER_PIN2: Pin = F5;
-    const ROTARY_ENCODER_RESOLUTION: i8 = 1;
+    const ROTARY_ENCODER_RESOLUTION: i8 = 4;
 
     const FONT_DIM: (u8, u8, usize) = image_dimension!("../images/fontplate.png");
     const CHAR_WIDTH: u8 = 6;
@@ -68,9 +68,12 @@ impl Keyboard for UserKeyboard {
     fn rotary_encoder_handler(keyboard: &mut OmkKeyboard<Self>, rotary: (i8, i8)) {
         if is_left() {
             keyboard.user.rotary_state += rotary.1;
-            set_vertical_wheel_delta(-rotary.1 * 2);
+
+            // scroll faster in navigation layer
+            let multiplier = if keyboard.layer == 1 { 8 } else { 4 };
+            set_vertical_wheel_delta(-rotary.1 * multiplier);
         } else {
-            keyboard.user.rotary_state += rotary.1;
+            keyboard.user.rotary_state += rotary.0;
         }
         OmkKeyboard::<Self>::draw_u8(keyboard.user.rotary_state as u8, 0, 100);
     }
