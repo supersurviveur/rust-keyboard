@@ -3,7 +3,7 @@
 
 pub mod shared_memory;
 
-use core::{mem::transmute, ptr::null_mut};
+use core::{mem::transmute, ptr::null_mut, sync::atomic::AtomicBool};
 
 use avr_base::{
     F_CPU,
@@ -396,6 +396,8 @@ impl<User: Keyboard + InterruptsHandler<User>> OmkKeyboard<User> {
     /// Handles the serial interrupt for data transmission and synchronization.
     #[inline(always)]
     pub fn serial_interrupt() {
+        SERIAL_INTERRUPT_EXECUTED.store(true, core::sync::atomic::Ordering::Relaxed);
+
         if Self::loop_read_until_end_of_communication() {
             return;
         }
@@ -463,3 +465,13 @@ impl<User: Keyboard + InterruptsHandler<User>> OmkKeyboard<User> {
     }
 }
 pub static mut ERROR_COUNT: u8 = 0;
+
+static SERIAL_INTERRUPT_EXECUTED: AtomicBool = AtomicBool::new(false);
+
+pub fn wait_for_next_serial_interrupt() {
+    SERIAL_INTERRUPT_EXECUTED.store(false, core::sync::atomic::Ordering::Relaxed);
+
+    while !SERIAL_INTERRUPT_EXECUTED.load(core::sync::atomic::Ordering::Relaxed) {
+        core::hint::spin_loop();
+    }
+}

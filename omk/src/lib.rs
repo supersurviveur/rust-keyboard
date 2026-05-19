@@ -114,6 +114,9 @@ pub trait Keyboard: Sized + const Default + 'static + PrivateConfig {
     }
     .into();
 
+    const THIS_HAND_OFFSET: usize = if is_right() { Self::ROWS_PER_HAND } else { 0 };
+    const OTHER_HAND_OFFSET: usize = Self::ROWS_PER_HAND - Self::THIS_HAND_OFFSET;
+
     const MOUSE_BASE_SPEED: u8 = 1;
     const MOUSE_MAX_SPEED: u8 = 12;
     const MOUSE_ACCELERATION: f32 = 1.;
@@ -134,11 +137,7 @@ pub trait Keyboard: Sized + const Default + 'static + PrivateConfig {
 
 pub trait PrivateConfig {
     type const ROWS_PER_HAND: usize;
-    const THIS_HAND_OFFSET: usize = if is_right() { Self::ROWS_PER_HAND } else { 0 };
-    const OTHER_HAND_OFFSET: usize = Self::ROWS_PER_HAND - Self::THIS_HAND_OFFSET;
-
     type const MATRIX_KEYS_COUNT: usize;
-
     type const FONT_SIZE: usize;
     type const FONT_WIDTH: u8;
     type const FONT_HEIGHT: u8;

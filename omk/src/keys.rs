@@ -6,8 +6,9 @@ use core::cell::SyncUnsafeCell;
 use keyboard_macros::key_alias;
 
 use crate::{
-    Keyboard, OmkKeyboard,
+    Keyboard, OmkKeyboard, is_master,
     keymap::{CustomKey, Key},
+    serial::wait_for_next_serial_interrupt,
     usb::{
         mouse_left_click_press, mouse_left_click_release, mouse_right_click_press,
         mouse_right_click_release, mouse_wheel_click_press, mouse_wheel_click_release,
@@ -393,6 +394,11 @@ pub struct Reset;
 
 impl<User: Keyboard> CustomKey<User> for Reset {
     fn on_pressed(&self, _keyboard: &mut OmkKeyboard<User>) {
+        // On the slave side, wait for a serial communication to sync the key before the reset
+        if !is_master() {
+            wait_for_next_serial_interrupt();
+        }
+
         avr_base::reset_to_bootloader();
     }
 }
