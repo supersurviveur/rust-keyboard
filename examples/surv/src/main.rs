@@ -1,115 +1,245 @@
 #![no_std]
-#![allow(incomplete_features)]
-#![feature(
-    abi_avr_interrupt,
-    generic_const_exprs,
-    generic_const_items,
-    const_default,
-    const_trait_impl,
-    sync_unsafe_cell,
-    stmt_expr_attributes
-)]
 #![no_main]
+#![feature(asm_experimental_arch)]
+use avr_device::entry;
+use panic_halt as _;
 
-use avr_base::pins::{B1, B2, B3, B4, B5, B6, C6, D2, D5, D7, E6, F4, F5, F6, F7, Pin};
-use keyboard_macros::progmem;
-use keyboard_macros::{entry, image_dimension, include_font_plate};
-use omk::keymap::Keymap;
-use omk::progmem::ProgmemRef;
-use omk::usb::set_vertical_wheel_delta;
-use omk::{Keyboard, OmkKeyboard, is_left, progmem};
+// =====================================================================
+// 1. DESCRIPTEURS USB STANDARDS (Stockés en mémoire Flash)
+// =====================================================================
 
-#[cfg(surv_private)]
-mod private;
+const DEVICE_DESCRIPTOR: [u8; 18] = [
+    18, 0x01, 0x00, 0x02, 0x00, 0x00, 0x00, 8, 0x66, 0x66, // VID : 0x6666
+    0x11, 0x11, // PID : 0x1111
+    0x00, 0x01, 0, 0, 0, 1,
+];
 
-#[cfg(not(surv_private))]
-mod private {
-    use omk::keys::DummyKey;
+const HID_REPORT_DESCRIPTOR: [u8; 43] = [
+    0x05, 0x01, 0x09, 0x06, 0xa1, 0x01, 0x05, 0x07, 0x19, 0xe0, 0x29, 0xe7, 0x15, 0x00, 0x25, 0x01,
+    0x75, 0x01, 0x95, 0x08, 0x81, 0x02, 0x95, 0x01, 0x75, 0x08, 0x81, 0x03, 0x95, 0x06, 0x75, 0x08,
+    0x15, 0x00, 0x25, 0x65, 0x19, 0x00, 0x29, 0x65, 0x81, 0x00, 0xc0,
+];
 
-    pub const PRIV_K1: &DummyKey = &DummyKey;
-}
+const CONFIG_DESCRIPTOR: [u8; 34] = [
+    9, 0x02, 34, 0, 1, 1, 0, 0xA0, 50, // Configuration
+    9, 0x04, 0, 0, 1, 0x03, 0x01, 0x01, 0, // Interface HID
+    9, 0x21, 0x11, 0x01, 0, 1, 0x22, 63, 0, // Descripteur HID
+    7, 0x05, 0x81, 0x03, 8, 0, 10, // Endpoint 1 (IN, Interrupt, 8 octets, 10ms)
+];
 
-use crate::private::PRIV_K1;
+// =====================================================================
+// 2. PROGRAMME PRINCIPAL
+// =====================================================================
 
-type Kb = OmkKeyboard<UserKeyboard>;
+#[entry]
+fn main() -> ! {
+    let dp = avr_device::atmega32u4::Peripherals::take().unwrap();
 
-#[entry(UserKeyboard)]
-fn main(kb: &mut Kb) {
+    // =========================================================
+    // 1. COUPER LE WATCHDOG (Vital si un bootloader est présent)
+    // =========================================================
+    unsafe {
+        core::arch::asm!("wdr"); // Réinitialise le timer du chien de garde
+        let mcusr = 0x54 as *mut u8;
+        let wdtcsr = 0x60 as *mut u8;
+        core::ptr::write_volatile(mcusr, 0); // Effacer les drapeaux de reset
+        // Séquence matérielle obligatoire pour déverrouiller le Watchdog
+        core::ptr::write_volatile(wdtcsr, (1 << 4) | (1 << 3)); // WDCE | WDE
+        core::ptr::write_volatile(wdtcsr, 0); // Désactiver complètement
+    }
+
+    // --- HORLOGE À 16 MHz ---
+    unsafe {
+        let clkpr = 0x61 as *mut u8;
+        core::ptr::write_volatile(clkpr, 0x80);
+        core::ptr::write_volatile(clkpr, 0x00);
+    }
+
+    // =========================================================
+    // 2. CONFIGURER LA LED "TX" POUR LE DÉBOGAGE (Broche PD5)
+    // =========================================================
+    // Configure PD5 en sortie. Sur un Pro Micro, PD5 est la LED TX (souvent verte).
+    // Elle s'allume si on la met à 0 (LOW). On la met à 1 pour l'éteindre au début.
+    dp.PORTD.ddrd().modify(|_, w| w.pd5().set_bit());
+    dp.PORTD.portd().modify(|_, w| w.pd5().set_bit());
+
+    // --- CONFIGURATION DU BOUTON (Votre code) ---
+    dp.PORTB.ddrb().modify(|_, w| w.pb0().clear_bit());
+    dp.PORTB.portb().modify(|_, w| w.pb0().set_bit());
+
+    // =========================================================
+    // 3. INITIALISATION USB & PLL
+    // =========================================================
+    dp.USB_DEVICE.uhwcon().write(|w| w.uvrege().set_bit());
+    dp.USB_DEVICE
+        .usbcon()
+        .write(|w| w.usbe().set_bit().frzclk().set_bit().otgpade().set_bit());
+
+    // Essayer d'abord set_bit() pour 16MHz. Si la LED ne s'allume pas, changez en clear_bit().
+    dp.PLL.pllcsr().write(|w| w.pindiv().set_bit());
+    dp.PLL.pllcsr().modify(|_, w| w.plle().set_bit());
+
+    // Boucle d'attente dangereuse (on peut rester bloqué ici)
+    while dp.PLL.pllcsr().read().plock().bit_is_clear() {}
+
+    // =========================================================
+    // 4. PREUVE DE VIE
+    // =========================================================
+    // Si la LED s'allume, cela prouve que la PLL fonctionne et que le code n'est pas bloqué !
+    dp.PORTD.portd().modify(|_, w| w.pd5().clear_bit());
+
+    dp.USB_DEVICE.usbcon().modify(|_, w| w.frzclk().clear_bit());
+    configure_endpoint(&dp.USB_DEVICE, 0, 0b00, false);
+    dp.USB_DEVICE.udcon().write(|w| w.detach().clear_bit());
+    let mut compteur: u32 = 0;
+    let mut touche_pressee = false;
     loop {
-        kb.task();
-    }
-}
-
-struct UserKeyboard {
-    rotary_state: i8,
-}
-
-#[progmem]
-static USER_FONTPLATE: [u8; UserKeyboard::FONT_SIZE] =
-    include_font_plate!("examples/images/fontplate.png");
-
-impl Keyboard for UserKeyboard {
-    // Change that if you have no screen
-    const HAVE_SCREEN: bool = true;
-    const LAYER_COUNT: usize = 2;
-    const MATRIX_ROWS: u8 = 10;
-    const MATRIX_COLUMNS: u8 = 6;
-
-    const ROW_PINS: [Pin; Self::ROWS_PER_HAND as usize] = [C6, D7, E6, B4, B5];
-    const COL_PINS: [Pin; Self::MATRIX_COLUMNS as usize] = [F6, F7, B1, B3, B2, B6];
-    const RED_LED_PIN: Pin = D5;
-    const SOFT_SERIAL_PIN: Pin = D2;
-    const LEFT_ENCODER_PIN1: Pin = F5;
-    const LEFT_ENCODER_PIN2: Pin = F4;
-    const RIGHT_ENCODER_PIN1: Pin = F4;
-    const RIGHT_ENCODER_PIN2: Pin = F5;
-    const ROTARY_ENCODER_RESOLUTION: i8 = 4;
-
-    const FONT_DIM: (u8, u8, usize) = image_dimension!("examples/images/fontplate.png");
-    const CHAR_WIDTH: u8 = 6;
-    const CHAR_HEIGHT: u8 = 13;
-
-    const USER_FONTPLATE: ProgmemRef<[u8; Self::FONT_SIZE]> = USER_FONTPLATE;
-
-    const KEYMAP: progmem::ProgmemRef<Keymap<Self>> = KEYMAP;
-
-    fn rotary_encoder_handler(keyboard: &mut OmkKeyboard<Self>, rotary: (i8, i8)) {
-        if is_left() {
-            keyboard.user.rotary_state += rotary.1;
-
-            // scroll faster in navigation layer
-            let multiplier = if keyboard.layer == 1 { 8 } else { 4 };
-            set_vertical_wheel_delta(-rotary.1 * multiplier);
-        } else {
-            keyboard.user.rotary_state += rotary.0;
+        // =====================================================================
+        // ÉTAPE 0 : GESTION DES RESETS DU BUS (La solution au -71 !)
+        // =====================================================================
+        if dp.USB_DEVICE.udint().read().eorsti().bit_is_set() {
+            // Acquitter le reset
+            dp.USB_DEVICE.udint().modify(|_, w| w.eorsti().clear_bit());
+            // Le hardware vient de tuer tous les Endpoints. On rallume l'EP0 !
+            configure_endpoint(&dp.USB_DEVICE, 0, 0b00, false);
+            continue; // Repartir à zéro
         }
-        OmkKeyboard::<Self>::draw_u8(keyboard.user.rotary_state as u8, 0, 100);
-    }
 
-    type MatrixRowType = u8;
+        // =====================================================================
+        // ÉTAPE A : GESTION DE L'ÉNUMÉRATION (ENDPOINT 0)
+        // =====================================================================
+        dp.USB_DEVICE.uenum().write(|w| unsafe { w.bits(0) });
+
+        // Si un Setup Packet a été reçu
+        if dp.USB_DEVICE.ueintx().read().rxstpi().bit_is_set() {
+            let mut setup = [0u8; 8];
+            for i in 0..8 {
+                setup[i] = dp.USB_DEVICE.uedatx().read().bits();
+            }
+
+            let req_type = setup[0];
+            let request = setup[1];
+            let value_l = setup[2];
+            let value_h = setup[3];
+            // La taille demandée par le PC (wLength)
+            let length = (setup[7] as usize) << 8 | (setup[6] as usize);
+
+            // Acquitter la réception du SETUP
+            dp.USB_DEVICE.ueintx().modify(|_, w| w.rxstpi().clear_bit());
+
+            if req_type == 0x80 && request == 0x06 {
+                // GET_DESCRIPTOR
+                if value_h == 0x01 {
+                    // Device
+                    send_descriptor(&dp.USB_DEVICE, &DEVICE_DESCRIPTOR, length);
+                } else if value_h == 0x02 {
+                    // Configuration
+                    send_descriptor(&dp.USB_DEVICE, &CONFIG_DESCRIPTOR, length);
+                }
+            } else if req_type == 0x81 && request == 0x06 {
+                // GET_DESCRIPTOR HID
+                if value_h == 0x22 {
+                    send_descriptor(&dp.USB_DEVICE, &HID_REPORT_DESCRIPTOR, length);
+                }
+            } else if request == 0x05 {
+                // SET_ADDRESS
+                // Le PC nous donne notre adresse (value_l)
+                // 1. Envoyer un paquet vide pour acquitter
+                dp.USB_DEVICE.ueintx().modify(|_, w| w.txini().clear_bit());
+                while dp.USB_DEVICE.ueintx().read().txini().bit_is_clear() {}
+                // 2. Assigner l'adresse dans le hardware
+                dp.USB_DEVICE
+                    .udaddr()
+                    .write(|w| unsafe { w.bits((1 << 7) | value_l) });
+            } else if request == 0x09 {
+                // SET_CONFIGURATION
+                // 1. CORRECTION : On acquitte d'abord la requête sur l'Endpoint 0
+                // (Puisque UENUM vaut encore 0 à ce stade)
+                dp.USB_DEVICE.ueintx().modify(|_, w| w.txini().clear_bit());
+
+                // On attend que le paquet d'acquittement soit bien transmis au PC
+                while dp.USB_DEVICE.ueintx().read().txini().bit_is_clear() {}
+
+                // 2. Ensuite, on configure l'Endpoint 1 pour le clavier
+                // (Ce qui va basculer UENUM à 1 en interne)
+                configure_endpoint(&dp.USB_DEVICE, 1, 0b11, true); // EP1, Interrupt, IN
+            } else {
+                // STALL (Requête non gérée)
+                dp.USB_DEVICE.ueconx().modify(|_, w| w.stallrq().set_bit());
+            }
+        }
+
+// =====================================================================
+        // ÉTAPE B : ENVOI AUTOMATIQUE DES TOUCHES (ENDPOINT 1)
+        // =====================================================================
+        dp.USB_DEVICE.uenum().write(|w| unsafe { w.bits(1) });
+
+        // Si l'Endpoint 1 est actif et que le PC demande des données (TXINI = 1)
+        if dp.USB_DEVICE.ueconx().read().epen().bit_is_set() && 
+           dp.USB_DEVICE.ueintx().read().txini().bit_is_set() {
+            
+            // On incrémente notre compteur de temps
+            compteur = compteur.wrapping_add(1);
+
+            let mut report = [0u8; 8];
+            let mut generer_paquet = false;
+
+            // On simule une frappe toutes les ~60 000 interrogations
+            if compteur % 60000 == 0 {
+                report[2] = 0x04; // Touche 'A' enfoncée
+                generer_paquet = true;
+            } else if compteur % 60000 == 1 {
+                report[2] = 0x00; // Touche 'A' relâchée (très important !)
+                generer_paquet = true;
+            }
+
+            if generer_paquet {
+                // Remplir la FIFO de l'Endpoint 1 avec le rapport de 8 octets
+                for b in report.iter() {
+                    dp.USB_DEVICE.uedatx().write(|w| unsafe { w.bits(*b) });
+                }
+                // Valider et envoyer le paquet physique
+                dp.USB_DEVICE.ueintx().modify(|_, w| w.txini().clear_bit());
+            } else {
+                // Si aucune touche n'est pressée, on renvoie un rapport vide 
+                // pour dire au PC "Rien de neuf" au lieu de bloquer la communication.
+                for _ in 0..8 {
+                    dp.USB_DEVICE.uedatx().write(|w| unsafe { w.bits(0) });
+                }
+                dp.USB_DEVICE.ueintx().modify(|_, w| w.txini().clear_bit());
+            }
+        }    }
 }
 
-impl const Default for UserKeyboard {
-    fn default() -> Self {
-        Self { rotary_state: 3 }
-    }
+// =====================================================================
+// 3. FONCTIONS UTILITAIRES
+// =====================================================================
+
+fn configure_endpoint(usb: &avr_device::atmega32u4::USB_DEVICE, num: u8, ep_type: u8, is_in: bool) {
+    usb.uenum().write(|w| unsafe { w.bits(num) });
+    usb.ueconx().write(|w| w.epen().set_bit());
+    usb.uecfg0x()
+        .write(|w| unsafe { w.eptype().bits(ep_type).epdir().bit(is_in) });
+    usb.uecfg1x()
+        .write(|w| unsafe { w.epsize().bits(0).alloc().set_bit() });
 }
 
-#[progmem]
-static KEYMAP: Keymap<UserKeyboard> = {
-    use omk::keys::*;
-    #[rustfmt::skip]
-    [[
-        ESCAPE, KC_1,   KC_2,   KC_3,   KC_4,   KC_5,   KC_6,   KC_7,   KC_8,   KC_9,   KC_0,   DELETE,
-        TAB,    KC_Q,   KC_W,   KC_E,   KC_R,   KC_T,   KC_Y,   KC_U,   KC_I,   KC_O,   KC_P,   BCKSPC,
-        L_SHFT, KC_A,   KC_S,   KC_D,   KC_F,   KC_G,   KC_H,   KC_J,   KC_K,   KC_L,   SMICLN, ENTER,
-        L_SHFT, KC_Z,   KC_X,   KC_C,   KC_V,   KC_B,   KC_N,   KC_M,   COMMA,  DOT,    SLASH,  R_SHFT,
-        L_GUI,  L_ALT,  &LayerHold(1), SPACE,  L_CTRL, NO_OP,  NO_OP,  R_CTRL, SPACE,  R_ALT,  L_ALT,  R_GUI,
-    ],[
-        KC_F12, KC_F1,  KC_F2,  KC_F3,  KC_F4,  KC_F5,  KC_F6,  KC_F7,  KC_F8,  KC_F9,  KC_F10, KC_F11,
-        TAB,    TAB,    HOME,   ARRO_U, END,    PAGE_UP,PRIV_K1, &MouseLeftClick,   &MouseUp,   &MouseRightClick,   RESET,   BCKSPC,
-        L_SHFT, CAPLOK, ARRO_L, ARRO_D, ARRO_R, PAGE_DW,KP_MIN, &MouseLeft,   &MouseDown,   &MouseRight,   KP_0,   ENTER,
-        L_SHFT, MEDIA_PLAY,   VOL_DO, MUTE,   VOL_UP, NO_OP,  KC_N,   KC_M,   &MouseWheelClick,  DOT,    SLASH,  R_SHFT,
-        L_GUI,  L_ALT,  NO_OP,  SPACE,  L_CTRL, NO_OP,  NO_OP,  R_CTRL, SPACE,  R_ALT,  L_ALT,  R_GUI,
-    ]]
-};
+// On ajoute le paramètre req_len
+fn send_descriptor(usb: &avr_device::atmega32u4::USB_DEVICE, desc: &[u8], req_len: usize) {
+    // On n'envoie jamais plus que ce qui est demandé, ni plus que la taille du descripteur
+    let len = core::cmp::min(desc.len(), req_len);
+    let data_to_send = &desc[..len];
+
+    for chunk in data_to_send.chunks(8) {
+        // Attendre que l'Endpoint soit prêt à émettre
+        while usb.ueintx().read().txini().bit_is_clear() {}
+
+        // Remplir la FIFO
+        for b in chunk {
+            usb.uedatx().write(|w| unsafe { w.bits(*b) });
+        }
+
+        // Valider l'envoi de ce morceau
+        usb.ueintx().modify(|_, w| w.txini().clear_bit());
+    }
+}

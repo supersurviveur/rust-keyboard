@@ -46,15 +46,15 @@ pub fn entry_impl(args: TokenStream, item: TokenStream) -> TokenStream {
         }
 
 
-        #[unsafe(no_mangle)]
-        extern "avr-interrupt" fn __vector_3() {
-            unsafe {<#userkbtype as omk::interrupts::InterruptsHandler<#userkbtype>>::serial_interrupt();}
-        }
+        // #[unsafe(no_mangle)]
+        // extern "avr-interrupt" fn __vector_3() {
+        //     unsafe {<#userkbtype as omk::interrupts::InterruptsHandler<#userkbtype>>::serial_interrupt();}
+        // }
 
-        #[unsafe(no_mangle)]
-        extern "avr-non-blocking-interrupt" fn __vector_21() {
-            unsafe {<#userkbtype as omk::interrupts::InterruptsHandler<#userkbtype>>::timer_interrupt();}
-        }
+        // #[unsafe(no_mangle)]
+        // extern "avr-non-blocking-interrupt" fn __vector_21() {
+        //     unsafe {<#userkbtype as omk::interrupts::InterruptsHandler<#userkbtype>>::timer_interrupt();}
+        // }
 
         #[unsafe(no_mangle)]
         // Necessary to boot since avr-libc >= 2.3.0

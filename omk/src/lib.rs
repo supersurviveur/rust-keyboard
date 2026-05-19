@@ -267,7 +267,7 @@ impl<User: Keyboard> OmkKeyboard<User> {
 
         if is_master() {
             unsafe {
-                USB_Init();
+                // USB_Init();
             }
         } else {
             // Needed for the code to works directly after flash, but seems to crash LUFA, which already resolve the problem on flash
