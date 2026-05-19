@@ -11,7 +11,8 @@
     const_default,
     const_destruct,
     const_array,
-    derive_const
+    derive_const,
+    min_generic_const_args
 )]
 #![allow(incomplete_features)]
 // We are on only one proc, with one thread, so there is no need to worry about static mut ref
@@ -41,7 +42,7 @@ use crate::{
     timer::timer_init,
     usb::{events::hid_task, get_mouse_delta, set_mouse_delta},
 };
-use keyboard_macros::{config_constraints, progmem};
+use keyboard_macros::progmem;
 pub use limited_storage::Oom;
 use lufa_rs::{USB_Init, USB_USBTask};
 
@@ -60,12 +61,12 @@ pub mod serial;
 pub mod timer;
 pub mod usb;
 
-pub trait Keyboard: Sized + const Default + 'static {
-    const LAYER_COUNT: usize;
+pub trait Keyboard: Sized + const Default + 'static + PrivateConfig {
+    type const LAYER_COUNT: usize;
     const HAVE_SCREEN: bool;
 
-    const MATRIX_ROWS: u8;
-    const MATRIX_COLUMNS: u8;
+    type const MATRIX_ROWS: usize;
+    type const MATRIX_COLUMNS: usize;
     /// Smallest type containing at least MATRIX_ROWS bits
     type MatrixRowType: PartialEq
         + BitAnd<Output = Self::MatrixRowType>
@@ -75,10 +76,8 @@ pub trait Keyboard: Sized + const Default + 'static {
         + Copy
         + const From<u8> = u8;
 
-    #[config_constraints(Self)]
-    const ROW_PINS: [Pin; Self::ROWS_PER_HAND as usize];
-    #[config_constraints(Self)]
-    const COL_PINS: [Pin; Self::MATRIX_COLUMNS as usize];
+    const ROW_PINS: [Pin; Self::ROWS_PER_HAND];
+    const COL_PINS: [Pin; Self::MATRIX_COLUMNS];
     const LEFT_ENCODER_PIN1: Pin;
     const LEFT_ENCODER_PIN2: Pin;
     const RIGHT_ENCODER_PIN1: Pin;
@@ -99,22 +98,15 @@ pub trait Keyboard: Sized + const Default + 'static {
     const SOFT_SERIAL_PIN: Pin;
 
     const FONT_DIM: (u8, u8, usize);
-    const FONT_SIZE: usize = Self::FONT_DIM.2;
-    const CHAR_WIDTH: u8;
-    const CHAR_HEIGHT: u8;
-    #[config_constraints(Self)]
+    type const CHAR_WIDTH: u8;
+    type const CHAR_HEIGHT: u8;
     const USER_FONTPLATE: progmem::ProgmemRef<[u8; Self::FONT_SIZE]>;
-    const FONT_WIDTH: u8 = Self::FONT_DIM.0;
-    const FONT_HEIGHT: u8 = Self::FONT_DIM.1;
+
     const CHAR_PER_ROWS: u8 = Self::FONT_WIDTH / Self::CHAR_WIDTH;
 
     /// This **MUST** be in progmem !
-    #[config_constraints(Self)]
     const KEYMAP: progmem::ProgmemRef<Keymap<Self>>;
 
-    const ROWS_PER_HAND: u8 = Self::MATRIX_ROWS / 2;
-    const THIS_HAND_OFFSET: u8 = if is_right() { Self::ROWS_PER_HAND } else { 0 };
-    const OTHER_HAND_OFFSET: u8 = Self::ROWS_PER_HAND - Self::THIS_HAND_OFFSET;
     const MATRIX_ROW_SHIFTER: Self::MatrixRowType = if is_left() {
         1
     } else {
@@ -126,7 +118,6 @@ pub trait Keyboard: Sized + const Default + 'static {
     const MOUSE_MAX_SPEED: u8 = 12;
     const MOUSE_ACCELERATION: f32 = 1.;
 
-    #[config_constraints(Self)]
     const FONTPLATE: Array2D<
         { Self::FONT_WIDTH },
         { Self::FONT_HEIGHT },
@@ -134,7 +125,6 @@ pub trait Keyboard: Sized + const Default + 'static {
         ProgmemRef<BinPackedArray<{ Self::FONT_SIZE }>>,
     > = Array2D::<_, _, _, ProgmemRef<_>>::from_existing(unsafe { Self::USER_FONTPLATE.cast() });
 
-    #[config_constraints(Self)]
     fn rotary_encoder_handler(_keyboard: &mut OmkKeyboard<Self>, _rotation: (i8, i8)) {}
 
     /// A Holder for all suplementary data that you want accessible from the interrupts handlers.
@@ -142,21 +132,32 @@ pub trait Keyboard: Sized + const Default + 'static {
     type InterruptAccessibleMemory: const Default = ();
 }
 
+pub trait PrivateConfig {
+    type const ROWS_PER_HAND: usize;
+    const THIS_HAND_OFFSET: usize = if is_right() { Self::ROWS_PER_HAND } else { 0 };
+    const OTHER_HAND_OFFSET: usize = Self::ROWS_PER_HAND - Self::THIS_HAND_OFFSET;
+
+    type const MATRIX_KEYS_COUNT: usize;
+
+    type const FONT_SIZE: usize;
+    type const FONT_WIDTH: u8;
+    type const FONT_HEIGHT: u8;
+}
+
 pub type PressHandler<User> =
     fn(key: &dyn CustomKey<User>, row: u8, column: u8, keyborad: &mut OmkKeyboard<User>);
 pub type UnPressHandler<User> =
     fn(key: &dyn CustomKey<User>, row: u8, column: u8, layer: u8, keyboard: &mut OmkKeyboard<User>);
 
-#[config_constraints]
-pub struct OmkKeyboard<User: Keyboard> {
+pub struct OmkKeyboard<User: Keyboard + PrivateConfig> {
     pub user: User,
 
-    pub raw_matrix: [User::MatrixRowType; User::ROWS_PER_HAND as usize],
-    pub previous_matrix: [User::MatrixRowType; User::MATRIX_ROWS as usize],
-    pub current_matrix: [User::MatrixRowType; User::MATRIX_ROWS as usize],
+    pub raw_matrix: [User::MatrixRowType; User::ROWS_PER_HAND],
+    pub previous_matrix: [User::MatrixRowType; User::MATRIX_ROWS],
+    pub current_matrix: [User::MatrixRowType; User::MATRIX_ROWS],
 
     pub layer: u8,
-    pub keys_actual_layer: [i8; User::MATRIX_ROWS as usize * User::MATRIX_COLUMNS as usize],
+    pub keys_actual_layer: [i8; User::MATRIX_KEYS_COUNT],
     pub mouse_state: OmkMouse<User>,
 
     next_press_handler_override: Option<(PressHandler<User>, u8)>,
@@ -187,25 +188,19 @@ impl<User: Keyboard> const Default for OmkMouse<User> {
     }
 }
 
-pub struct OmkShared<User: Keyboard>
-where
-    [(); User::ROWS_PER_HAND as usize]:,
-{
+pub struct OmkShared<User: Keyboard> {
     pub master_memory: MasterSharedMemory<User>,
     pub slave_memory: SlaveSharedMemory<User>,
     pub rotary_encoder: RotaryEncoder<User>,
     pub user: User::InterruptAccessibleMemory,
 }
 
-#[config_constraints]
 pub struct OmkMetaHolder<User: Keyboard> {
     pub keyboard: SyncUnsafeCell<OmkKeyboard<User>>,
     pub shared: SyncUnsafeCell<OmkShared<User>>,
 }
 
-#[config_constraints]
 unsafe impl<User: Keyboard> Sync for OmkShared<User> {}
-#[config_constraints]
 impl<User: Keyboard> OmkMetaHolder<User> {
     /// # Safety
     /// Should only be called as part of the keyboard_macro::entry, not manually
@@ -232,7 +227,6 @@ impl<User: Keyboard> OmkMetaHolder<User> {
     }
 }
 
-#[config_constraints]
 impl<User: Keyboard> OmkKeyboard<User> {
     #[inline(always)]
     pub fn panic_handler(_info: &PanicInfo) -> ! {
@@ -249,7 +243,6 @@ impl<User: Keyboard> OmkKeyboard<User> {
             User::RED_LED_PIN.gpio_write_pin_low();
         }
     }
-    #[config_constraints]
     pub fn init(&mut self)
     where
         User: InterruptsHandler<User>,
@@ -356,9 +349,9 @@ impl<User: Keyboard> OmkKeyboard<User> {
         User::KEYMAP
             .at(layer as usize)
             .at((column
-                + (row % User::ROWS_PER_HAND) * User::MATRIX_COLUMNS * 2
-                + if row >= User::ROWS_PER_HAND {
-                    User::MATRIX_COLUMNS
+                + (row % User::ROWS_PER_HAND as u8) * User::MATRIX_COLUMNS as u8 * 2
+                + if row >= User::ROWS_PER_HAND as u8 {
+                    User::MATRIX_COLUMNS as u8
                 } else {
                     0
                 }) as usize)
@@ -366,13 +359,15 @@ impl<User: Keyboard> OmkKeyboard<User> {
     }
 
     pub fn key_pressed(&mut self, column: u8, row: u8) {
-        self.keys_actual_layer[(row * User::MATRIX_COLUMNS + column) as usize] = self.layer as i8;
+        self.keys_actual_layer[(row * User::MATRIX_COLUMNS as u8 + column) as usize] =
+            self.layer as i8;
 
         let key = self.get_key(self.layer, column, row);
         match self.next_press_handler_override.take() {
             None => key.complete_on_pressed(self, row, column),
             Some((fun, i)) => {
-                self.keys_actual_layer[(row * User::MATRIX_COLUMNS + column) as usize] = -(i as i8);
+                self.keys_actual_layer[(row * User::MATRIX_COLUMNS as u8 + column) as usize] =
+                    -(i as i8);
                 unsafe {
                     self.release_handler_overrides.access(i).1 = self.layer;
                 }
@@ -383,7 +378,7 @@ impl<User: Keyboard> OmkKeyboard<User> {
 
     pub fn key_released(&mut self, column: u8, row: u8) {
         let key_actual_layer =
-            self.keys_actual_layer[(row * User::MATRIX_COLUMNS + column) as usize];
+            self.keys_actual_layer[(row * User::MATRIX_COLUMNS as u8 + column) as usize];
         if key_actual_layer >= 0 {
             self.get_key(key_actual_layer as u8, column, row)
                 .complete_on_released(self, row, column, key_actual_layer as u8);

@@ -15,7 +15,7 @@ pins! {
 pub const PORT_SHIFTER: u8 = 4;
 pub const ADDRESS_BASE: usize = 0x20; // 0x00 + __SFR_OFFSET = 0x20 on a atmega32u4
 
-pub const GPIO_INPUT_PIN_DELAY: u64 = 2;
+pub type const GPIO_INPUT_PIN_DELAY: u64 = 2;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Pin(pub u8);

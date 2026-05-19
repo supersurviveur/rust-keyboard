@@ -16,7 +16,6 @@
 //! - **`#[entry]`**: Marks the entry point of the firmware.
 //! - **`#[key_alias]`**: Creates aliases for constants or structs.
 
-mod constraints;
 mod entry;
 mod image;
 mod key_alias;
@@ -63,12 +62,6 @@ pub fn include_image(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn include_animation(input: TokenStream) -> TokenStream {
     image::include_animation_impl(input)
-}
-
-/// Enforces compile-time constraints on generics.
-#[proc_macro_attribute]
-pub fn config_constraints(args: TokenStream, item: TokenStream) -> TokenStream {
-    constraints::config_constraints_impl(args, item)
 }
 
 /// Marks the entry point of the firmware.

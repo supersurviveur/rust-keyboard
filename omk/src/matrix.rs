@@ -11,11 +11,9 @@ use crate::{
 
 use avr_base::pins::{GPIO_INPUT_PIN_DELAY, NO_PIN, Pin};
 use avr_delay::{delay_cycles, delay_us};
-use keyboard_macros::config_constraints;
 
-pub const MATRIX_IO_DELAY: u64 = 30;
+pub type const MATRIX_IO_DELAY: u64 = 30;
 
-#[config_constraints]
 impl<User: Keyboard> OmkKeyboard<User> {
     /// Sets a GPIO pin as output and drives it low atomically.
     ///
@@ -78,12 +76,13 @@ impl<User: Keyboard> OmkKeyboard<User> {
             // Select row
             return; // skip NO_PIN row
         }
+
         delay_cycles::<{ GPIO_INPUT_PIN_DELAY }>();
 
         // For each col...
         let mut row_shifter = User::MATRIX_ROW_SHIFTER;
         for col_index in 0..User::MATRIX_COLUMNS {
-            let pin_state = Self::read_matrix_pin(User::COL_PINS[col_index as usize]);
+            let pin_state = Self::read_matrix_pin(User::COL_PINS[col_index]);
 
             // Populate the matrix row with the state of the col pin
             current_row_value |= if pin_state { 0.into() } else { row_shifter };
@@ -105,10 +104,10 @@ impl<User: Keyboard> OmkKeyboard<User> {
     /// Initializes the keyboard matrix by setting all rows and columns to their default states.
     pub fn matrix_init(&self) {
         for row in 0..User::ROWS_PER_HAND {
-            Self::unselect_row(row);
+            Self::unselect_row(row as u8);
         }
         for col in 0..User::MATRIX_COLUMNS {
-            Self::gpio_atomic_set_pin_input_high(User::COL_PINS[col as usize]);
+            Self::gpio_atomic_set_pin_input_high(User::COL_PINS[col]);
         }
     }
 
@@ -116,9 +115,9 @@ impl<User: Keyboard> OmkKeyboard<User> {
     ///
     /// Returns `true` if the matrix state has changed, or `false` otherwise.
     pub fn matrix_scan(&mut self) -> bool {
-        let mut new_matrix = [0.into(); User::ROWS_PER_HAND as usize];
+        let mut new_matrix = [0.into(); User::ROWS_PER_HAND];
         for row in 0..User::ROWS_PER_HAND {
-            self.matrix_read_cols_on_row(&mut new_matrix, row);
+            self.matrix_read_cols_on_row(&mut new_matrix, row as u8);
         }
 
         let changed = if self.raw_matrix == new_matrix {
@@ -147,19 +146,19 @@ impl<User: Keyboard> OmkKeyboard<User> {
     pub fn key_task(&mut self, our_matrix_changed: bool) -> bool {
         let changed = our_matrix_changed
             || unsafe {
-                self.previous_matrix[User::OTHER_HAND_OFFSET as usize
-                    ..(User::OTHER_HAND_OFFSET + User::ROWS_PER_HAND) as usize]
-                    .as_mut_array::<{ User::ROWS_PER_HAND as usize }>()
+                self.previous_matrix
+                    [User::OTHER_HAND_OFFSET..(User::OTHER_HAND_OFFSET + User::ROWS_PER_HAND)]
+                    .as_mut_array::<{ User::ROWS_PER_HAND }>()
                     .unwrap_unchecked()
-                    != self.current_matrix[User::OTHER_HAND_OFFSET as usize
-                        ..(User::OTHER_HAND_OFFSET + User::ROWS_PER_HAND) as usize]
+                    != self.current_matrix
+                        [User::OTHER_HAND_OFFSET..(User::OTHER_HAND_OFFSET + User::ROWS_PER_HAND)]
                         .as_mut_array()
                         .unwrap_unchecked()
             };
         if changed {
-            for row in 0..User::MATRIX_ROWS {
+            for row in 0..User::MATRIX_ROWS as u8 {
                 if self.previous_matrix[row as usize] != self.current_matrix[row as usize] {
-                    for column in 0..User::MATRIX_COLUMNS {
+                    for column in 0..User::MATRIX_COLUMNS as u8 {
                         let current_press =
                             self.current_matrix[row as usize] & (1 << column).into();
                         if self.previous_matrix[row as usize] & (1 << column).into()
@@ -185,13 +184,12 @@ static mut DEBOUNCING_TIME: u32 = 0;
 
 pub const DEBOUNCE: u32 = 5;
 
-#[config_constraints]
 impl<User: Keyboard> OmkKeyboard<User> {
     /// Debounces the matrix state to filter out noise and ensure stable key detection.
     fn debounce(&mut self, changed: bool) -> bool {
         let self_matrix = unsafe {
-            self.current_matrix[User::THIS_HAND_OFFSET as usize
-                ..User::THIS_HAND_OFFSET as usize + User::ROWS_PER_HAND as usize]
+            self.current_matrix
+                [User::THIS_HAND_OFFSET..User::THIS_HAND_OFFSET + User::ROWS_PER_HAND]
                 .as_mut_array()
                 .unwrap_unchecked()
         };

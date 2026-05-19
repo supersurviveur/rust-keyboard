@@ -6,7 +6,9 @@
     generic_const_items,
     const_default,
     const_trait_impl,
-    sync_unsafe_cell
+    sync_unsafe_cell,
+    min_generic_const_args,
+    inherent_associated_types
 )]
 #![no_main]
 
@@ -18,7 +20,6 @@ use omk::keys::{VOLUME_DOWN, VOLUME_UP};
 use omk::progmem::ProgmemRef;
 use omk::usb::hid_task;
 use omk::{Keyboard, OmkKeyboard, progmem};
-// include_image!("images/test.png");
 
 type Kb = OmkKeyboard<UserKeyboard>;
 
@@ -34,17 +35,25 @@ struct UserKeyboard {
 }
 
 #[progmem]
-static USER_FONTPLATE: [u8; UserKeyboard::FONT_SIZE] =
+static USER_FONTPLATE: [u8; const { UserKeyboard::FONT_DIM.2 }] =
     include_font_plate!("examples/images/fontplate.png");
+
+impl omk::PrivateConfig for UserKeyboard {
+    type const ROWS_PER_HAND: usize = const { Self::MATRIX_ROWS / 2 };
+    type const MATRIX_KEYS_COUNT: usize = const { Self::MATRIX_ROWS * Self::MATRIX_COLUMNS };
+    type const FONT_SIZE: usize = const { Self::FONT_DIM.2 };
+    type const FONT_WIDTH: u8 = const { Self::FONT_DIM.0 };
+    type const FONT_HEIGHT: u8 = const { Self::FONT_DIM.1 };
+}
 
 impl Keyboard for UserKeyboard {
     const HAVE_SCREEN: bool = true;
-    const LAYER_COUNT: usize = 2;
-    const MATRIX_ROWS: u8 = 10;
-    const MATRIX_COLUMNS: u8 = 6;
+    type const LAYER_COUNT: usize = 2;
+    type const MATRIX_ROWS: usize = 10;
+    type const MATRIX_COLUMNS: usize = 6;
 
-    const ROW_PINS: [Pin; Self::ROWS_PER_HAND as usize] = [C6, D7, E6, B4, B5];
-    const COL_PINS: [Pin; Self::MATRIX_COLUMNS as usize] = [F6, F7, B1, B3, B2, B6];
+    const ROW_PINS: [Pin; Self::ROWS_PER_HAND] = [C6, D7, E6, B4, B5];
+    const COL_PINS: [Pin; Self::MATRIX_COLUMNS] = [F6, F7, B1, B3, B2, B6];
     const RED_LED_PIN: Pin = D5;
     const SOFT_SERIAL_PIN: Pin = D2;
     const LEFT_ENCODER_PIN1: Pin = F5;
@@ -54,8 +63,8 @@ impl Keyboard for UserKeyboard {
     const ROTARY_ENCODER_RESOLUTION: i8 = 1;
 
     const FONT_DIM: (u8, u8, usize) = image_dimension!("examples/images/fontplate.png");
-    const CHAR_WIDTH: u8 = 6;
-    const CHAR_HEIGHT: u8 = 13;
+    type const CHAR_WIDTH: u8 = 6;
+    type const CHAR_HEIGHT: u8 = 13;
 
     const USER_FONTPLATE: ProgmemRef<[u8; Self::FONT_SIZE]> = USER_FONTPLATE;
 

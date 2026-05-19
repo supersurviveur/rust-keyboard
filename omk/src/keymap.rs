@@ -1,8 +1,6 @@
 //! This module defines the keymap structure and the `CustomKey` trait for handling custom key behaviors.
 //! It provides the foundation for defining and managing keyboard layers and key actions.
 
-use keyboard_macros::config_constraints;
-
 use crate::{
     Keyboard, OmkKeyboard,
     usb::events::{add_code, remove_code},
@@ -11,7 +9,6 @@ use crate::{
 /// A trait for defining custom key behaviors.
 ///
 /// This trait allows implementing custom actions for keys when they are pressed or released.
-#[config_constraints]
 pub trait CustomKey<User: Keyboard>: Send + Sync {
     /// Called when the key is pressed. By default, it delegates to `on_pressed`.
     #[inline(always)]
@@ -41,7 +38,6 @@ pub trait CustomKey<User: Keyboard>: Send + Sync {
 /// Represents a basic key with a predefined keycode.
 pub struct Key(pub u8);
 
-#[config_constraints]
 impl<User: Keyboard> CustomKey<User> for Key {
     /// Adds the keycode to the USB report when the key is pressed.
     fn on_pressed(&self, _keyboard: &mut OmkKeyboard<User>) {
@@ -57,8 +53,7 @@ impl<User: Keyboard> CustomKey<User> for Key {
 /// Represents a single layer in the keymap.
 ///
 /// Each layer is a flat "2D" array of custom keys.
-pub type Layer<User: Keyboard> =
-    [&'static dyn CustomKey<User>; User::MATRIX_ROWS as usize * User::MATRIX_COLUMNS as usize];
+pub type Layer<User: Keyboard> = [&'static dyn CustomKey<User>; User::MATRIX_KEYS_COUNT];
 
 /// Represents the entire keymap, consisting of multiple layers.
 ///

@@ -10,10 +10,14 @@ use avr_base::{
     register::{EICRA, EIMSK},
 };
 use avr_delay::{delay_cycles, delay_us};
-use keyboard_macros::config_constraints;
 
 use crate::{
-    Keyboard, OmkKeyboard, atomic::atomic_access, interrupts::InterruptsHandler, is_master, serial::shared_memory::{MasterSharedMemory, SlaveSharedMemory}, timer::cycles_read
+    Keyboard, OmkKeyboard,
+    atomic::atomic_access,
+    interrupts::InterruptsHandler,
+    is_master,
+    serial::shared_memory::{MasterSharedMemory, SlaveSharedMemory},
+    timer::cycles_read,
 };
 
 const SERIAL_DELAY: u64 = 3; // in microseconds
@@ -25,7 +29,7 @@ const _: () = if SERIAL_DELAY_CYCLES > 255 {
 
 const SERIAL_DELAY_HALF_CYCLES: u64 = SERIAL_DELAY_CYCLES / 2;
 
-const SLAVE_INT_WIDTH_US: u64 = 1;
+type const SLAVE_INT_WIDTH_US: u64 = 1;
 
 /// Represents an error in serial communication.
 #[derive(Debug)]
@@ -51,7 +55,6 @@ pub enum Transaction {
 
 impl Transaction {
     /// Returns the receive address and length for the transaction.
-    #[config_constraints]
     pub fn get_receive_address<User: Keyboard + InterruptsHandler<User>>(&self) -> (*mut u8, u8) {
         match self {
             Transaction::Reserved => (null_mut(), 0),
@@ -71,22 +74,22 @@ impl Transaction {
     }
 
     /// Returns the send address and length for the transaction.
-    #[config_constraints]
     pub fn get_send_address<User: Keyboard + InterruptsHandler<User>>(&self) -> (*const u8, u8) {
-        let (address, size) = self.get_receive_address();
+        let (address, size) = self.get_receive_address::<User>();
         (address, size)
     }
 }
 
 const MAX_TRANSACTION_NUMBER: u8 = Transaction::User as u8;
-const TRANSACTION_BITS_SIZE: usize = MAX_TRANSACTION_NUMBER.ilog2() as usize
-    + if 2u8.pow(MAX_TRANSACTION_NUMBER.ilog2()) == MAX_TRANSACTION_NUMBER {
-        0
-    } else {
-        1
-    };
+type const TRANSACTION_BITS_SIZE: usize = const {
+    MAX_TRANSACTION_NUMBER.ilog2() as usize
+        + if 2u8.pow(MAX_TRANSACTION_NUMBER.ilog2()) == MAX_TRANSACTION_NUMBER {
+            0
+        } else {
+            1
+        }
+};
 
-#[config_constraints]
 impl<User: Keyboard + InterruptsHandler<User>> OmkKeyboard<User> {
     #[inline(always)]
     fn serial_output() {
@@ -172,7 +175,7 @@ impl<User: Keyboard + InterruptsHandler<User>> OmkKeyboard<User> {
     fn sync_sender() -> u8 {
         User::SOFT_SERIAL_PIN.gpio_write_pin_low();
 
-        delay_us::<{ SERIAL_DELAY * 4 }>();
+        delay_us::<{ const { SERIAL_DELAY * 4 } }>();
         User::SOFT_SERIAL_PIN.gpio_write_pin_high();
         cycles_read().wrapping_add(SERIAL_DELAY_CYCLES as u8)
     }
@@ -292,7 +295,7 @@ impl<User: Keyboard + InterruptsHandler<User>> OmkKeyboard<User> {
 
         let transaction: Transaction = unsafe { transmute(transaction) };
 
-        let (ptr, len) = transaction.get_receive_address();
+        let (ptr, len) = transaction.get_receive_address::<User>();
         if transaction == Transaction::EndOfCommunication {
             return Ok(true);
         }
@@ -300,8 +303,10 @@ impl<User: Keyboard + InterruptsHandler<User>> OmkKeyboard<User> {
         if len != 0 {
             for i in 0..len {
                 let byte;
-                (byte, target) =
-                    Self::receive_sized_checked::<{ u8::BITS as usize }>(&mut has_error, target);
+                (byte, target) = Self::receive_sized_checked::<{ const { u8::BITS as usize } }>(
+                    &mut has_error,
+                    target,
+                );
 
                 if !has_error {
                     xor_check ^= byte;
@@ -313,7 +318,8 @@ impl<User: Keyboard + InterruptsHandler<User>> OmkKeyboard<User> {
 
             // Receive xor_mask byte
             let recv_xor_check;
-            (recv_xor_check, _) = Self::receive_sized_unchecked::<{ u8::BITS as usize }>(target);
+            (recv_xor_check, _) =
+                Self::receive_sized_unchecked::<{ const { u8::BITS as usize } }>(target);
 
             if recv_xor_check != xor_check || has_error {
                 return Err(SerialError);
@@ -330,7 +336,7 @@ impl<User: Keyboard + InterruptsHandler<User>> OmkKeyboard<User> {
     /// Returns `Ok(())` if the data was successfully written, or a `SerialError` otherwise.
     #[inline(never)]
     pub fn serial_write_data(transaction: Transaction) -> Result<(), SerialError> {
-        let (data, len) = transaction.get_send_address();
+        let (data, len) = transaction.get_send_address::<User>();
         let mut xor_check = 0;
 
         // Sync with slave
@@ -344,44 +350,42 @@ impl<User: Keyboard + InterruptsHandler<User>> OmkKeyboard<User> {
                 let byte = unsafe { data.add(i as usize).read_volatile() };
                 xor_check ^= byte;
 
-                target = Self::write_sized_checked::<{ u8::BITS as usize }>(byte, target);
+                target = Self::write_sized_checked::<{ const { u8::BITS as usize } }>(byte, target);
             }
 
             // Send xor_mask byte
-            target = Self::write_sized_unchecked::<{ u8::BITS as usize }>(xor_check, target);
+            target =
+                Self::write_sized_unchecked::<{ const { u8::BITS as usize } }>(xor_check, target);
         }
         let _target = Self::serial_low(target); // sync_send() / senc_recv() need raise edge
         Ok(())
     }
 
     /// Executes the serial task for data synchronization between master and slave devices.
-    #[config_constraints]
     pub fn serial_task(&mut self) {
         unsafe {
             atomic_access(self, |kb, shared| {
                 if is_master() {
                     // Copy the matrix in the shared memory
-                    shared.master_memory.master_matrix = *kb.current_matrix[User::THIS_HAND_OFFSET
-                        as usize
-                        ..User::THIS_HAND_OFFSET as usize + User::ROWS_PER_HAND as usize]
+                    shared.master_memory.master_matrix = *kb.current_matrix
+                        [User::THIS_HAND_OFFSET..User::THIS_HAND_OFFSET + User::ROWS_PER_HAND]
                         .as_mut_array()
                         .unwrap_unchecked();
                     Self::master_exec_transactions();
                     // Copy the matrix from the shared memory
-                    *kb.current_matrix[User::OTHER_HAND_OFFSET as usize
-                        ..User::OTHER_HAND_OFFSET as usize + User::ROWS_PER_HAND as usize]
+                    *kb.current_matrix
+                        [User::OTHER_HAND_OFFSET..User::OTHER_HAND_OFFSET + User::ROWS_PER_HAND]
                         .as_mut_array()
                         .unwrap_unchecked() = shared.slave_memory.slave_matrix;
                 } else {
                     // Copy the matrix in the shared memory
-                    shared.slave_memory.slave_matrix = *kb.current_matrix[User::THIS_HAND_OFFSET
-                        as usize
-                        ..User::THIS_HAND_OFFSET as usize + User::ROWS_PER_HAND as usize]
+                    shared.slave_memory.slave_matrix = *kb.current_matrix
+                        [User::THIS_HAND_OFFSET..User::THIS_HAND_OFFSET + User::ROWS_PER_HAND]
                         .as_mut_array()
                         .unwrap_unchecked();
                     // Copy the matrix from the shared memory
-                    *kb.current_matrix[User::OTHER_HAND_OFFSET as usize
-                        ..User::OTHER_HAND_OFFSET as usize + User::ROWS_PER_HAND as usize]
+                    *kb.current_matrix
+                        [User::OTHER_HAND_OFFSET..User::OTHER_HAND_OFFSET + User::ROWS_PER_HAND]
                         .as_mut_array()
                         .unwrap_unchecked() = shared.master_memory.master_matrix;
                 }

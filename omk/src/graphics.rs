@@ -1,13 +1,13 @@
 use core::{cmp::min, iter::Iterator};
 
 use crate::i2c::I2CError;
-use crate::{Keyboard, OmkKeyboard, i2c, progmem};
+use crate::{Keyboard, OmkKeyboard, PrivateConfig, i2c, progmem};
 
-use keyboard_macros::config_constraints;
-const OLED_DISPLAY_HEIGHT: u8 = 32;
-const OLED_DISPLAY_WIDTH: u8 = 128;
-const OLED_MATRIX_SIZE: usize = (OLED_DISPLAY_HEIGHT as usize) * (OLED_DISPLAY_WIDTH as usize) / 8;
-const OLED_DISPLAY_ADDRESS: u8 = 60;
+type const OLED_DISPLAY_HEIGHT: u8 = 32;
+type const OLED_DISPLAY_WIDTH: u8 = 128;
+type const OLED_MATRIX_SIZE: usize =
+    const { (OLED_DISPLAY_HEIGHT as usize) * (OLED_DISPLAY_WIDTH as usize) / 8 };
+type const OLED_DISPLAY_ADDRESS: u8 = 60;
 
 use crate::primitive::{
     Array2D, BinPackedArray, Container2D, Container2DMut, IndexByValue, IndexByValueMut, SizedView,
@@ -76,7 +76,8 @@ const OLED_I2C_TIMEOUT: u16 = 100;
 type OledBlockType = u16; // Type to use for segmenting the oled display for smart rendering, use unsigned types only
 const ALL_DIRTY: OledBlockType = !(0 as OledBlockType);
 const OLED_BLOCK_COUNT: u8 = size_of::<OledBlockType>() as u8 * 8; // 16 (compile time mathed)
-const OLED_BLOCK_ROWS: u8 = (OLED_DISPLAY_WIDTH as u16 / OLED_BLOCK_COUNT as u16) as u8; // 8 (compile time mathed)
+type const OLED_BLOCK_ROWS: u8 =
+    const { (OLED_DISPLAY_WIDTH as u16 / OLED_BLOCK_COUNT as u16) as u8 }; // 8 (compile time mathed)
 
 #[progmem]
 static DISPLAY_SETUP1: [u8; 9] = [
@@ -128,8 +129,7 @@ static DISPLAY_ON_DATA: [u8; 2] = [I2C_CMD, DISPLAY_ON];
 #[progmem]
 static DISPLAY_OFF_DATA: [u8; 2] = [I2C_CMD, DISPLAY_OFF];
 
-#[config_constraints]
-impl<User: Keyboard> OmkKeyboard<User> {
+impl<User: Keyboard + PrivateConfig> OmkKeyboard<User> {
     #[inline(always)]
     pub fn oled_send_iter<T: Iterator<Item = u8>>(data: T) -> Result<(), I2CError> {
         if !User::HAVE_SCREEN {

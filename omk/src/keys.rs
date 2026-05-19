@@ -3,7 +3,7 @@
 
 use core::cell::SyncUnsafeCell;
 
-use keyboard_macros::{config_constraints, key_alias};
+use keyboard_macros::key_alias;
 
 use crate::{
     Keyboard, OmkKeyboard,
@@ -321,13 +321,11 @@ pub const RESET: &Reset = &Reset;
 /// Represents a no-operation key that does nothing when pressed.
 pub struct NoOpKey;
 
-#[config_constraints]
 impl<User: Keyboard> CustomKey<User> for NoOpKey {}
 
 /// Represents a key that changes the current layer up by a specified amount.
 pub struct LayerUp(pub u8);
 
-#[config_constraints]
 impl<User: Keyboard> CustomKey<User> for LayerUp {
     /// Moves the keyboard to the specified layer when the key is pressed.
     fn on_pressed(&self, keyboard: &mut OmkKeyboard<User>) {
@@ -338,7 +336,6 @@ impl<User: Keyboard> CustomKey<User> for LayerUp {
 /// Represents a key that changes the current layer down by a specified amount.
 pub struct LayerDown(pub u8);
 
-#[config_constraints]
 impl<User: Keyboard> CustomKey<User> for LayerDown {
     /// Moves the keyboard to the specified layer when the key is pressed.
     fn on_pressed(&self, keyboard: &mut OmkKeyboard<User>) {
@@ -349,7 +346,6 @@ impl<User: Keyboard> CustomKey<User> for LayerDown {
 /// go to designated layer while hold
 pub struct LayerHold(pub u8);
 
-#[config_constraints]
 impl<User: Keyboard> CustomKey<User> for LayerHold {
     /// Move to specified layer when pressed
     fn on_pressed(&self, keyboard: &mut OmkKeyboard<User>) {
@@ -370,7 +366,6 @@ impl<User: Keyboard> CustomKey<User> for LayerHold {
 /// Represents a key that transparently passes the key press to the layer above.
 pub struct TransparentUp;
 
-#[config_constraints]
 impl<User: Keyboard> CustomKey<User> for TransparentUp {
     /// Delegates the key press to the key in the layer above.
     fn complete_on_pressed(&self, keyboard: &mut OmkKeyboard<User>, row: u8, column: u8) {
@@ -396,7 +391,6 @@ impl<User: Keyboard> CustomKey<User> for TransparentUp {
 
 pub struct Reset;
 
-#[config_constraints]
 impl<User: Keyboard> CustomKey<User> for Reset {
     fn on_pressed(&self, _keyboard: &mut OmkKeyboard<User>) {
         avr_base::reset_to_bootloader();
@@ -427,7 +421,6 @@ impl<K1, K2, K3, K4> TapDance<K1, K2, K3, K4> {
     }
 }
 
-#[config_constraints]
 impl<
     User: Keyboard,
     K1: CustomKey<User>,
@@ -457,7 +450,6 @@ macro_rules! mouse_movement {
     ($struct:ident, $field:ident) => {
         pub struct $struct;
 
-        #[config_constraints]
         impl<User: Keyboard> CustomKey<User> for $struct {
             fn on_pressed(&self, keyboard: &mut OmkKeyboard<User>) {
                 keyboard.mouse_state.$field = true;
@@ -476,7 +468,6 @@ mouse_movement! { MouseRight, right }
 
 pub struct MouseLeftClick;
 
-#[config_constraints]
 impl<User: Keyboard> CustomKey<User> for MouseLeftClick {
     fn on_pressed(&self, _: &mut OmkKeyboard<User>) {
         mouse_left_click_press();
@@ -488,7 +479,6 @@ impl<User: Keyboard> CustomKey<User> for MouseLeftClick {
 
 pub struct MouseRightClick;
 
-#[config_constraints]
 impl<User: Keyboard> CustomKey<User> for MouseRightClick {
     fn on_pressed(&self, _: &mut OmkKeyboard<User>) {
         mouse_right_click_press();
@@ -500,7 +490,6 @@ impl<User: Keyboard> CustomKey<User> for MouseRightClick {
 
 pub struct MouseWheelClick;
 
-#[config_constraints]
 impl<User: Keyboard> CustomKey<User> for MouseWheelClick {
     fn on_pressed(&self, _: &mut OmkKeyboard<User>) {
         mouse_wheel_click_press();
@@ -512,5 +501,4 @@ impl<User: Keyboard> CustomKey<User> for MouseWheelClick {
 
 pub struct DummyKey;
 
-#[config_constraints]
 impl<User: Keyboard> CustomKey<User> for DummyKey {}

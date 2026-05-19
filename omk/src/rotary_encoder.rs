@@ -1,7 +1,5 @@
 use core::{marker::PhantomData, num::Wrapping};
 
-use keyboard_macros::config_constraints;
-
 use crate::InterruptsHandler;
 use crate::{Keyboard, OmkKeyboard, atomic::atomic_access, is_master};
 
@@ -26,7 +24,6 @@ pub(crate) struct RotaryState {
     prev_other_pulses: Wrapping<i8>,
 }
 
-#[config_constraints]
 impl<User: Keyboard> Default for RotaryEncoder<User> {
     fn default() -> Self {
         Self::new()
@@ -37,7 +34,6 @@ impl<User: Keyboard> Default for RotaryEncoder<User> {
 /// You should only call that in aomic context, i guess ?
 /// And, the pointer must point correctly.
 #[inline(always)]
-#[config_constraints]
 pub(crate) unsafe fn fast_encoder_task<User: Keyboard + InterruptsHandler<User>>(
     encoder: *mut RotaryEncoder<User>,
 ) {
@@ -81,7 +77,6 @@ impl<User: Keyboard> RotaryEncoder<User> {
     }
 }
 
-#[config_constraints]
 impl<User: Keyboard> RotaryEncoder<User> {
     /// Processes the rotary encoder task and returns the number of rotations since the last call.
     pub fn task(kb: &mut OmkKeyboard<User>) -> (i8, i8) {

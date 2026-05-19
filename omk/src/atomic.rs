@@ -3,8 +3,6 @@
 
 use core::{arch::asm, mem::offset_of};
 
-use keyboard_macros::config_constraints;
-
 use crate::{Keyboard, OmkKeyboard, OmkMetaHolder, OmkShared};
 
 /// Executes a closure in an atomic context, disabling and restoring interrupts.
@@ -49,11 +47,10 @@ where
 }
 
 #[inline(always)]
-#[config_constraints]
 /// # Safety
 /// Due to the fact that this spawn a new mutable ref on the UnsafeCells, you should not call this function in itself (in the closure passed to itself)
 /// That include calling some library function that may at their discretion use that fonction
-pub unsafe fn atomic_access<User: Keyboard, F, R, 'a>(
+pub unsafe fn atomic_access<'a, User: Keyboard, F, R>(
     keyboard: &'a mut OmkKeyboard<User>,
     f: F,
 ) -> R

@@ -1,4 +1,5 @@
-#![feature(asm_experimental_arch)]
+#![allow(incomplete_features)]
+#![feature(asm_experimental_arch, min_generic_const_args)]
 #![no_std]
 
 pub const F_CPU: u64 = 16_000_000;

@@ -1,5 +1,3 @@
-use keyboard_macros::config_constraints;
-
 use crate::{
     OmkKeyboard, OmkMetaHolder,
     rotary_encoder::{RotaryEncoder, fast_encoder_task},
@@ -7,7 +5,6 @@ use crate::{
     timer::timer_increment,
 };
 
-#[config_constraints]
 pub trait InterruptsHandler<User: crate::Keyboard + InterruptsHandler<User>>:
     crate::Keyboard
 {
